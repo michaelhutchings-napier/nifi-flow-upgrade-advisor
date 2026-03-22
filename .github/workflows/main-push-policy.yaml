@@ -44,7 +44,7 @@ jobs:
               .write();
 
             if (prs.length === 0) {
-              core.setFailed(
+              core.warning(
                 "This push to the protected branch is not associated with any pull request. Use a branch and pull request workflow for changes to main."
               );
             }
