@@ -32,10 +32,16 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Prepare Pages artifact
+        run: |
+          rm -rf .pages-dist
+          mkdir -p .pages-dist
+          cp -R ./site/. ./.pages-dist/
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./site
+          path: ./.pages-dist
 
       - name: Deploy to GitHub Pages
         id: deployment

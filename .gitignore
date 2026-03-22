@@ -1,4 +1,5 @@
 /nifi-flow-upgrade
+/bin/
 flow-upgrade-out/
 demo/out/
 AGENTS.md
