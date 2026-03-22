@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Design Overview | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Design boundary and delivery model for a customer-facing NiFi flow upgrade advisor."
+    >
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Design</p>
+        <h1>External-first, confidence-first NiFi migration tooling.</h1>
+        <p class="lede">
+          The advisor stays outside runtime platforms on purpose. Migration analysis and rewrite
+          logic should be reviewable, explicit, and safe to run offline.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/design.md">Open source doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Design choices</h2>
+            <ul>
+              <li>terminal-first engine with JSON and Markdown reports</li>
+              <li>explicit rule-pack input instead of scraping docs at runtime</li>
+              <li>safe deterministic rewrites only</li>
+              <li>read-only validation against target NiFi and extension manifests</li>
+              <li>publish as a deliberate handoff, not hidden runtime mutation</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Why separate from platform repos</h2>
+            <p>
+              Keeping the engine in its own repo prevents migration logic from turning into hidden
+              controller behavior. Platform repos can link to it, pin versions, and integrate it in
+              CI without owning the migration engine directly.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Secret handling</h2>
+            <p>
+              NiFi does not export sensitive values in a way this tool can recover. The advisor
+              preserves references and flow structure, but secret rehydration belongs to Parameter
+              Contexts, Parameter Providers, Vault, Kubernetes Secrets, or similar environment-local systems.
+            </p>
+          </div>
+          <div class="card">
+            <h2>Supported targets</h2>
+            <p>
+              The tool can validate and publish to filesystems, Git-backed registry directories, and
+              NiFi Registry. Live target validation checks version, runtime extensions, and process-group readiness.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

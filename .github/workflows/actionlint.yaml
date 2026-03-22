@@ -1,18 +1,29 @@
-name: actionlint
+name: Workflow Lint
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
   push:
     branches:
       - main
       - master
-  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+
+permissions:
+  contents: read
 
 jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
       - name: Run actionlint
-        uses: raven-actions/actionlint@v2
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest
