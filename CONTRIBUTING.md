@@ -18,10 +18,10 @@ go build ./cmd/nifi-flow-upgrade
 
 If you change the CLI contract, rule-pack format, or workflow behavior, update:
 
-- [`README.md`](README.md)
-- [`docs/cli.md`](docs/cli.md)
-- [`docs/design.md`](docs/design.md)
-- [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
+- [`README.md`](/home/michael/Work/nifi-flow-upgrade-advisor/README.md)
+- [`docs/cli.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/cli.md)
+- [`docs/design.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/design.md)
+- [`docs/rule-pack-format.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/rule-pack-format.md)
 
 ## Pull requests
 

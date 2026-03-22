@@ -45,14 +45,13 @@ What `publish` covers now:
 
 ## Layout
 
-- [`cmd/nifi-flow-upgrade`](cmd/nifi-flow-upgrade)
-- [`internal/flowupgrade`](internal/flowupgrade)
-- [`docs/design.md`](docs/design.md)
-- [`docs/cli.md`](docs/cli.md)
-- [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
-- [`demo`](demo)
-- [`examples/rulepacks`](examples/rulepacks)
-- [`examples/manifests`](examples/manifests)
+- [`cmd/nifi-flow-upgrade`](/home/michael/Work/nifi-flow-upgrade-advisor/cmd/nifi-flow-upgrade)
+- [`internal/flowupgrade`](/home/michael/Work/nifi-flow-upgrade-advisor/internal/flowupgrade)
+- [`docs/design.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/design.md)
+- [`docs/cli.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/cli.md)
+- [`docs/rule-pack-format.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/rule-pack-format.md)
+- [`examples/rulepacks`](/home/michael/Work/nifi-flow-upgrade-advisor/examples/rulepacks)
+- [`examples/manifests`](/home/michael/Work/nifi-flow-upgrade-advisor/examples/manifests)
 
 ## Quick Start
 
@@ -134,32 +133,22 @@ Publish to NiFi Registry:
   --output-dir ./out
 ```
 
-Demo:
-
-```bash
-./demo/asana-2.7-to-2.8.sh
-./demo/base64-1.27-to-2.0.sh
-```
-
-The Asana demo produces a blocked `2.7.1 -> 2.8.0` result for removed components.
-The Base64 demo shows a real deterministic auto-fix and rewrite for `1.27.0 -> 2.0.0`.
-
 Website:
 
-- local site files: [`site/`](site/)
-- GitHub Pages workflow: [`.github/workflows/pages.yaml`](.github/workflows/pages.yaml)
+- local site files: [`site/`](/home/michael/Work/nifi-flow-upgrade-advisor/site)
+- GitHub Pages workflow: [`.github/workflows/pages.yaml`](/home/michael/Work/nifi-flow-upgrade-advisor/.github/workflows/pages.yaml)
 
 Repo ownership:
 
-- [`CODEOWNERS`](.github/CODEOWNERS)
-- design docs: [`docs/design.md`](docs/design.md), [`docs/cli.md`](docs/cli.md), [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
+- [`CODEOWNERS`](/home/michael/Work/nifi-flow-upgrade-advisor/.github/CODEOWNERS)
+- [`AGENTS.md`](/home/michael/Work/nifi-flow-upgrade-advisor/AGENTS.md)
+- design docs: [`docs/design.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/design.md), [`docs/cli.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/cli.md), [`docs/rule-pack-format.md`](/home/michael/Work/nifi-flow-upgrade-advisor/docs/rule-pack-format.md)
 
 ## Notes
 
 - sensitive values that NiFi never exported cannot be reconstructed by this tool
 - use Parameter Contexts, Parameter Providers, and environment-local secret sources for secret rehydration
 - rule packs should cite official Apache migration notes and release caveats
-- `auto-fix` in `analyze` means “safe deterministic rewrite candidate found”, not “the flow has already been changed”
 
 ## Relationship To NiFi-Fabric
 
