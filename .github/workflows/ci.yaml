@@ -26,4 +26,6 @@ jobs:
         run: go test ./...
 
       - name: Go build
-        run: go build ./cmd/nifi-flow-upgrade
+        run: |
+          mkdir -p ./bin
+          go build -o ./bin/nifi-flow-upgrade ./cmd/nifi-flow-upgrade
