@@ -1,4 +1,4 @@
-name: dependency-review
+name: Dependency Review
 
 on:
   pull_request:
@@ -6,11 +6,47 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check dependency review support
+        id: support
+        uses: actions/github-script@v8
+        with:
+          script: |
+            let status = "unknown";
+            try {
+              const repo = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              status = repo.data.security_and_analysis?.dependency_graph?.status || "unknown";
+            } catch (error) {
+              core.warning(`Could not inspect dependency graph status: ${error.message}`);
+            }
+
+            const supported = status === "enabled";
+            core.setOutput("supported", supported ? "true" : "false");
+
+            await core.summary
+              .addHeading("Dependency review support")
+              .addRaw(`- Dependency graph status: \`${status}\`\n`)
+              .addRaw(`- Dependency review executed: \`${supported}\`\n`)
+              .write();
+
+      - name: Skip when dependency graph is unavailable
+        if: steps.support.outputs.supported != 'true'
+        run: |
+          echo "Skipping dependency review because dependency graph is not enabled or not visible to this workflow."
+          echo "Enable it in repository settings to turn this check back on."
+
+      - uses: actions/checkout@v6
+        if: steps.support.outputs.supported == 'true'
+
       - name: Dependency review
-        uses: actions/dependency-review-action@v4
+        if: steps.support.outputs.supported == 'true'
+        uses: actions/dependency-review-action@v4.8.2

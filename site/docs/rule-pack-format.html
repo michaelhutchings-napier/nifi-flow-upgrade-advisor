@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rule-Pack Format | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Rule packs define version-aware migration findings and deterministic rewrite actions for NiFi flow upgrades."
+    >
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Rule Packs</p>
+        <h1>Explicit migration logic, not hidden magic.</h1>
+        <p class="lede">
+          Rule packs are version-pair aware YAML files that describe what the tool should flag,
+          what it may rewrite safely, and which Apache guidance or caveats back those decisions.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/rule-pack-format.md">Open source doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>What a rule pack contains</h2>
+            <ul>
+              <li>source and target version ranges</li>
+              <li>matchers for processors, controller services, and root-level flow features</li>
+              <li>finding types such as <code>blocked</code>, <code>manual-change</code>, and <code>auto-fix</code></li>
+              <li>optional deterministic actions like property rename, property removal, or component type replacement</li>
+              <li>references back to official Apache migration notes where possible</li>
+            </ul>
+          </div>
+          <div class="code-card">
+            <pre><code>apiVersion: flowupgrade.nifi.apache.org/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.7-to-2.8-official
+spec:
+  sourceVersionRange: ">=2.7.0 <2.8.0"
+  targetVersionRange: ">=2.8.0 <2.9.0"</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Safety boundary</h2>
+            <p>
+              Rule packs should only declare rewrites when the change is mechanically safe and
+              explainable. Removed processors, custom JAR migrations, and architecture-sensitive
+              replacements should stay as findings for human review.
+            </p>
+          </div>
+          <div class="card">
+            <h2>Linting</h2>
+            <p>
+              The CLI validates duplicate IDs, duplicate pack names, bad version ranges, and
+              malformed actions before a pack is used in analysis or rewrite.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

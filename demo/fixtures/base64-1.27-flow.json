@@ -1,0 +1,21 @@
+{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "root",
+    "processors": [
+      {
+        "id": "base64-proc-1",
+        "name": "EncodePayload",
+        "type": "org.apache.nifi.processors.standard.Base64EncodeContent",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.27.0"
+        },
+        "properties": {
+          "Mode": "Encode"
+        }
+      }
+    ]
+  }
+}
