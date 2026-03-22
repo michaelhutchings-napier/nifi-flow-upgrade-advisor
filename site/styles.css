@@ -522,6 +522,13 @@ pre {
   color: #edf6ff;
 }
 
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .link-card {
   display: flex;
   flex-direction: column;
