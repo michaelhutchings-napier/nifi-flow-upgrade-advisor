@@ -25,6 +25,7 @@ If you change the CLI contract, rule-pack format, or workflow behavior, update:
 
 ## Pull requests
 
+- use pull requests for changes to `main`; direct pushes should be treated as exceptions only
 - include tests for executable rewrite or publish behavior
 - include fixtures or example rule-pack updates when adding official migration coverage
 - call out any inference when Apache documentation does not provide a direct migration rule
