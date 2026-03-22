@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/cli.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/design.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rule-pack-format.html</loc>
+  </url>
+</urlset>
