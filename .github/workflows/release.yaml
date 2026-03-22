@@ -1,0 +1,94 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive: zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          ext=""
+          if [ "${GOOS}" = "windows" ]; then ext=".exe"; fi
+          out="nifi-flow-upgrade-${GOOS}-${GOARCH}${ext}"
+          go build -ldflags "-X github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/internal/flowupgrade.Version=${GITHUB_REF_NAME} -X github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/internal/flowupgrade.Commit=${GITHUB_SHA} -X github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/internal/flowupgrade.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o "dist/${out}" ./cmd/nifi-flow-upgrade
+
+      - name: Archive binary
+        run: |
+          cd dist
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            zip "nifi-flow-upgrade-${{ matrix.goos }}-${{ matrix.goarch }}.zip" "nifi-flow-upgrade-${{ matrix.goos }}-${{ matrix.goarch }}.exe"
+          else
+            tar -czf "nifi-flow-upgrade-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" "nifi-flow-upgrade-${{ matrix.goos }}-${{ matrix.goarch }}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find dist -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum * > checksums.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*

@@ -1,0 +1,27 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.6-to-2.7.0-patch-caveats
+  title: NiFi 2.6 to 2.7.0 patch-specific caveats
+  description: Patch-specific migration caveats that apply to target version 2.7.0 but not later 2.7.x releases.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.6.0 <2.7.0"
+  targetVersionRange: ">=2.7.0 <2.7.1"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.scripted-components.27.0-review
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Scripted components may require manual review when targeting NiFi 2.7.0.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi migration guidance says a migrateProperties call was missed for scripted components in 2.7.0 and that this was resolved in 2.7.1. Prefer 2.7.1 or later when possible, or review scripted components carefully if targeting 2.7.0 exactly.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance

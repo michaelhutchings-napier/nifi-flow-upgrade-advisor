@@ -1,0 +1,58 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.27-to-2.0-sample
+  title: Sample NiFi 1.27 to 2.0 migration rules
+  description: Example rules for early CLI and rule-engine development.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=1.27.0 <2.0.0"
+  targetVersionRange: ">=2.0.0 <2.1.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+  rules:
+    - id: core.kafka.bundle-rename
+      category: bundle-renamed
+      class: auto-fix
+      severity: warning
+      message: Bundle coordinates changed for the selected target line.
+      selector:
+        componentTypes:
+          - org.apache.nifi.processors.kafka.pubsub.ConsumeKafka
+          - org.apache.nifi.processors.kafka.pubsub.PublishKafka
+      actions:
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-kafka-2-processors
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.ssl-context.manual-review
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: SSL context configuration should be reviewed during migration.
+      selector:
+        propertyName: SSL Context Service
+      match:
+        propertyExists: SSL Context Service
+      notes: Verify referenced controller services and trust material in the target environment.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.legacy-variable.blocked
+      category: variable-migration
+      class: blocked
+      severity: error
+      message: Legacy variable usage requires manual migration planning before upgrade.
+      selector:
+        scope: flow-root
+      match:
+        annotationContains: "#{"
+      actions:
+        - type: mark-blocked
+      notes: NiFi 1.x variable usage needs explicit migration planning before a NiFi 2 import is considered safe.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance

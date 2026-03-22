@@ -1,0 +1,262 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.27-to-2.0-official
+  title: NiFi 1.27 to 2.0 migration guidance
+  description: Initial official rule pack derived from Apache NiFi migration guidance for 1.27.x to 2.0.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=1.27.0 <2.0.0"
+  targetVersionRange: ">=2.0.0 <2.1.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.distributed-map-cache-server.renamed
+      category: component-replaced
+      class: auto-fix
+      severity: warning
+      message: DistributedMapCacheServer was renamed for NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.distributed.cache.server.map.DistributedMapCacheServer
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.distributed.cache.server.map.DistributedMapCacheServer
+          to: org.apache.nifi.distributed.cache.server.map.MapCacheServer
+      notes: Apache NiFi 2.0.0 renamed the Distributed Server and Client Services to MapCache and SetCache variants.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-distributed-cache-services-nar/1.12.1/org.apache.nifi.distributed.cache.server.map.DistributedMapCacheServer/index.html
+        - https://nifi.apache.org/components/org.apache.nifi.distributed.cache.server.map.MapCacheServer/
+
+    - id: core.distributed-set-cache-server.renamed
+      category: component-replaced
+      class: auto-fix
+      severity: warning
+      message: DistributedSetCacheServer was renamed for NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.distributed.cache.server.DistributedSetCacheServer
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.distributed.cache.server.DistributedSetCacheServer
+          to: org.apache.nifi.distributed.cache.server.SetCacheServer
+      notes: Apache NiFi 2.0.0 renamed the Distributed Server and Client Services to MapCache and SetCache variants.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.distributed.cache.server.SetCacheServer/
+
+    - id: core.distributed-map-cache-client.renamed
+      category: component-replaced
+      class: auto-fix
+      severity: warning
+      message: DistributedMapCacheClientService was renamed for NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService
+          to: org.apache.nifi.distributed.cache.client.MapCacheClientService
+      notes: Apache NiFi 2.0.0 renamed the Distributed Server and Client Services to MapCache and SetCache variants.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-distributed-cache-services-nar/1.5.0/org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService/index.html
+        - https://nifi.apache.org/components/org.apache.nifi.distributed.cache.client.MapCacheClientService/
+
+    - id: core.distributed-set-cache-client.renamed
+      category: component-replaced
+      class: auto-fix
+      severity: warning
+      message: DistributedSetCacheClientService was renamed for NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.distributed.cache.client.DistributedSetCacheClientService
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.distributed.cache.client.DistributedSetCacheClientService
+          to: org.apache.nifi.distributed.cache.client.SetCacheClientService
+      notes: Apache NiFi 2.0.0 renamed the Distributed Server and Client Services to MapCache and SetCache variants.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-distributed-cache-services-nar/1.28.0/org.apache.nifi.distributed.cache.client.DistributedSetCacheClientService/index.html
+        - https://nifi.apache.org/components/org.apache.nifi.distributed.cache.client.SetCacheClientService/
+
+    - id: core.variable-registry.removed
+      category: variable-migration
+      class: blocked
+      severity: error
+      message: Variable Registry expressions require explicit migration planning before NiFi 2.0.x.
+      selector:
+        scope: flow-root
+      match:
+        annotationContains: "#{"
+      actions:
+        - type: mark-blocked
+      notes: Apache NiFi 2.0.0 removed the VARIABLE_REGISTRY expression language scope. Migrate these references to parameters, environment variables, or another supported pattern before import.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.custom-advanced-ui.contract-updated
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Custom or Advanced UI extensions should be reviewed for the NiFi 2.0.x root-path contract.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 2.0.0 changed the Advanced UI contract so the UI is opened at the web application root path instead of /configure.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.data-viewer-ui.contract-updated
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Custom Data Viewer extensions should be reviewed for the NiFi 2.0.x document-rendering contract.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 2.0.0 changed custom Data Viewer behavior from JSP inclusion to complete-document rendering in an iframe and updated the content access contract.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.additional-details.markdown-migration
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Custom extension additional details should be reviewed for the NiFi 2.0.x Markdown contract.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 2.0.0 replaced additionalDetails.html with additionalDetails.md for custom extension documentation.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.base64-encode-content.replace
+      category: component-replaced
+      class: auto-fix
+      severity: warning
+      message: Base64EncodeContent should be replaced with EncodeContent for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.Base64EncodeContent
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.Base64EncodeContent
+          to: org.apache.nifi.processors.standard.EncodeContent
+      notes: Apache's 2.0 migration guide describes EncodeContent as the direct replacement. The existing Mode property is preserved and EncodeContent keeps Base64 as the default encoding, so this replacement is treated as a safe mechanical rewrite.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.get-http.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.GetHTTP
+      notes: Apache's 2.0 migration guide maps GetHTTP to InvokeHTTP with HTTP Method GET, HTTP URL, and Response FlowFile Naming Strategy URL_PATH. Review timeout and SSL behavior during migration.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.get-jms-queue.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetJMSQueue should be replaced with ConsumeJMS for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.GetJMSQueue
+      notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.get-jms-topic.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetJMSTopic should be replaced with ConsumeJMS for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.GetJMSTopic
+      notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider, external JMS client libraries, and Destination Type TOPIC.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.get-twitter.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetTwitter should be replaced with ConsumeTwitter for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.twitter.GetTwitter
+      notes: Apache's 2.0 migration guide says the replacement moves from Twitter API v1 and Hosebird Client to Twitter API v2 with OAuth 2 Bearer Token and possible external filter-rule setup.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.hash-attribute.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: HashAttribute should be replaced with UpdateAttribute or CryptographicHashAttribute for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.HashAttribute
+      notes: Apache's 2.0 migration guide recommends expression-language hash functions in UpdateAttribute and highlights MD5 as unsuitable for cryptographic use.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.hash-content.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: HashContent should be replaced with CryptographicHashContent for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.HashContent
+      notes: Apache's 2.0 migration guide maps HashContent to CryptographicHashContent, but equivalent attribute naming may also require an UpdateAttribute step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.invoke-http.proxy-properties.replace
+      category: property-renamed
+      class: manual-change
+      severity: warning
+      message: InvokeHTTP proxy properties should be migrated to Proxy Configuration Service for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.InvokeHTTP
+      match:
+        propertyExists: Proxy Host
+      notes: Apache's 2.0 migration guide requires creating a StandardProxyConfigurationService and moving deprecated proxy properties off the processor.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.post-http.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: PostHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.PostHTTP
+      notes: Apache's 2.0 migration guide maps PostHTTP to InvokeHTTP, but FlowFile packaging, HTTPS handling, and header behavior must be reviewed during migration.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
+
+    - id: core.put-jms.replace
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: PutJMS should be replaced with PublishJMS for NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.PutJMS
+      notes: Apache's 2.0 migration guide requires moving to PublishJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0

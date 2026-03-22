@@ -1,0 +1,132 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.6-to-2.7-official
+  title: NiFi 2.6 to 2.7 migration guidance
+  description: Initial official rule pack derived from Apache NiFi migration guidance for 2.6.x to 2.7.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.6.0 <2.7.0"
+  targetVersionRange: ">=2.7.0 <2.8.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.ocsp.removed
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: OCSP responder support is removed in NiFi 2.7.x.
+      selector:
+        scope: flow-root
+      notes: Review deployment configuration for any use of nifi.security.ocsp.responder because Apache NiFi 2.7.0 removed framework support for OCSP validation.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.get-asana-object.deprecated
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: GetAsanaObject is deprecated for removal in NiFi 2.7.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.asana.GetAsanaObject
+      notes: Apache NiFi 2.7.0 deprecated GetAsanaObject for removal. Plan to replace this processor before the next major step to 2.8.x where it is removed.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.asana.GetAsanaObject/
+
+    - id: core.get-asana-object.clear-state
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: GetAsanaObject state should be cleared during upgrade to NiFi 2.7.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.asana.GetAsanaObject
+      notes: Apache NiFi 2.7.0 changed GetAsanaObject state persistence from Java Object serialization to JSON, and upgrading requires clearing existing processor state.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.asana.GetAsanaObject/
+
+    - id: core.restricted-ssl-context.deprecated-27
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: StandardRestrictedSSLContextService is deprecated for removal in NiFi 2.7.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.ssl.StandardRestrictedSSLContextService
+      notes: Review whether this controller service should move to SSLContextService or SSLContextProvider implementations before a later major upgrade.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.ssl.StandardRestrictedSSLContextService/
+
+    - id: core.listen-syslog.port-to-tcp-port-27
+      category: property-renamed
+      class: auto-fix
+      severity: warning
+      message: ListenSyslog Port should be migrated to TCP Port when Protocol is TCP.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.ListenSyslog
+      match:
+        propertyValueEquals:
+          property: Protocol
+          value: TCP
+      actions:
+        - type: rename-property
+          from: Port
+          to: TCP Port
+      notes: Apache NiFi 2.7.0 replaced the single Port property with TCP Port and UDP Port on ListenSyslog.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenSyslog/
+
+    - id: core.listen-syslog.port-to-udp-port-27
+      category: property-renamed
+      class: auto-fix
+      severity: warning
+      message: ListenSyslog Port should be migrated to UDP Port when Protocol is UDP.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.ListenSyslog
+      match:
+        propertyValueEquals:
+          property: Protocol
+          value: UDP
+      actions:
+        - type: rename-property
+          from: Port
+          to: UDP Port
+      notes: Apache NiFi 2.7.0 replaced the single Port property with TCP Port and UDP Port on ListenSyslog.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenSyslog/
+
+    - id: core.fetch-gridfs.manual-review-27
+      category: property-renamed
+      class: manual-change
+      severity: warning
+      message: FetchGridFS instances may need manual property updates after upgrade to NiFi 2.7.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.mongodb.gridfs.FetchGridFS
+      notes: Apache NiFi 2.7.0 missed a migrateProperties call for FetchGridFS, and the migration guidance says manual property updates may be required.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.mongodb.gridfs.FetchGridFS/
+
+    - id: core.external-api.property-renames.review
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: External API-driven component provisioning may require property-name updates for NiFi 2.7.x.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 2.7.0 renamed many properties across components for consistency. Flows may import cleanly, but external tooling that creates components through the API should be reviewed separately.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance

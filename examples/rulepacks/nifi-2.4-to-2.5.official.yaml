@@ -1,0 +1,28 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.4-to-2.5-official
+  title: NiFi 2.4 to 2.5 migration guidance
+  description: Initial official rule pack derived from Apache NiFi migration guidance for 2.4.x to 2.5.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.4.0 <2.5.0"
+  targetVersionRange: ">=2.5.0 <2.6.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.custom-content-viewer.servlet-review
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Custom Content Viewer implementations should be reviewed for the NiFi 2.5.x servlet contract.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 2.5.0 changed the standard Content Viewer from Spring Boot to a simplified Java Servlet implementation. Custom Content Viewers should avoid Spring Boot dependencies and follow the new standard pattern.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+

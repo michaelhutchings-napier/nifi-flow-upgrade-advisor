@@ -1,0 +1,31 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: ExtensionsManifest
+metadata:
+  name: nifi-2.0-core-sample
+  description: Sample target extensions manifest for NiFi 2.0.x analyzer validation.
+spec:
+  nifiVersion: 2.0.0
+  components:
+    - scope: controller-service
+      type: org.apache.nifi.distributed.cache.client.MapCacheClientService
+    - scope: controller-service
+      type: org.apache.nifi.distributed.cache.server.map.MapCacheServer
+    - scope: controller-service
+      type: org.apache.nifi.distributed.cache.client.SetCacheClientService
+    - scope: controller-service
+      type: org.apache.nifi.distributed.cache.server.SetCacheServer
+    - scope: processor
+      type: org.apache.nifi.processors.standard.InvokeHTTP
+    - scope: processor
+      type: org.apache.nifi.processors.standard.EncodeContent
+    - scope: processor
+      type: org.apache.nifi.processors.standard.UpdateAttribute
+    - scope: processor
+      type: org.apache.nifi.processors.standard.CryptographicHashContent
+    - scope: processor
+      type: org.apache.nifi.jms.processors.ConsumeJMS
+    - scope: processor
+      type: org.apache.nifi.jms.processors.PublishJMS
+    - scope: processor
+      type: org.apache.nifi.processors.twitter.ConsumeTwitter
+

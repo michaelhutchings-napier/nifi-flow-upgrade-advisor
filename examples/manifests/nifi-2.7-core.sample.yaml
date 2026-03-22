@@ -1,0 +1,17 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: ExtensionsManifest
+metadata:
+  name: nifi-2.7-core-sample
+  description: Sample target extensions manifest for NiFi 2.7.x analyzer validation.
+spec:
+  nifiVersion: 2.7.1
+  components:
+    - scope: processor
+      type: org.apache.nifi.processors.standard.ListenSyslog
+    - scope: controller-service
+      type: org.apache.nifi.ssl.StandardRestrictedSSLContextService
+    - scope: processor
+      type: org.apache.nifi.processors.asana.GetAsanaObject
+    - scope: processor
+      type: org.apache.nifi.processors.mongodb.gridfs.FetchGridFS
+

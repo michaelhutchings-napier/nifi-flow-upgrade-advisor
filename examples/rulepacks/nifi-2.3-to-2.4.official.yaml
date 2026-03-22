@@ -1,0 +1,46 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.3-to-2.4-official
+  title: NiFi 2.3 to 2.4 migration guidance
+  description: Initial official rule pack derived from Apache NiFi migration guidance for 2.3.x to 2.4.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.3.0 <2.4.0"
+  targetVersionRange: ">=2.4.0 <2.5.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.ocsp.deprecated
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: OCSP responder support is deprecated for removal in NiFi 2.4.x.
+      selector:
+        scope: flow-root
+      notes: Review deployment configuration for any use of nifi.security.ocsp.responder because Apache NiFi deprecated this support in 2.4.0 and removed it in 2.7.0.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.listen-http.rate-limit.removed
+      category: property-removed
+      class: manual-change
+      severity: warning
+      message: ListenHTTP no longer supports Max Data to Receive per Second in NiFi 2.4.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.ListenHTTP
+      match:
+        propertyExists: Max Data to Receive per Second
+      actions:
+        - type: remove-property
+          name: Max Data to Receive per Second
+      notes: Apache NiFi 2.4.0 removed this property. The processor will continue to function without a rate limit, so review whether an alternative rate-limiting pattern is needed before removing the property.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenHTTP/
+

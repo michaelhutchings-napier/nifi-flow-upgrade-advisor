@@ -1,0 +1,164 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.7-to-2.8-official
+  title: NiFi 2.7 to 2.8 migration guidance
+  description: Initial official rule pack derived from Apache NiFi migration guidance for 2.7.x to 2.8.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.7.0 <2.8.0"
+  targetVersionRange: ">=2.8.0 <2.9.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.get-asana-object.removed
+      category: component-removed
+      class: blocked
+      severity: error
+      message: GetAsanaObject has been removed in NiFi 2.8.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.asana.GetAsanaObject
+      actions:
+        - type: mark-blocked
+      notes: Replace or remove this processor before upgrading to NiFi 2.8.x.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.asana.GetAsanaObject/
+
+    - id: core.asana-client-provider.removed
+      category: component-removed
+      class: blocked
+      severity: error
+      message: StandardAsanaClientProviderService has been removed in NiFi 2.8.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.controller.asana.StandardAsanaClientProviderService
+      actions:
+        - type: mark-blocked
+      notes: Replace or remove this controller service before upgrading to NiFi 2.8.x.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.controller.asana.StandardAsanaClientProviderService/
+
+    - id: core.restricted-ssl-context.deprecated
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: StandardRestrictedSSLContextService is deprecated for removal.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.ssl.StandardRestrictedSSLContextService
+      notes: Review whether this service should move to SSLContextService or SSLContextProvider implementations before a later major upgrade.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.ssl.StandardRestrictedSSLContextService/
+
+    - id: core.listen-syslog.port-to-tcp-port
+      category: property-renamed
+      class: auto-fix
+      severity: warning
+      message: ListenSyslog Port should be migrated to TCP Port when Protocol is TCP.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.ListenSyslog
+      match:
+        propertyValueEquals:
+          property: Protocol
+          value: TCP
+      actions:
+        - type: rename-property
+          from: Port
+          to: TCP Port
+      notes: Apache NiFi 2.7.0 replaced the single Port property with TCP Port and UDP Port on ListenSyslog.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenSyslog/
+
+    - id: core.listen-syslog.port-to-udp-port
+      category: property-renamed
+      class: auto-fix
+      severity: warning
+      message: ListenSyslog Port should be migrated to UDP Port when Protocol is UDP.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.ListenSyslog
+      match:
+        propertyValueEquals:
+          property: Protocol
+          value: UDP
+      actions:
+        - type: rename-property
+          from: Port
+          to: UDP Port
+      notes: Apache NiFi 2.7.0 replaced the single Port property with TCP Port and UDP Port on ListenSyslog.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenSyslog/
+
+    - id: core.fetch-gridfs.manual-review
+      category: property-renamed
+      class: manual-change
+      severity: warning
+      message: FetchGridFS instances may need manual property updates after upgrade.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.mongodb.gridfs.FetchGridFS
+      notes: Apache NiFi 2.7.0 missed a migrateProperties call for FetchGridFS, and the migration guidance says manual property updates may be required.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.mongodb.gridfs.FetchGridFS/
+
+    - id: core.jolt.custom-class.recompile
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: Custom Jolt transformation classes should be recompiled for NiFi 2.8.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.jolt.JoltTransformJSON
+          - org.apache.nifi.processors.jolt.JoltTransformRecord
+          - org.apache.nifi.processors.jolt.record.JoltTransformRecord
+      match:
+        propertyExists: Custom Transformation Class Name
+      notes: Apache NiFi 2.8.0 migrated Jolt processors to a maintained Jolt library. Custom transformation classes provided through external JARs must be recompiled against the current library.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformJSON/
+        - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformRecord/
+
+    - id: core.jolt.custom-modules.recompile
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: Custom Jolt module directories should be reviewed for NiFi 2.8.x compatibility.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.jolt.JoltTransformJSON
+          - org.apache.nifi.processors.jolt.JoltTransformRecord
+          - org.apache.nifi.processors.jolt.record.JoltTransformRecord
+      match:
+        propertyExists: Custom Module Directory
+      notes: Apache NiFi 2.8.0 migrated Jolt processors to a maintained Jolt library. Custom modules in external JARs should be recompiled and retested.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformJSON/
+        - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformRecord/
+
+    - id: core.nifi-registry.deprecated
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: The NiFi Registry project is deprecated for removal in a future major release.
+      selector:
+        scope: flow-root
+      notes: Prefer Git-backed Flow Registry Clients for new target-state workflows where possible.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
