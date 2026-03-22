@@ -18,215 +18,248 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <header class="hero">
-      <div class="wrap">
-        <p class="eyebrow">Migrate Deliberately</p>
-        <h1>Upgrade Apache NiFi flows without guessing what will break.</h1>
-        <p class="lede">
-          <code>nifi-flow-upgrade-advisor</code> is a customer-facing CLI for NiFi flow migration.
-          It inspects source artifacts, explains version-specific caveats, applies only
-          deterministic safe rewrites, and validates target readiness before you import.
-        </p>
-        <div class="actions">
-          <a class="button primary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor">View on GitHub</a>
-          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">Read the README</a>
+    <div class="site-shell">
+      <header class="topbar">
+        <div class="wrap topbar-inner">
+          <a class="brand" href="./index.html">
+            <span class="brand-mark">NF</span>
+            <span class="brand-copy">
+              <strong>nifi-flow-upgrade-advisor</strong>
+              <span>NiFi migration tooling for teams that want clarity first</span>
+            </span>
+          </a>
+          <nav class="topnav" aria-label="Primary">
+            <a href="#workflow">How it works</a>
+            <a href="#demos">Demos</a>
+            <a href="#next">Read next</a>
+          </nav>
         </div>
-        <div class="hero-strip">
-          <span>Analyze</span>
-          <span>Rewrite</span>
-          <span>Validate</span>
-          <span>Publish Deliberately</span>
-        </div>
-      </div>
-    </header>
+      </header>
 
-    <main>
-      <section class="section">
-        <div class="wrap grid two-up">
-          <div>
-            <h2>What customers actually need</h2>
-            <p>
-              Teams do not need a mystery upgrader. They need a tool that can tell them whether a
-              selected source flow can move to a selected target version, highlight deprecated or
-              removed components, preserve the configuration that can be preserved, and stop before
-              doing anything ambiguous.
+      <header class="hero">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Migrate Deliberately</p>
+            <h1>Know what will break before you move a NiFi flow forward.</h1>
+            <p class="lede">
+              <code>nifi-flow-upgrade-advisor</code> is a terminal-first product for upgrade reviews,
+              deterministic rewrites, and target validation. It helps platform teams and flow owners
+              answer one practical question: <em>is this flow safe to move to the target NiFi version?</em>
             </p>
-          </div>
-          <div class="card callout-card">
-            <h3>Confidence-first migration</h3>
-            <ul>
-              <li>Version-pair rule packs grounded in official Apache NiFi migration guidance</li>
-              <li>Deterministic rewrites only for mechanically safe changes</li>
-              <li>Live target validation against NiFi version, extension inventory, and process-group readiness</li>
-              <li>Readable Markdown and machine-friendly JSON reports for humans and CI</li>
-              <li>Support for legacy `flow.xml.gz` analysis as well as modern JSON artifacts</li>
-              <li>Explicit publish targets for filesystems, Git-backed registries, and NiFi Registry</li>
-              <li>Secrets-safe by design: references stay, missing sensitive values stay external</li>
-            </ul>
-            <div class="chip-row">
-              <span>Rule-pack driven</span>
-              <span>Read-only validate</span>
-              <span>CI friendly</span>
-              <span>NiFi 2 focused</span>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor">View on GitHub</a>
+              <a class="button secondary" href="./docs/cli.html">Explore the CLI</a>
+            </div>
+            <div class="signal-row">
+              <span>Offline-first</span>
+              <span>Deterministic rewrites only</span>
+              <span>NiFi Registry and Git-friendly</span>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section class="section alt">
-        <div class="wrap">
-          <h2>How it works</h2>
-          <div class="grid cards">
-            <article class="card">
-              <div class="feature-art feature-analyze" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
+          <aside class="hero-panel" aria-label="Example migration review">
+            <div class="hero-panel-head">
+              <span class="panel-kicker">Example run</span>
+              <strong>NiFi 2.7.1 to 2.8.0</strong>
+            </div>
+            <div class="pipeline">
+              <div class="pipeline-step complete">
+                <span class="step-index">1</span>
+                <div>
+                  <strong>Analyze</strong>
+                  <p>2 blocked findings, 1 advisory note</p>
+                </div>
               </div>
-              <h3>Analyze the source</h3>
-              <p>
-                Load `flow.json.gz`, versioned snapshots, NiFi Registry exports, Git-backed registry
-                directories, or legacy `flow.xml.gz` and compare them against the selected target version.
-              </p>
-            </article>
-            <article class="card">
-              <div class="feature-art feature-rewrite" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
+              <div class="pipeline-step warning">
+                <span class="step-index">2</span>
+                <div>
+                  <strong>Rewrite</strong>
+                  <p>0 safe rewrites, manual replacement required</p>
+                </div>
               </div>
-              <h3>Rewrite only what is safe</h3>
-              <p>
-                Rename properties, replace component types, and apply other deterministic transforms
-                only when the rule pack makes the mapping explicit and mechanically safe.
-              </p>
-            </article>
-            <article class="card">
-              <div class="feature-art feature-validate" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+              <div class="pipeline-step blocked">
+                <span class="step-index">3</span>
+                <div>
+                  <strong>Validate</strong>
+                  <p>Target 2.8 runtime does not include Asana components</p>
+                </div>
               </div>
-              <h3>Validate the destination</h3>
+            </div>
+            <div class="finding-card">
+              <div class="finding-pill blocked-pill">Blocked</div>
+              <strong>GetAsanaObject has been removed in NiFi 2.8.x</strong>
               <p>
-                Check the target NiFi version, runtime extension inventory, and the readiness of the
-                destination process group before you attempt an import or update in production.
+                The tool stops here on purpose. It explains the gap, preserves the flow data it can,
+                and leaves architecture-sensitive replacement decisions to a human.
               </p>
-            </article>
-            <article class="card">
-              <div class="feature-art feature-analyze" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <h3>Publish deliberately</h3>
-              <p>
-                Push the reviewed result into a filesystem handoff, a Git-backed registry tree, or
-                an external NiFi Registry version history without turning publish into hidden runtime behavior.
-              </p>
-            </article>
-          </div>
+            </div>
+          </aside>
         </div>
-      </section>
+      </header>
 
-      <section class="section">
-        <div class="wrap grid two-up">
-          <div>
-            <h2>Why this is safer than “just export and import”</h2>
-            <p>
-              Standard export and import workflows do not tell you which processors are deprecated,
-              which properties changed, or whether the target process group is even a valid update
-              candidate. This tool makes that impact visible before you touch production.
-            </p>
-            <p>
-              It also keeps the right boundary around secrets: NiFi intentionally does not export
-              sensitive values in versioned flow definitions, so the tool preserves references and
-              reports what needs rehydration instead of pretending it can recover hidden values.
-            </p>
+      <main>
+        <section class="section">
+          <div class="wrap">
+            <div class="section-heading">
+              <p class="section-kicker">Why it feels easier to use</p>
+              <h2>You get an answer, not just an export file.</h2>
+              <p>
+                The best upgrade tool is not the one that makes the biggest promise. It is the one
+                that tells you whether the upgrade path is viable, what changed, what can be rewritten
+                safely, and where you still need a person in the loop.
+              </p>
+            </div>
+
+            <div class="signal-grid">
+              <article class="signal-card">
+                <span class="signal-label">For platform teams</span>
+                <h3>Gate risky upgrades before they reach production</h3>
+                <p>JSON and Markdown reports make it easy to add policy checks in CI and still give human reviewers a readable migration summary.</p>
+              </article>
+              <article class="signal-card">
+                <span class="signal-label">For flow owners</span>
+                <h3>See the exact processor or service that triggered the finding</h3>
+                <p>Findings carry component name, type, scope, path, and evidence so people do not have to reverse-engineer the problem from raw exports.</p>
+              </article>
+              <article class="signal-card">
+                <span class="signal-label">For delivery teams</span>
+                <h3>Publish into the handoff that already fits your workflow</h3>
+                <p>Use filesystem outputs, Git-backed registry trees, or NiFi Registry version import without turning migration logic into hidden runtime behavior.</p>
+              </article>
+            </div>
           </div>
-          <div class="code-card">
-            <pre><code>nifi-flow-upgrade analyze \
+        </section>
+
+        <section class="section alt" id="workflow">
+          <div class="wrap">
+            <div class="section-heading">
+              <p class="section-kicker">Workflow</p>
+              <h2>A simple path from “can we upgrade?” to “here is the reviewed result.”</h2>
+            </div>
+
+            <div class="workflow-list">
+              <article class="workflow-step-card">
+                <div class="workflow-number">01</div>
+                <div>
+                  <h3>Analyze the source artifact</h3>
+                  <p>Load <code>flow.json.gz</code>, versioned snapshots, NiFi Registry exports, Git-backed registry directories, or legacy <code>flow.xml.gz</code> and compare them against the selected target version.</p>
+                </div>
+              </article>
+              <article class="workflow-step-card">
+                <div class="workflow-number">02</div>
+                <div>
+                  <h3>Rewrite only what is mechanically safe</h3>
+                  <p>Property renames, type replacements, and other deterministic transforms are applied only when the rule pack makes the mapping explicit and confidence is high.</p>
+                </div>
+              </article>
+              <article class="workflow-step-card">
+                <div class="workflow-number">03</div>
+                <div>
+                  <h3>Validate against the target</h3>
+                  <p>Check target NiFi version, extension inventory, and process-group readiness before you attempt an import or update.</p>
+                </div>
+              </article>
+              <article class="workflow-step-card">
+                <div class="workflow-number">04</div>
+                <div>
+                  <h3>Publish deliberately</h3>
+                  <p>Push the reviewed artifact into a filesystem handoff, a Git-backed registry layout, or NiFi Registry without hiding what changed.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="wrap grid two-up split-highlight">
+            <div class="statement-card">
+              <p class="section-kicker">Safer than export and import</p>
+              <h2>Secrets stay external, findings stay explainable.</h2>
+              <p>
+                NiFi intentionally does not export sensitive values in a way this tool can recover.
+                The advisor preserves references and structure, highlights what needs rehydration,
+                and avoids pretending it can recreate hidden values.
+              </p>
+              <ul class="check-list">
+                <li>Preserves exported structure and non-sensitive configuration</li>
+                <li>Flags deprecated and removed components before import</li>
+                <li>Keeps manual architectural decisions visible instead of guessing</li>
+              </ul>
+            </div>
+            <div class="code-card">
+              <pre><code>nifi-flow-upgrade run \
   --source ./flow.json.gz \
+  --source-format flow-json-gz \
   --source-version 1.27.0 \
   --target-version 2.0.0 \
   --rule-pack ./examples/rulepacks/nifi-1.27-to-2.0.official.yaml \
-  --output-dir ./out
-
-nifi-flow-upgrade rewrite \
-  --plan ./out/migration-report.json \
-  --output-dir ./out
-
-nifi-flow-upgrade validate \
-  --input ./out/rewritten-flow.json.gz \
-  --target-version 2.0.0 \
-  --target-api-url https://nifi.example.com \
-  --target-process-group-id 1234-abcd \
-  --output-dir ./out
-
-nifi-flow-upgrade publish \
-  --input ./out/rewritten-snapshot.json \
-  --input-format versioned-flow-snapshot \
-  --publisher nifi-registry \
-  --registry-url https://registry.example.com \
-  --registry-bucket-name customer-a \
-  --registry-flow-name orders \
+  --publish \
+  --publisher fs \
+  --destination ./published \
   --output-dir ./out</code></pre>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="section alt">
-        <div class="wrap">
-          <h2>Built for real delivery teams</h2>
-          <div class="grid cards">
-            <article class="card">
-              <h3>Customer review first</h3>
-              <p>Every migration produces reviewable reports, so platform teams and flow owners can agree on the change before publish.</p>
-            </article>
-            <article class="card">
-              <h3>CI ready</h3>
-              <p>JSON reports make it easy to gate promotion on blocked or manual-change findings without parsing terminal output.</p>
-            </article>
-            <article class="card">
-              <h3>External by design</h3>
-              <p>The tool stays outside runtime platforms like NiFi-Fabric so migration logic does not turn into hidden controller behavior.</p>
-            </article>
-          </div>
-        </div>
-      </section>
+        <section class="section alt" id="demos">
+          <div class="wrap">
+            <div class="section-heading">
+              <p class="section-kicker">Try it quickly</p>
+              <h2>Two demos that show both sides of the product.</h2>
+            </div>
 
-      <section class="section">
-        <div class="wrap">
-          <h2>Read next</h2>
-          <div class="link-grid">
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">
-              <strong>Project overview</strong>
-              <span>Understand the product boundary, supported artifacts, and quick-start usage.</span>
-            </a>
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/cli.md">
-              <strong>CLI contract</strong>
-              <span>Review command flags, outputs, and validation behavior.</span>
-            </a>
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/rule-pack-format.md">
-              <strong>Rule-pack format</strong>
-              <span>Author migration logic with an explicit, testable YAML schema.</span>
-            </a>
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/tree/main/examples/rulepacks">
-              <strong>Official rule packs</strong>
-              <span>Start from the built-in Apache-guidance-backed examples.</span>
-            </a>
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/tree/main/examples/manifests">
-              <strong>Target manifests</strong>
-              <span>Validate extension inventory before you publish into a destination NiFi.</span>
-            </a>
-            <a class="link-card" href="https://github.com/michaelhutchings-napier/NiFi-Fabric">
-              <strong>NiFi-Fabric</strong>
-              <span>Use the advisor alongside NiFi-Fabric when your destination is a managed NiFi 2 platform.</span>
-            </a>
+            <div class="demo-grid">
+              <article class="demo-card">
+                <div class="demo-status blocked-pill">Blocked path</div>
+                <h3>Asana on NiFi 2.7 to 2.8</h3>
+                <p>The demo shows how the tool reports removed components and blocks the upgrade instead of performing a risky silent conversion.</p>
+                <pre><code>./demo/asana-2.7-to-2.8.sh</code></pre>
+              </article>
+              <article class="demo-card">
+                <div class="demo-status success-pill">Auto-fix path</div>
+                <h3>Base64EncodeContent on 1.27 to 2.0</h3>
+                <p>The demo shows a safe deterministic rewrite where the rule pack explicitly allows a mechanical component replacement.</p>
+                <pre><code>./demo/base64-1.27-to-2.0.sh</code></pre>
+              </article>
+            </div>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <section class="section">
+          <div class="wrap">
+            <div class="section-heading">
+              <p class="section-kicker">Read next</p>
+              <h2 id="next">Everything important is easy to find.</h2>
+            </div>
+            <div class="link-grid">
+              <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">
+                <strong>Project overview</strong>
+                <span>Understand the product boundary, supported artifacts, and quick-start usage.</span>
+              </a>
+              <a class="link-card" href="./docs/cli.html">
+                <strong>CLI contract</strong>
+                <span>Review commands, flags, reports, exit behavior, and validation modes.</span>
+              </a>
+              <a class="link-card" href="./docs/rule-pack-format.html">
+                <strong>Rule-pack format</strong>
+                <span>Author explicit migration logic with a testable YAML schema.</span>
+              </a>
+              <a class="link-card" href="./docs/design.html">
+                <strong>Design overview</strong>
+                <span>See why the engine is external-first and where the safety boundary lives.</span>
+              </a>
+              <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/tree/main/examples/rulepacks">
+                <strong>Official rule packs</strong>
+                <span>Start from built-in packs grounded in Apache guidance and release caveats.</span>
+              </a>
+              <a class="link-card" href="https://github.com/michaelhutchings-napier/NiFi-Fabric">
+                <strong>Use with NiFi-Fabric</strong>
+                <span>Keep migration logic here and consume it alongside your managed NiFi 2 platform.</span>
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
   </body>
 </html>
