@@ -325,6 +325,22 @@ func rootMatchMatches(match RuleMatch, document FlowDocument) ([]FindingEvidence
 			})
 		}
 	}
+	if match.PropertyValueRegex != nil {
+		re := regexp.MustCompile(match.PropertyValueRegex.Regex)
+		if value, ok := document.RootVariables[match.PropertyValueRegex.Property]; ok {
+			if !re.MatchString(value) {
+				return nil, false
+			}
+			evidence = append(evidence, FindingEvidence{
+				Type:          "root-variable-value-regex",
+				Field:         match.PropertyValueRegex.Property,
+				ActualValue:   value,
+				ExpectedValue: match.PropertyValueRegex.Regex,
+			})
+		} else {
+			return nil, false
+		}
+	}
 	if match.ComponentNameRegex != "" {
 		re := regexp.MustCompile(match.ComponentNameRegex)
 		if !re.MatchString(document.RawText) {
@@ -422,6 +438,19 @@ func componentMatchMatches(match RuleMatch, component FlowComponent, document Fl
 			Field:         match.PropertyValueIn.Property,
 			ActualValue:   value,
 			AllowedValues: append([]string{}, match.PropertyValueIn.Values...),
+		})
+	}
+	if match.PropertyValueRegex != nil {
+		re := regexp.MustCompile(match.PropertyValueRegex.Regex)
+		value, ok := component.Properties[match.PropertyValueRegex.Property]
+		if !ok || !re.MatchString(value) {
+			return nil, false
+		}
+		evidence = append(evidence, FindingEvidence{
+			Type:          "property-value-regex",
+			Field:         match.PropertyValueRegex.Property,
+			ActualValue:   value,
+			ExpectedValue: match.PropertyValueRegex.Regex,
 		})
 	}
 	if match.ComponentNameRegex != "" {

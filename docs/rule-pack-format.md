@@ -212,6 +212,7 @@ Allowed fields in `v1alpha1`:
 - `propertyAbsent`
 - `propertyValueEquals`
 - `propertyValueIn`
+- `propertyValueRegex`
 - `annotationContains`
 - `componentNameMatches`
 
@@ -231,6 +232,15 @@ match:
     values:
       - CRON_DRIVEN
       - TIMER_DRIVEN
+```
+
+Example:
+
+```yaml
+match:
+  propertyValueRegex:
+    property: Database Connection URL
+    regex: '^jdbc:h2:'
 ```
 
 ### `actions`

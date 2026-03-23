@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Validate Upgraded NiFi Flows | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Understand what the validate command does: check the target NiFi version, extension inventory, and process-group readiness before import."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/validate.html">
+    <meta property="og:title" content="Validate Upgraded NiFi Flows | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="Check whether an upgraded NiFi flow is compatible with the target runtime before import or publish.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/validate.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Validate</p>
+        <h1>Check the target before you try to import the upgraded flow.</h1>
+        <p class="lede">
+          <code>validate</code> answers the next practical question after rewrite: will this artifact
+          fit the target NiFi runtime? It can validate against an offline extensions manifest or a
+          live NiFi API.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/internal/flowupgrade/validate.go">Supporting source</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Offline validation</h2>
+            <p>
+              Use an extensions manifest when you want a fast preflight without calling a live NiFi.
+              This is useful in CI or when platform teams want a stable target inventory file.
+            </p>
+          </div>
+          <div class="card">
+            <h2>Live validation</h2>
+            <p>
+              Use a target NiFi API URL when you want the tool to check the running version,
+              runtime extensions, and destination process-group readiness before an update.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="code-card">
+            <pre><code>nifi-flow-upgrade validate \
+  --input ./out/rewritten-flow.json.gz \
+  --input-format flow-json-gz \
+  --target-version 2.0.0 \
+  --extensions-manifest ./manifests/nifi-2.0-core.yaml \
+  --output-dir ./out</code></pre>
+          </div>
+          <div class="card">
+            <h2>When validation fails</h2>
+            <p>
+              Treat it as a real signal. Missing runtime extensions, wrong target versions, or bad
+              process-group readiness usually mean the import would fail or behave unexpectedly.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

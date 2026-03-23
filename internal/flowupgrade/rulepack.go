@@ -188,6 +188,14 @@ func validateRule(rule Rule) error {
 			return fmt.Errorf("propertyValueIn requires property and at least one value")
 		}
 	}
+	if rule.Match.PropertyValueRegex != nil {
+		if strings.TrimSpace(rule.Match.PropertyValueRegex.Property) == "" || strings.TrimSpace(rule.Match.PropertyValueRegex.Regex) == "" {
+			return fmt.Errorf("propertyValueRegex requires property and regex")
+		}
+		if _, err := regexp.Compile(rule.Match.PropertyValueRegex.Regex); err != nil {
+			return fmt.Errorf("invalid propertyValueRegex regex: %w", err)
+		}
+	}
 	for _, action := range rule.Actions {
 		if err := validateAction(action); err != nil {
 			return err
@@ -243,6 +251,7 @@ func ruleHasNarrowing(rule Rule) bool {
 		strings.TrimSpace(rule.Match.PropertyAbsent) != "" ||
 		rule.Match.PropertyValueEquals != nil ||
 		rule.Match.PropertyValueIn != nil ||
+		rule.Match.PropertyValueRegex != nil ||
 		strings.TrimSpace(rule.Match.AnnotationContains) != "" ||
 		strings.TrimSpace(rule.Match.ComponentNameRegex) != ""
 }

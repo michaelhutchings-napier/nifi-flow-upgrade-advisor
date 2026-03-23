@@ -50,6 +50,9 @@ What `publish` covers now:
 - [`docs/design.md`](docs/design.md)
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
+- [`docs/release-process.md`](docs/release-process.md)
+- [`docs/secrets-and-parameters.md`](docs/secrets-and-parameters.md)
+- [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`demo`](demo)
 - [`examples/rulepacks`](examples/rulepacks)
 - [`examples/manifests`](examples/manifests)
@@ -60,6 +63,12 @@ Build:
 
 ```bash
 go build ./cmd/nifi-flow-upgrade
+```
+
+Install from a release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/main/install.sh | bash
 ```
 
 Analyze:
@@ -137,12 +146,30 @@ Publish to NiFi Registry:
 Demo:
 
 ```bash
+./demo/orders-platform-1.27-to-2.0.sh
+./demo/orders-platform-2.7-to-2.8.sh
+./demo/integration-platform-1.22-to-1.23.sh
 ./demo/asana-2.7-to-2.8.sh
 ./demo/base64-1.27-to-2.0.sh
+./demo/get-http-1.27-to-2.0.sh
+./demo/all.sh
 ```
+
+The featured customer-story demos are:
+
+- `orders-platform-1.27-to-2.0`: blocked + auto-fix + manual-change in one flow
+- `orders-platform-2.7-to-2.8`: removed components + one safe rewrite + review findings
+- `integration-platform-1.22-to-1.23`: broader policy-review and pre-2.0 planning story
 
 The Asana demo produces a blocked `2.7.1 -> 2.8.0` result for removed components.
 The Base64 demo shows a real deterministic auto-fix and rewrite for `1.27.0 -> 2.0.0`.
+The GetHTTP demo shows the manual-change path where the tool explains the migration but does not guess through it.
+The demo catalog now includes 10+ runnable examples across blocked, bridge-required, manual-change, manual-inspection, info-only, auto-fix, and mixed-result customer stories.
+
+More realistic local fixtures for product testing live under [`demo/fixtures`](demo/fixtures), including:
+
+- `orders-platform-1.27-flow.json`
+- `orders-platform-2.7-flow.json`
 
 Website:
 
@@ -153,6 +180,8 @@ Repo ownership:
 
 - [`CODEOWNERS`](.github/CODEOWNERS)
 - design docs: [`docs/design.md`](docs/design.md), [`docs/cli.md`](docs/cli.md), [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
+- release docs: [`docs/release-process.md`](docs/release-process.md), [`docs/troubleshooting.md`](docs/troubleshooting.md)
+- secret handling: [`docs/secrets-and-parameters.md`](docs/secrets-and-parameters.md)
 
 ## Notes
 

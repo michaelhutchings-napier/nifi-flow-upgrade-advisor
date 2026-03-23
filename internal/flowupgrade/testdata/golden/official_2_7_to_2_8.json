@@ -1,0 +1,77 @@
+{
+  "rulePacks": [
+    "nifi-2.7-to-2.8-official"
+  ],
+  "sourceVersion": "2.7.1",
+  "targetVersion": "2.8.0",
+  "summary": {
+    "totalFindings": 4,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 2,
+      "info": 1,
+      "manual-change": 0,
+      "manual-inspection": 1
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.get-asana-object.removed",
+      "class": "blocked",
+      "severity": "error",
+      "message": "GetAsanaObject has been removed in NiFi 2.8.x.",
+      "component": {
+        "id": "asana-1",
+        "name": "AsanaImport",
+        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "scope": "processor",
+        "path": "rootGroup/processors/AsanaImport"
+      },
+      "suggestedActions": [
+        "mark-blocked"
+      ]
+    },
+    {
+      "ruleId": "core.asana-client-provider.removed",
+      "class": "blocked",
+      "severity": "error",
+      "message": "StandardAsanaClientProviderService has been removed in NiFi 2.8.x.",
+      "component": {
+        "id": "asana-service-1",
+        "name": "AsanaService",
+        "type": "org.apache.nifi.controller.asana.StandardAsanaClientProviderService",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/AsanaService"
+      },
+      "suggestedActions": [
+        "mark-blocked"
+      ]
+    },
+    {
+      "ruleId": "core.jolt.custom-class.recompile",
+      "class": "manual-inspection",
+      "severity": "warning",
+      "message": "Custom Jolt transformation classes should be recompiled for NiFi 2.8.x.",
+      "component": {
+        "id": "jolt-1",
+        "name": "CustomJolt",
+        "type": "org.apache.nifi.processors.jolt.JoltTransformJSON",
+        "scope": "processor",
+        "path": "rootGroup/processors/CustomJolt"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "Custom Transformation Class Name",
+          "actualValue": "com.example.CustomTransform"
+        }
+      ]
+    },
+    {
+      "ruleId": "core.nifi-registry.deprecated",
+      "class": "info",
+      "severity": "warning",
+      "message": "The NiFi Registry project is deprecated for removal in a future major release."
+    }
+  ]
+}

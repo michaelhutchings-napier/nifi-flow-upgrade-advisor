@@ -1,0 +1,48 @@
+{
+  "rootGroup": {
+    "id": "root-orders-27",
+    "name": "Orders Platform 2.7",
+    "controllerServices": [
+      {
+        "id": "ssl-1",
+        "name": "RestrictedSSL",
+        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+        "properties": {}
+      },
+      {
+        "id": "asana-service-1",
+        "name": "AsanaService",
+        "type": "org.apache.nifi.controller.asana.StandardAsanaClientProviderService",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "asana-1",
+        "name": "AsanaImport",
+        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "properties": {
+          "Asana Client Service": "asana-service-1"
+        }
+      },
+      {
+        "id": "syslog-1",
+        "name": "InboundSyslog",
+        "type": "org.apache.nifi.processors.standard.ListenSyslog",
+        "properties": {
+          "Protocol": "TCP",
+          "Port": "5514"
+        }
+      },
+      {
+        "id": "jolt-1",
+        "name": "CustomJolt",
+        "type": "org.apache.nifi.processors.jolt.JoltTransformJSON",
+        "properties": {
+          "Custom Transformation Class Name": "com.example.CustomTransform"
+        }
+      }
+    ]
+  }
+}
+

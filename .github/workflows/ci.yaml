@@ -20,12 +20,27 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.25.8'
 
       - name: Go test
         run: go test ./...
+
+      - name: Go test - race
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc
+          CGO_ENABLED=1 go test -race ./...
 
       - name: Go build
         run: |
           mkdir -p ./bin
           go build -o ./bin/nifi-flow-upgrade ./cmd/nifi-flow-upgrade
+
+      - name: Validate install script syntax
+        run: bash -n ./install.sh
+
+      - name: Smoke demos
+        run: |
+          ./demo/base64-1.27-to-2.0.sh
+          ./demo/get-http-1.27-to-2.0.sh
+          ./demo/asana-2.7-to-2.8.sh

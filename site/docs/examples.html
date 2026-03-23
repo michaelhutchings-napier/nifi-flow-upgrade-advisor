@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NiFi Upgrade Examples | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Examples of blocked, manual-change, and auto-fix outcomes from nifi-flow-upgrade-advisor for Apache NiFi upgrades."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/examples.html">
+    <meta property="og:title" content="NiFi Upgrade Examples | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="See what blocked, manual-change, and auto-fix migration outcomes look like before you install the tool.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/examples.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Examples</p>
+        <h1>Ten-plus examples users can actually run.</h1>
+        <p class="lede">
+          The examples cover blocked upgrades, bridge requirements, manual-change paths,
+          manual-inspection findings, info-only guidance, and safe auto-fixes across both
+          `1.x` and `2.x` migration lines.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/tree/main/demo">Open demo sources</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap section-heading">
+          <p class="section-kicker">Featured Stories</p>
+          <h2>Three richer examples that feel closer to a real migration review.</h2>
+          <p>
+            These featured stories use fuller fixtures and show the mixed-result cases real teams care
+            about: blocked findings, safe rewrites, manual-change guidance, and policy review in the
+            same flow.
+          </p>
+        </div>
+        <div class="wrap story-grid">
+          <article class="story-card">
+            <div class="story-head">
+              <div class="demo-status blocked-pill">Blocked + Auto-fix + Manual</div>
+              <h3>Orders Platform 1.27 to 2.0</h3>
+              <p>
+                A fuller upgrade story with variable-registry blocking, cache-service renames,
+                Base64 replacement, and manual HTTP migration guidance in one run.
+              </p>
+            </div>
+            <div class="story-stats">
+              <span>Total `8`</span>
+              <span>Auto-fix `2`</span>
+              <span>Manual-change `2`</span>
+              <span>Blocked `1`</span>
+              <span>Rewrite `2 applied`</span>
+            </div>
+            <pre class="report-snippet"><code>## blocked
+- core.variable-registry.removed: Variable Registry expressions require explicit migration planning before NiFi 2.0.x.
+
+## auto-fix
+- core.distributed-map-cache-client.renamed
+- core.base64-encode-content.replace
+
+## manual-change
+- core.get-http.replace
+- core.invoke-http.proxy-properties.replace</code></pre>
+            <div class="demo-actions">
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/orders-platform-1.27-to-2.0.sh">View script</a>
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/fixtures/orders-platform-1.27-flow.json">View fixture</a>
+            </div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-head">
+              <div class="demo-status blocked-pill">Blocked + Rewrite + Review</div>
+              <h3>Orders Platform 2.7 to 2.8</h3>
+              <p>
+                A fuller NiFi `2.x` story with removed Asana components, a safe ListenSyslog rewrite,
+                custom Jolt recompilation review, and SSL-service migration guidance.
+              </p>
+            </div>
+            <div class="story-stats">
+              <span>Total `6`</span>
+              <span>Auto-fix `1`</span>
+              <span>Manual-change `1`</span>
+              <span>Manual-inspection `1`</span>
+              <span>Blocked `2`</span>
+              <span>Rewrite `1 applied`</span>
+            </div>
+            <pre class="report-snippet"><code>## blocked
+- core.get-asana-object.removed
+- core.asana-client-provider.removed
+
+## auto-fix
+- core.listen-syslog.port-to-tcp-port
+
+## manual-inspection
+- core.jolt.custom-class.recompile</code></pre>
+            <div class="demo-actions">
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/orders-platform-2.7-to-2.8.sh">View script</a>
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/fixtures/orders-platform-2.7-flow.json">View fixture</a>
+            </div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-head">
+              <div class="demo-status manual-pill">Policy Review Story</div>
+              <h3>Integration Platform 1.22 to 1.23</h3>
+              <p>
+                A broader review example showing root-level policy guidance, several affected components,
+                and a forward-looking warning for a later `2.0` migration.
+              </p>
+            </div>
+            <div class="story-stats">
+              <span>Total `7`</span>
+              <span>Manual-change `1`</span>
+              <span>Manual-inspection `4`</span>
+              <span>Info `2`</span>
+            </div>
+            <pre class="report-snippet"><code>## manual-change
+- core.rethinkdb.deprecated
+
+## manual-inspection
+- core.remote-resources.policy-affected-components
+  PrimaryDatabase, JMSProvider, PublishOrdersToJMS, ValidateOrdersJson
+
+## info
+- core.reference-remote-resources.policy-review</code></pre>
+            <div class="demo-actions">
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/integration-platform-1.22-to-1.23.sh">View script</a>
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/fixtures/integration-platform-1.22-flow.json">View fixture</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap section-heading">
+          <p class="section-kicker">Catalog</p>
+          <h2>Quick single-purpose demos.</h2>
+          <p>
+            Use these when you want one small example per migration rule or outcome type.
+          </p>
+        </div>
+        <div class="wrap demo-grid">
+          <article class="demo-card">
+            <div class="demo-status blocked-pill">Blocked</div>
+            <h2>Asana removed in 2.8</h2>
+            <p>The advisor blocks the upgrade and leaves replacement decisions to a person.</p>
+            <pre><code>./demo/asana-2.7-to-2.8.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-change</div>
+            <h2>GetHTTP to InvokeHTTP</h2>
+            <p>The advisor explains the documented migration but applies zero rewrite operations.</p>
+            <pre><code>./demo/get-http-1.27-to-2.0.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status success-pill">Auto-fix</div>
+            <h2>Base64EncodeContent to EncodeContent</h2>
+            <p>The advisor performs the explicit safe replacement and preserves the rest of the flow.</p>
+            <pre><code>./demo/base64-1.27-to-2.0.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status blocked-pill">Bridge required</div>
+            <h2>1.21 to 2.0 blocked</h2>
+            <p>The advisor explains that a direct step to NiFi `2.0.x` is not supported before a `1.27.x` bridge upgrade.</p>
+            <pre><code>./demo/bridge-upgrade-1.21-to-2.0.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-change</div>
+            <h2>H2 JDBC URL review</h2>
+            <p>Shows how the tool flags H2 usage on DBCP/Hikari in the `1.21 -> 1.22` step.</p>
+            <pre><code>./demo/h2-dbcp-1.21-to-1.22.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-change</div>
+            <h2>JNDI JMS LDAP review</h2>
+            <p>Shows LDAP Provider URL detection for JNDI JMS migration caveats.</p>
+            <pre><code>./demo/jndi-jms-ldap-1.21-to-1.22.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-change</div>
+            <h2>InvokeHTTP URL encoding</h2>
+            <p>Shows how URL encoding review is surfaced for `1.23 -> 1.24`.</p>
+            <pre><code>./demo/invoke-http-url-encoding-1.23-to-1.24.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-change</div>
+            <h2>ListenHTTP rate limit removed</h2>
+            <p>Shows removed rate-limit behavior for `2.3 -> 2.4` without pretending the review is automatic.</p>
+            <pre><code>./demo/listen-http-2.3-to-2.4.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status success-pill">Auto-fix</div>
+            <h2>ListenSyslog property rename</h2>
+            <p>Shows safe `Port -> TCP Port` rewrite behavior in the `2.6 -> 2.7` path.</p>
+            <pre><code>./demo/listen-syslog-2.6-to-2.7.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Manual-inspection</div>
+            <h2>Jolt custom class review</h2>
+            <p>Shows recompilation guidance for custom Jolt transforms in the `2.7 -> 2.8` path.</p>
+            <pre><code>./demo/jolt-custom-class-2.7-to-2.8.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status success-pill">Info-only</div>
+            <h2>Content viewer contract note</h2>
+            <p>Shows a low-drama info example for the `2.4 -> 2.5` content-viewer contract change.</p>
+            <pre><code>./demo/content-viewer-2.4-to-2.5.sh</code></pre>
+          </article>
+          <article class="demo-card">
+            <div class="demo-status manual-pill">Policy review</div>
+            <h2>Reference Remote Resources</h2>
+            <p>Shows root-level and component-level policy review findings for the `1.22 -> 1.23` step.</p>
+            <pre><code>./demo/reference-remote-resources-1.22-to-1.23.sh</code></pre>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

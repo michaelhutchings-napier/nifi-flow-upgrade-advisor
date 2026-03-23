@@ -1,0 +1,15 @@
+{
+  "rootGroup": {
+    "controllerServices": [
+      {
+        "id": "jms-1",
+        "name": "LegacyJndiJms",
+        "type": "org.apache.nifi.jms.cf.JndiJmsConnectionFactoryProvider",
+        "properties": {
+          "Provider URL": "ldap://ldap.example.com:389/o=messaging"
+        }
+      }
+    ]
+  }
+}
+

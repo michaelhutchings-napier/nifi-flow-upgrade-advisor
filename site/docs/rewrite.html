@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rewrite NiFi Flows Safely | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Understand what the rewrite command does: apply only deterministic safe upgrades and produce a reviewed rewritten flow artifact."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rewrite.html">
+    <meta property="og:title" content="Rewrite NiFi Flows Safely | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="Apply only safe deterministic NiFi flow rewrites and keep blocked or architecture-sensitive changes visible for review.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rewrite.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Rewrite</p>
+        <h1>Apply the safe part of the migration without guessing through the risky part.</h1>
+        <p class="lede">
+          <code>rewrite</code> takes the analyzed findings and applies only the changes the rule pack
+          explicitly marks as deterministic and safe. It writes a new artifact and a rewrite report.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/internal/flowupgrade/rewrite.go">Supporting source</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>What rewrite will do</h2>
+            <ul>
+              <li>rename a property when the mapping is explicit</li>
+              <li>replace a component type when Apache guidance is direct and mechanically safe</li>
+              <li>keep untouched parts of the flow intact</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>What rewrite will not do</h2>
+            <ul>
+              <li>invent replacements for removed processors</li>
+              <li>guess through custom JAR or architecture changes</li>
+              <li>recreate secrets NiFi never exported</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="code-card">
+            <pre><code>nifi-flow-upgrade rewrite \
+  --plan ./out/migration-report.json \
+  --output-dir ./out</code></pre>
+          </div>
+          <div class="card">
+            <h2>What to expect</h2>
+            <p>
+              Rewrite may apply zero operations and still be useful. That simply means the advisor
+              found migration work, but none of it was safe to automate. The original source is not
+              silently mutated; you get a reviewed output and a rewrite report.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

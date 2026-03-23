@@ -1,0 +1,15 @@
+{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "listen-http-1",
+        "name": "InboundHTTP",
+        "type": "org.apache.nifi.processors.standard.ListenHTTP",
+        "properties": {
+          "Max Data to Receive per Second": "10 MB"
+        }
+      }
+    ]
+  }
+}
+

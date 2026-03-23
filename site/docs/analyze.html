@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Analyze NiFi Flows | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Understand what the analyze command does: compare a NiFi flow with a target version, list blockers, and show what can be safely rewritten."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/analyze.html">
+    <meta property="og:title" content="Analyze NiFi Flows | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="See what analyze tells you before a NiFi upgrade: blockers, manual changes, safe rewrites, and report outputs.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/analyze.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Analyze</p>
+        <h1>Find out whether the upgrade path is safe before you change anything.</h1>
+        <p class="lede">
+          <code>analyze</code> is the first command most teams should run. It reads the source flow,
+          compares it with the target NiFi version, and writes reports that explain what is blocked,
+          what needs manual work, and what can be rewritten safely.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/internal/flowupgrade/analyze.go">Supporting source</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>What you give it</h2>
+            <ul>
+              <li>a source flow artifact</li>
+              <li>the current NiFi version</li>
+              <li>the target NiFi version</li>
+              <li>one or more rule packs for that version path</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>What you get back</h2>
+            <ul>
+              <li>a JSON report for CI and automation</li>
+              <li>a Markdown report for humans</li>
+              <li>clear counts for blocked, manual-change, manual-inspection, auto-fix, and info findings</li>
+              <li>component names, paths, and evidence for each finding</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="code-card">
+            <pre><code>nifi-flow-upgrade analyze \
+  --source ./flow.json.gz \
+  --source-format flow-json-gz \
+  --source-version 1.27.0 \
+  --target-version 2.0.0 \
+  --rule-pack ./examples/rulepacks/nifi-1.27-to-2.0.official.yaml \
+  --output-dir ./out</code></pre>
+          </div>
+          <div class="card">
+            <h2>How to read the result</h2>
+            <p>
+              A blocked finding means the upgrade path is not safe as-is. Manual-change means the
+              migration is understood but still needs a person. Auto-fix means the tool found a
+              deterministic rewrite candidate, but nothing has been changed yet.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

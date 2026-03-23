@@ -1,0 +1,75 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.22-to-1.23-official
+  title: NiFi 1.22 to 1.23 migration guidance
+  description: Official rule pack derived from Apache NiFi migration guidance for 1.22.x to 1.23.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=1.22.0 <1.23.0"
+  targetVersionRange: ">=1.23.0 <1.24.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.reference-remote-resources.policy-review
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: NiFi 1.23.x adds a new Reference Remote Resources policy for several components.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.23.0 introduced a new component restriction and policy named Reference Remote Resources. Secure deployments with fine-grained access policies may need updates before users can configure affected components.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.remote-resources.policy-affected-components
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: This component type is listed in NiFi 1.23.x as requiring the new Reference Remote Resources policy in secure deployments.
+      selector:
+        componentTypes:
+          - org.apache.nifi.cdc.mysql.processors.CaptureChangeMySQL
+          - org.apache.nifi.jms.processors.ConsumeJMS
+          - org.apache.nifi.dbcp.DBCPConnectionPool
+          - org.apache.nifi.processors.standard.ExtractGrok
+          - org.apache.nifi.grok.GrokReader
+          - org.apache.nifi.dbcp.HikariCPConnectionPool
+          - org.apache.nifi.dbcp.HadoopDBCPConnectionPool
+          - org.apache.nifi.hbase.HBase_2_ClientService
+          - org.apache.nifi.jms.cf.JMSConnectionFactoryProvider
+          - org.apache.nifi.jms.processors.PublishJMS
+          - org.apache.nifi.processors.standard.ValidateJson
+          - org.apache.nifi.processors.standard.ValidateXml
+      notes: Review secure-cluster access policies for users who need to configure this component after upgrading to NiFi 1.23.x.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.rethinkdb.deprecated
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: RethinkDB processors are deprecated for removal in the NiFi 2.0 line.
+      selector:
+        scope: processor
+      match:
+        componentNameMatches: 'RethinkDB'
+      notes: Apache NiFi 1.23.0 deprecated RethinkDB processors for removal in 2.0. Review these flows before the major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.optional-standard-nars.review
+      category: manual-inspection
+      class: info
+      severity: warning
+      message: Some NARs moved out of the standard NiFi binary in 1.23.x.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.23.0 no longer includes the nifi-riemann-nar and nifi-hbase_1_1_2-client-service-nar in the standard binary. Review custom packaging if your deployment relies on those bundles.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance

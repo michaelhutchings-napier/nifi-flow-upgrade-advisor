@@ -78,11 +78,17 @@ type PropertyValueInMatch struct {
 	Values   []string `yaml:"values"`
 }
 
+type PropertyValueRegexMatch struct {
+	Property string `yaml:"property"`
+	Regex    string `yaml:"regex"`
+}
+
 type RuleMatch struct {
 	PropertyExists      string                    `yaml:"propertyExists,omitempty"`
 	PropertyAbsent      string                    `yaml:"propertyAbsent,omitempty"`
 	PropertyValueEquals *PropertyValueEqualsMatch `yaml:"propertyValueEquals,omitempty"`
 	PropertyValueIn     *PropertyValueInMatch     `yaml:"propertyValueIn,omitempty"`
+	PropertyValueRegex  *PropertyValueRegexMatch  `yaml:"propertyValueRegex,omitempty"`
 	AnnotationContains  string                    `yaml:"annotationContains,omitempty"`
 	ComponentNameRegex  string                    `yaml:"componentNameMatches,omitempty"`
 }

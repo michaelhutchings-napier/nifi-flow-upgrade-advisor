@@ -154,6 +154,8 @@ Phase 1 implementation detail lives in:
 
 - [Flow Upgrade Advisor Phase 1 CLI Contract](cli.md)
 - [Flow Upgrade Advisor Rule-Pack File Format](rule-pack-format.md)
+- [Release Process](release-process.md)
+- [Troubleshooting](troubleshooting.md)
 
 Longer-term command direction:
 

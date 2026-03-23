@@ -1,0 +1,118 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.21-to-1.22-official
+  title: NiFi 1.21 to 1.22 migration guidance
+  description: Official rule pack derived from Apache NiFi migration guidance for 1.21.x to 1.22.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=1.21.0 <1.22.0"
+  targetVersionRange: ">=1.22.0 <1.23.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.dbcp-h2-url.unsupported
+      category: property-value-changed
+      class: manual-change
+      severity: warning
+      message: H2 JDBC URLs are no longer supported by DBCPConnectionPool and HikariCPConnectionPool in NiFi 1.22.x.
+      selector:
+        scope: controller-service
+        componentTypes:
+          - org.apache.nifi.dbcp.DBCPConnectionPool
+          - org.apache.nifi.dbcp.HikariCPConnectionPool
+      match:
+        propertyValueRegex:
+          property: Database Connection URL
+          regex: '^jdbc:h2:'
+      notes: Apache NiFi 1.22.0 added Database URL validation that rejects H2 connections on these controller services. Move to a supported database URL before upgrade.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.jndi-jms-ldap-provider.unsupported
+      category: property-value-changed
+      class: manual-change
+      severity: warning
+      message: LDAP Provider URLs are no longer supported by JndiJmsConnectionFactoryProvider in NiFi 1.22.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.jms.cf.JndiJmsConnectionFactoryProvider
+      match:
+        propertyValueRegex:
+          property: Provider URL
+          regex: '^ldaps?://'
+      notes: Apache NiFi 1.22.0 no longer supports LDAP Provider URLs here by default. Review the additional-details guidance if LDAP is still required for a specific use case.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.azure-queue-v12.migration
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+          - org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      notes: Apache NiFi 1.22.0 deprecated these processors in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.script-engine.groovy-preferred
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: ECMAScript, Lua, and Ruby script engines are deprecated in favor of Groovy in NiFi 1.22.x.
+      selector:
+        scope: processor
+      match:
+        propertyValueIn:
+          property: Script Engine
+          values:
+            - ECMAScript
+            - lua
+            - ruby
+      notes: Apache NiFi 1.22.0 deprecated ECMAScript, Lua, and Ruby for scripted components. Review these components before later major upgrades.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.ignite-cache.deprecated
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Ignite cache processors are deprecated for removal in NiFi 2.0.0.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.ignite.cache.GetIgniteCache
+          - org.apache.nifi.processors.ignite.cache.PutIgniteCache
+      notes: Apache NiFi 1.22.0 deprecated GetIgniteCache and PutIgniteCache for removal in the 2.0 line.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.cassandra.compression-type.removed
+      category: property-removed
+      class: manual-change
+      severity: warning
+      message: Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.cassandra.PutCassandraQL
+          - org.apache.nifi.processors.cassandra.PutCassandraRecord
+          - org.apache.nifi.processors.cassandra.QueryCassandra
+      match:
+        propertyExists: Compression Type
+      actions:
+        - type: remove-property
+          name: Compression Type
+      notes: Apache NiFi 1.22.0 removed this property from AbstractCassandraProcessor. If non-default compression is still required, move that configuration to a Cassandra Connection Provider service before upgrade.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
