@@ -1,0 +1,20 @@
+{
+  "rootGroup": {
+    "controllerServices": [
+      {
+        "id": "dbcp-1",
+        "name": "OrdersDatabase",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "publish-jms-1",
+        "name": "PublishOrders",
+        "type": "org.apache.nifi.jms.processors.PublishJMS",
+        "properties": {}
+      }
+    ]
+  }
+}

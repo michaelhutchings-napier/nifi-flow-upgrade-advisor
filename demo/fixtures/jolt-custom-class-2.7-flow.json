@@ -1,0 +1,15 @@
+{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "jolt-1",
+        "name": "CustomJolt",
+        "type": "org.apache.nifi.processors.jolt.JoltTransformJSON",
+        "properties": {
+          "Custom Transformation Class Name": "com.example.CustomTransform"
+        }
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,107 @@
+{
+  "rulePacks": [
+    "nifi-2.6-to-2.7-official"
+  ],
+  "sourceVersion": "2.6.0",
+  "targetVersion": "2.7.0",
+  "summary": {
+    "totalFindings": 7,
+    "byClass": {
+      "auto-fix": 1,
+      "blocked": 0,
+      "info": 2,
+      "manual-change": 4,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.ocsp.removed",
+      "class": "info",
+      "severity": "warning",
+      "message": "OCSP responder support is removed in NiFi 2.7.x."
+    },
+    {
+      "ruleId": "core.get-asana-object.deprecated",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetAsanaObject is deprecated for removal in NiFi 2.7.x.",
+      "component": {
+        "id": "asana-1",
+        "name": "AsanaImport",
+        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "scope": "processor",
+        "path": "rootGroup/processors/AsanaImport"
+      }
+    },
+    {
+      "ruleId": "core.get-asana-object.clear-state",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetAsanaObject state should be cleared during upgrade to NiFi 2.7.x.",
+      "component": {
+        "id": "asana-1",
+        "name": "AsanaImport",
+        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "scope": "processor",
+        "path": "rootGroup/processors/AsanaImport"
+      }
+    },
+    {
+      "ruleId": "core.restricted-ssl-context.deprecated-27",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "StandardRestrictedSSLContextService is deprecated for removal in NiFi 2.7.x.",
+      "component": {
+        "id": "ssl-1",
+        "name": "RestrictedSSL",
+        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/RestrictedSSL"
+      }
+    },
+    {
+      "ruleId": "core.listen-syslog.port-to-tcp-port-27",
+      "class": "auto-fix",
+      "severity": "warning",
+      "message": "ListenSyslog Port should be migrated to TCP Port when Protocol is TCP.",
+      "component": {
+        "id": "syslog-1",
+        "name": "InboundSyslog",
+        "type": "org.apache.nifi.processors.standard.ListenSyslog",
+        "scope": "processor",
+        "path": "rootGroup/processors/InboundSyslog"
+      },
+      "evidence": [
+        {
+          "type": "property-value-equals",
+          "field": "Protocol",
+          "actualValue": "TCP",
+          "expectedValue": "TCP"
+        }
+      ],
+      "suggestedActions": [
+        "rename-property"
+      ]
+    },
+    {
+      "ruleId": "core.fetch-gridfs.manual-review-27",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "FetchGridFS instances may need manual property updates after upgrade to NiFi 2.7.x.",
+      "component": {
+        "id": "gridfs-1",
+        "name": "FetchGrid",
+        "type": "org.apache.nifi.processors.mongodb.gridfs.FetchGridFS",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchGrid"
+      }
+    },
+    {
+      "ruleId": "core.external-api.property-renames.review",
+      "class": "info",
+      "severity": "warning",
+      "message": "External API-driven component provisioning may require property-name updates for NiFi 2.7.x."
+    }
+  ]
+}

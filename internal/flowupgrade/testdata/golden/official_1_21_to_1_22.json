@@ -1,0 +1,135 @@
+{
+  "rulePacks": [
+    "nifi-1.21-to-1.22-official"
+  ],
+  "sourceVersion": "1.21.0",
+  "targetVersion": "1.22.0",
+  "summary": {
+    "totalFindings": 6,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 0,
+      "manual-change": 6,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.dbcp-h2-url.unsupported",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "H2 JDBC URLs are no longer supported by DBCPConnectionPool and HikariCPConnectionPool in NiFi 1.22.x.",
+      "component": {
+        "id": "dbcp-1",
+        "name": "LegacyH2Pool",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/LegacyH2Pool"
+      },
+      "evidence": [
+        {
+          "type": "property-value-regex",
+          "field": "Database Connection URL",
+          "actualValue": "jdbc:h2:file:./database/nifi",
+          "expectedValue": "^jdbc:h2:"
+        }
+      ]
+    },
+    {
+      "ruleId": "core.jndi-jms-ldap-provider.unsupported",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "LDAP Provider URLs are no longer supported by JndiJmsConnectionFactoryProvider in NiFi 1.22.x.",
+      "component": {
+        "id": "jms-1",
+        "name": "LegacyJndiJms",
+        "type": "org.apache.nifi.jms.cf.JndiJmsConnectionFactoryProvider",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/LegacyJndiJms"
+      },
+      "evidence": [
+        {
+          "type": "property-value-regex",
+          "field": "Provider URL",
+          "actualValue": "ldap://ldap.example.com:389/o=messaging",
+          "expectedValue": "^ldaps?://"
+        }
+      ]
+    },
+    {
+      "ruleId": "core.azure-queue-v12.migration",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.",
+      "component": {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyQueue"
+      }
+    },
+    {
+      "ruleId": "core.script-engine.groovy-preferred",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "ECMAScript, Lua, and Ruby script engines are deprecated in favor of Groovy in NiFi 1.22.x.",
+      "component": {
+        "id": "script-1",
+        "name": "LegacyScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyScript"
+      },
+      "evidence": [
+        {
+          "type": "property-value-in",
+          "field": "Script Engine",
+          "actualValue": "ruby",
+          "allowedValues": [
+            "ECMAScript",
+            "lua",
+            "ruby"
+          ]
+        }
+      ]
+    },
+    {
+      "ruleId": "core.ignite-cache.deprecated",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Ignite cache processors are deprecated for removal in NiFi 2.0.0.",
+      "component": {
+        "id": "ignite-1",
+        "name": "IgniteCache",
+        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
+        "scope": "processor",
+        "path": "rootGroup/processors/IgniteCache"
+      }
+    },
+    {
+      "ruleId": "core.cassandra.compression-type.removed",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.",
+      "component": {
+        "id": "cassandra-1",
+        "name": "WriteCassandra",
+        "type": "org.apache.nifi.processors.cassandra.PutCassandraQL",
+        "scope": "processor",
+        "path": "rootGroup/processors/WriteCassandra"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "Compression Type",
+          "actualValue": "LZ4"
+        }
+      ],
+      "suggestedActions": [
+        "remove-property"
+      ]
+    }
+  ]
+}

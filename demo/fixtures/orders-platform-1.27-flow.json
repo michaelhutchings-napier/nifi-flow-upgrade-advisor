@@ -1,0 +1,59 @@
+{
+  "rootGroup": {
+    "id": "root-orders-1",
+    "name": "Orders Platform",
+    "comments": "Uses #{legacy.orders.endpoint}",
+    "controllerServices": [
+      {
+        "id": "cache-1",
+        "name": "OrdersMapCache",
+        "type": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "base64-1",
+        "name": "LegacyBase64",
+        "type": "org.apache.nifi.processors.standard.Base64EncodeContent",
+        "properties": {
+          "Mode": "Encode"
+        }
+      },
+      {
+        "id": "get-http-1",
+        "name": "FetchLegacyOrders",
+        "type": "org.apache.nifi.processors.standard.GetHTTP",
+        "properties": {
+          "URL": "https://example.com/orders/export.csv",
+          "Filename": "orders.csv"
+        }
+      },
+      {
+        "id": "invoke-http-1",
+        "name": "ProxyOutboundCall",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "properties": {
+          "Proxy Host": "proxy.example.com"
+        }
+      }
+    ]
+  },
+  "parameterContexts": [
+    {
+      "id": "pc-1",
+      "component": {
+        "name": "OrdersParameters",
+        "parameters": [
+          {
+            "parameter": {
+              "name": "orders.api.key",
+              "sensitive": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+

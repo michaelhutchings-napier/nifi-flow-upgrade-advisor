@@ -1,0 +1,39 @@
+{
+  "rulePacks": [
+    "nifi-1.23-to-1.24-official"
+  ],
+  "sourceVersion": "1.23.0",
+  "targetVersion": "1.24.0",
+  "summary": {
+    "totalFindings": 1,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 0,
+      "manual-change": 1,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.invoke-http.url-encoding.review",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "InvokeHTTP HTTP URL values should be reviewed for URL encoding before NiFi 1.24.x.",
+      "component": {
+        "id": "invoke-http-1",
+        "name": "FetchOrders",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchOrders"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "HTTP URL",
+          "actualValue": "https://example.com/orders path"
+        }
+      ]
+    }
+  ]
+}

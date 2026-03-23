@@ -1,0 +1,15 @@
+{
+  "rootGroup": {
+    "controllerServices": [
+      {
+        "id": "dbcp-1",
+        "name": "LegacyH2Pool",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "properties": {
+          "Database Connection URL": "jdbc:h2:file:./database/nifi"
+        }
+      }
+    ]
+  }
+}
+

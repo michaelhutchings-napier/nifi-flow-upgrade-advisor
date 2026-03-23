@@ -1,0 +1,18 @@
+{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "Root",
+    "processors": [
+      {
+        "id": "get-http-1",
+        "name": "FetchHTTP",
+        "type": "org.apache.nifi.processors.standard.GetHTTP",
+        "properties": {
+          "URL": "https://example.com/data.txt",
+          "Filename": "data.txt"
+        }
+      }
+    ]
+  }
+}
+

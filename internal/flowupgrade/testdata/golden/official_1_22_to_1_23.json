@@ -1,0 +1,78 @@
+{
+  "rulePacks": [
+    "nifi-1.22-to-1.23-official"
+  ],
+  "sourceVersion": "1.22.0",
+  "targetVersion": "1.23.0",
+  "summary": {
+    "totalFindings": 5,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 2,
+      "manual-change": 1,
+      "manual-inspection": 2
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.reference-remote-resources.policy-review",
+      "class": "info",
+      "severity": "warning",
+      "message": "NiFi 1.23.x adds a new Reference Remote Resources policy for several components."
+    },
+    {
+      "ruleId": "core.remote-resources.policy-affected-components",
+      "class": "manual-inspection",
+      "severity": "warning",
+      "message": "This component type is listed in NiFi 1.23.x as requiring the new Reference Remote Resources policy in secure deployments.",
+      "component": {
+        "id": "dbcp-1",
+        "name": "OrdersDatabase",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/OrdersDatabase"
+      }
+    },
+    {
+      "ruleId": "core.remote-resources.policy-affected-components",
+      "class": "manual-inspection",
+      "severity": "warning",
+      "message": "This component type is listed in NiFi 1.23.x as requiring the new Reference Remote Resources policy in secure deployments.",
+      "component": {
+        "id": "publish-jms-1",
+        "name": "PublishOrders",
+        "type": "org.apache.nifi.jms.processors.PublishJMS",
+        "scope": "processor",
+        "path": "rootGroup/processors/PublishOrders"
+      }
+    },
+    {
+      "ruleId": "core.rethinkdb.deprecated",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "RethinkDB processors are deprecated for removal in the NiFi 2.0 line.",
+      "component": {
+        "id": "legacy-1",
+        "name": "OrdersRethinkDBLookup",
+        "type": "org.apache.nifi.processors.rethinkdb.GetRethinkDB",
+        "scope": "processor",
+        "path": "rootGroup/processors/OrdersRethinkDBLookup"
+      },
+      "evidence": [
+        {
+          "type": "component-name-regex",
+          "field": "componentName",
+          "actualValue": "OrdersRethinkDBLookup",
+          "expectedValue": "RethinkDB"
+        }
+      ]
+    },
+    {
+      "ruleId": "core.optional-standard-nars.review",
+      "class": "info",
+      "severity": "warning",
+      "message": "Some NARs moved out of the standard NiFi binary in 1.23.x."
+    }
+  ]
+}

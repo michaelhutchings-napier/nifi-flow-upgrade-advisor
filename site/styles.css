@@ -417,6 +417,11 @@ h3 {
   color: var(--success);
 }
 
+.manual-pill {
+  background: rgba(177, 92, 24, 0.14);
+  color: var(--warning);
+}
+
 .section {
   padding: 2.4rem 0 3.4rem;
 }
@@ -504,22 +509,62 @@ pre {
 }
 
 .demo-grid,
+.story-grid,
 .link-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
+.story-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .demo-card {
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.demo-card pre {
+.story-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  padding: 1.35rem;
+}
+
+.story-head p {
+  margin-top: 0.7rem;
+}
+
+.story-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1rem 0 1.1rem;
+}
+
+.story-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 107, 120, 0.08);
+  border: 1px solid rgba(15, 107, 120, 0.16);
+  color: var(--primary-strong);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.demo-card pre,
+.report-snippet {
   margin-top: 1rem;
   padding: 0.95rem 1rem;
   border-radius: var(--radius-sm);
   background: rgba(28, 39, 49, 0.94);
   color: #edf6ff;
+  overflow-x: auto;
 }
 
 .demo-actions {
@@ -558,6 +603,7 @@ pre {
   .two-up,
   .signal-grid,
   .workflow-list,
+  .story-grid,
   .demo-grid,
   .link-grid {
     grid-template-columns: 1fr;

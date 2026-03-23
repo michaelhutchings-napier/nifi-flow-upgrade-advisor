@@ -4,6 +4,18 @@
     <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/</loc>
   </url>
   <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/analyze.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rewrite.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/validate.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/nifi-1x-to-2x-migration.html</loc>
+  </url>
+  <url>
     <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/cli.html</loc>
   </url>
   <url>
@@ -11,5 +23,20 @@
   </url>
   <url>
     <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rule-pack-format.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/troubleshooting.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/release-process.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/secrets-and-parameters.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/examples.html</loc>
+  </url>
+  <url>
+    <loc>https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/search-setup.html</loc>
   </url>
 </urlset>

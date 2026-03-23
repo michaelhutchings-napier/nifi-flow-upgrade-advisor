@@ -1,0 +1,15 @@
+{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "invoke-http-1",
+        "name": "FetchOrders",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "properties": {
+          "HTTP URL": "https://example.com/orders path"
+        }
+      }
+    ]
+  }
+}
+

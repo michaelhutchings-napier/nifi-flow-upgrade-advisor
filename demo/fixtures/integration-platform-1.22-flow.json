@@ -1,0 +1,40 @@
+{
+  "rootGroup": {
+    "id": "root-integration-122",
+    "name": "Integration Platform",
+    "controllerServices": [
+      {
+        "id": "dbcp-main",
+        "name": "PrimaryDatabase",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "properties": {}
+      },
+      {
+        "id": "jms-provider-1",
+        "name": "JMSProvider",
+        "type": "org.apache.nifi.jms.cf.JMSConnectionFactoryProvider",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "publish-jms-orders",
+        "name": "PublishOrdersToJMS",
+        "type": "org.apache.nifi.jms.processors.PublishJMS",
+        "properties": {}
+      },
+      {
+        "id": "validate-json-orders",
+        "name": "ValidateOrdersJson",
+        "type": "org.apache.nifi.processors.standard.ValidateJson",
+        "properties": {}
+      },
+      {
+        "id": "rethinkdb-orders",
+        "name": "SyncOrdersFromRethinkDB",
+        "type": "org.apache.nifi.processors.rethinkdb.GetRethinkDB",
+        "properties": {}
+      }
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NiFi Upgrade Tool Troubleshooting | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Troubleshooting guide for blocked findings, manual-change rewrites, missing secrets, target validation, and legacy XML behavior in nifi-flow-upgrade-advisor."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/troubleshooting.html">
+    <meta property="og:title" content="NiFi Upgrade Tool Troubleshooting | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="Quick answers for common analyze, rewrite, validate, secret, and target-manifest issues.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/troubleshooting.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Troubleshooting</p>
+        <h1>Fast answers for the issues people hit first.</h1>
+        <p class="lede">
+          The most common questions are not about syntax. They are about why an upgrade is blocked,
+          why no rewrite happened, or what happened to secrets and target validation.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/troubleshooting.md">Open source doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>When analyze blocks</h2>
+            <p>
+              A blocked finding means the selected version path is not safe as-is. That usually
+              points to removed components, a missing bridge upgrade, or a target inventory problem.
+            </p>
+          </div>
+          <div class="card">
+            <h2>When rewrite applies zero operations</h2>
+            <p>
+              That is normal for manual-change cases. The tool found migration work, but not a
+              deterministic conversion it can safely execute for you.
+            </p>
+          </div>
+          <div class="card">
+            <h2>When secrets appear blank</h2>
+            <p>
+              NiFi does not export sensitive values in a recoverable form. Preserve references,
+              then rehydrate values in the target environment through Parameter Contexts or secret providers.
+            </p>
+          </div>
+          <div class="card">
+            <h2>When target validation fails</h2>
+            <p>
+              Check the selected extensions manifest, target API URL, auth, and process-group
+              target. Missing extensions should be treated as real blockers, not as cosmetic warnings.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

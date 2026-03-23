@@ -1,0 +1,16 @@
+{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "syslog-1",
+        "name": "InboundSyslog",
+        "type": "org.apache.nifi.processors.standard.ListenSyslog",
+        "properties": {
+          "Protocol": "TCP",
+          "Port": "5514"
+        }
+      }
+    ]
+  }
+}
+

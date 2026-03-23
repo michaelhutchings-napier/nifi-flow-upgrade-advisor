@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NiFi Upgrade Tool Release Process | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Release process for nifi-flow-upgrade-advisor, including tagged builds, checksums, release notes, and local verification steps."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/release-process.html">
+    <meta property="og:title" content="NiFi Upgrade Tool Release Process | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="How maintainers cut reliable tagged releases with checksums and verification guidance.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/release-process.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Release process</p>
+        <h1>Tagged releases that stay predictable.</h1>
+        <p class="lede">
+          The release workflow verifies the project, builds multi-platform archives, writes checksums,
+          and publishes GitHub release notes from a reviewed tag.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/release-process.md">Open source doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Before tagging</h2>
+            <p>
+              Ensure CI is green, update the changelog, and run the demo scripts locally so the
+              product examples still match the shipped behavior.
+            </p>
+          </div>
+          <div class="card">
+            <h2>Release outputs</h2>
+            <p>
+              Each release should publish platform archives, a checksum file, and generated GitHub
+              release notes so users have a clear install and verification path.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

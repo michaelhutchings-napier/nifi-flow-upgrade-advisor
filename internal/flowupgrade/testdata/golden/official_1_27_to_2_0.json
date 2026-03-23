@@ -1,0 +1,119 @@
+{
+  "rulePacks": [
+    "nifi-1.27-to-2.0-official"
+  ],
+  "sourceVersion": "1.27.0",
+  "targetVersion": "2.0.0",
+  "summary": {
+    "totalFindings": 8,
+    "byClass": {
+      "auto-fix": 2,
+      "blocked": 1,
+      "info": 3,
+      "manual-change": 2,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.distributed-map-cache-client.renamed",
+      "class": "auto-fix",
+      "severity": "warning",
+      "message": "DistributedMapCacheClientService was renamed for NiFi 2.0.x.",
+      "component": {
+        "id": "cache-1",
+        "name": "MapCache",
+        "type": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/MapCache"
+      },
+      "suggestedActions": [
+        "replace-component-type"
+      ]
+    },
+    {
+      "ruleId": "core.variable-registry.removed",
+      "class": "blocked",
+      "severity": "error",
+      "message": "Variable Registry expressions require explicit migration planning before NiFi 2.0.x.",
+      "evidence": [
+        {
+          "type": "root-annotation-contains",
+          "field": "annotation",
+          "actualValue": "root has #{legacy.variable}",
+          "expectedValue": "#{"
+        }
+      ],
+      "suggestedActions": [
+        "mark-blocked"
+      ]
+    },
+    {
+      "ruleId": "core.custom-advanced-ui.contract-updated",
+      "class": "info",
+      "severity": "warning",
+      "message": "Custom or Advanced UI extensions should be reviewed for the NiFi 2.0.x root-path contract."
+    },
+    {
+      "ruleId": "core.data-viewer-ui.contract-updated",
+      "class": "info",
+      "severity": "warning",
+      "message": "Custom Data Viewer extensions should be reviewed for the NiFi 2.0.x document-rendering contract."
+    },
+    {
+      "ruleId": "core.additional-details.markdown-migration",
+      "class": "info",
+      "severity": "warning",
+      "message": "Custom extension additional details should be reviewed for the NiFi 2.0.x Markdown contract."
+    },
+    {
+      "ruleId": "core.base64-encode-content.replace",
+      "class": "auto-fix",
+      "severity": "warning",
+      "message": "Base64EncodeContent should be replaced with EncodeContent for NiFi 2.0.x.",
+      "component": {
+        "id": "base64-1",
+        "name": "Base64",
+        "type": "org.apache.nifi.processors.standard.Base64EncodeContent",
+        "scope": "processor",
+        "path": "rootGroup/processors/Base64"
+      },
+      "suggestedActions": [
+        "replace-component-type"
+      ]
+    },
+    {
+      "ruleId": "core.get-http.replace",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.",
+      "component": {
+        "id": "get-http-1",
+        "name": "FetchHTTP",
+        "type": "org.apache.nifi.processors.standard.GetHTTP",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchHTTP"
+      }
+    },
+    {
+      "ruleId": "core.invoke-http.proxy-properties.replace",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "InvokeHTTP proxy properties should be migrated to Proxy Configuration Service for NiFi 2.0.x.",
+      "component": {
+        "id": "invoke-http-1",
+        "name": "InvokeWithProxy",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "scope": "processor",
+        "path": "rootGroup/processors/InvokeWithProxy"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "Proxy Host",
+          "actualValue": "proxy.example.com"
+        }
+      ]
+    }
+  ]
+}

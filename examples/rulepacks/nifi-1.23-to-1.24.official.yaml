@@ -1,0 +1,32 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.23-to-1.24-official
+  title: NiFi 1.23 to 1.24 migration guidance
+  description: Official rule pack derived from Apache NiFi migration guidance for 1.23.x to 1.24.x upgrades.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=1.23.0 <1.24.0"
+  targetVersionRange: ">=1.24.0 <1.25.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.invoke-http.url-encoding.review
+      category: property-value-changed
+      class: manual-change
+      severity: warning
+      message: InvokeHTTP HTTP URL values should be reviewed for URL encoding before NiFi 1.24.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.InvokeHTTP
+      match:
+        propertyExists: HTTP URL
+      notes: Apache NiFi 1.24.0 expects URL properties to be URL-encoded. Review existing InvokeHTTP HTTP URL values before upgrade.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
