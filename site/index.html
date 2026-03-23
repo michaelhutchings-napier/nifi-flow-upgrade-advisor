@@ -63,9 +63,9 @@
           </a>
           <nav class="topnav" aria-label="Primary">
             <a href="#workflow">How it works</a>
-            <a href="#guides">Guides</a>
+            <a href="#start">Start here</a>
             <a href="#demos">Demos</a>
-            <a href="#next">Read next</a>
+            <a href="#docs">Docs</a>
           </nav>
         </div>
       </header>
@@ -133,33 +133,36 @@
       </header>
 
       <main>
-        <section class="section">
-          <div class="wrap" id="guides">
+        <section class="section" id="start">
+          <div class="wrap">
             <div class="section-heading">
               <p class="section-kicker">Start Here</p>
-              <h2>Short pages for the search terms people actually use.</h2>
+              <h2>Three simple ways to get value from the tool.</h2>
               <p>
-                Instead of sending users straight to implementation-heavy docs, the site now gives
-                each core job its own short landing page.
+                Most teams want one of three things first: a quick upgrade answer, a safe rewrite,
+                or confidence that the target runtime is ready.
               </p>
             </div>
             <div class="link-grid">
               <a class="link-card" href="./docs/analyze.html">
-                <strong>Analyze NiFi flows</strong>
-                <span>Understand what analyze does, what reports it produces, and how to read blocked versus auto-fix findings.</span>
+                <strong>Check an upgrade path</strong>
+                <span>Start with analyze to see blockers, manual changes, and safe rewrite candidates before you touch the flow.</span>
               </a>
               <a class="link-card" href="./docs/rewrite.html">
-                <strong>Rewrite NiFi flows safely</strong>
-                <span>See what rewrite will do, what it will not do, and why zero applied operations can still be the right outcome.</span>
+                <strong>Apply safe rewrites</strong>
+                <span>Use rewrite when you want the tool to handle the deterministic part and leave risky migration work visible.</span>
               </a>
               <a class="link-card" href="./docs/validate.html">
-                <strong>Validate upgraded flows</strong>
-                <span>Check the target version, extension inventory, and process-group readiness before import.</span>
+                <strong>Validate the target</strong>
+                <span>Check target version, extensions, and import readiness before rollout.</span>
               </a>
               <a class="link-card" href="./docs/nifi-1x-to-2x-migration.html">
-                <strong>NiFi 1.x to 2.x migration</strong>
-                <span>Start with bridge-upgrade awareness, common blockers, and the mixed-result examples that match real upgrades.</span>
+                <strong>Plan a 1.x to 2.x move</strong>
+                <span>Use the migration guide when you are crossing the major-version boundary and need bridge-upgrade awareness.</span>
               </a>
+            </div>
+            <div class="actions">
+              <a class="button secondary" href="./docs/examples.html">See example outcomes</a>
             </div>
           </div>
         </section>
@@ -312,73 +315,34 @@
           </div>
         </section>
 
-        <section class="section">
+        <section class="section" id="docs">
           <div class="wrap">
             <div class="section-heading">
-              <p class="section-kicker">Read next</p>
-              <h2 id="next">Everything important is easy to find.</h2>
+              <p class="section-kicker">Need More Detail?</p>
+              <h2>Go deeper only when you need to.</h2>
+              <p>
+                The product should feel simple first. The deeper reference material is still here,
+                but it does not need to compete with the main story on the homepage.
+              </p>
             </div>
             <div class="link-grid">
-              <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">
-                <strong>Project overview</strong>
-                <span>Understand the product boundary, supported artifacts, and quick-start usage.</span>
-              </a>
               <a class="link-card" href="./docs/cli.html">
-                <strong>CLI contract</strong>
-                <span>Review commands, flags, reports, exit behavior, and validation modes.</span>
-              </a>
-              <a class="link-card" href="./docs/analyze.html">
-                <strong>Analyze</strong>
-                <span>Short user-facing page for the first command most teams should run.</span>
-              </a>
-              <a class="link-card" href="./docs/rewrite.html">
-                <strong>Rewrite</strong>
-                <span>See how deterministic rewrites work without pretending risky migrations are automatic.</span>
-              </a>
-              <a class="link-card" href="./docs/validate.html">
-                <strong>Validate</strong>
-                <span>Check target versions, extension inventory, and import readiness before rollout.</span>
-              </a>
-              <a class="link-card" href="./docs/nifi-1x-to-2x-migration.html">
-                <strong>NiFi 1.x to 2.x migration</strong>
-                <span>Bridge requirements, common blockers, and the right way to approach the major-version jump.</span>
+                <strong>CLI reference</strong>
+                <span>Look up commands, flags, reports, and exit behavior.</span>
               </a>
               <a class="link-card" href="./docs/rule-pack-format.html">
-                <strong>Rule-pack format</strong>
-                <span>Author explicit migration logic with a testable YAML schema.</span>
-              </a>
-              <a class="link-card" href="./docs/design.html">
-                <strong>Design overview</strong>
-                <span>See why the engine is external-first and where the safety boundary lives.</span>
+                <strong>Rule packs</strong>
+                <span>Understand how upgrade rules are authored and why rewrites stay explicit.</span>
               </a>
               <a class="link-card" href="./docs/troubleshooting.html">
                 <strong>Troubleshooting</strong>
-                <span>Handle blocked findings, missing secrets, manifest mismatches, and validation failures faster.</span>
+                <span>Handle blocked findings, target mismatches, and missing secret values faster.</span>
               </a>
-              <a class="link-card" href="./docs/secrets-and-parameters.html">
-                <strong>Secrets and parameters</strong>
-                <span>Understand what the advisor preserves, what stays external, and how to rehydrate safely.</span>
-              </a>
-              <a class="link-card" href="./docs/examples.html">
-                <strong>Report examples</strong>
-                <span>See blocked, manual-change, and auto-fix outcomes before wiring the tool into CI.</span>
-              </a>
-              <a class="link-card" href="./docs/release-process.html">
-                <strong>Release process</strong>
-                <span>Cut predictable tagged releases with checksums, notes, and local verification steps.</span>
-              </a>
-              <a class="link-card" href="./docs/search-setup.html">
-                <strong>Search setup</strong>
-                <span>Property URL and sitemap URL for Search Console verification and indexing.</span>
-              </a>
-              <a class="link-card" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/tree/main/examples/rulepacks">
-                <strong>Official rule packs</strong>
-                <span>Start from built-in packs grounded in Apache guidance and release caveats.</span>
-              </a>
-              <a class="link-card" href="https://github.com/michaelhutchings-napier/NiFi-Fabric">
-                <strong>Use with NiFi-Fabric</strong>
-                <span>Keep migration logic here and consume it alongside your managed NiFi 2 platform.</span>
-              </a>
+            </div>
+            <div class="actions">
+              <a class="button secondary" href="./docs/examples.html">Browse examples</a>
+              <a class="button secondary" href="./docs/nifi-1x-to-2x-migration.html">1.x to 2.x guide</a>
+              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">Project README</a>
             </div>
           </div>
         </section>
