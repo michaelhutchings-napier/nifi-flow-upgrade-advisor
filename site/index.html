@@ -167,38 +167,6 @@
           </div>
         </section>
 
-        <section class="section">
-          <div class="wrap">
-            <div class="section-heading">
-              <p class="section-kicker">Why it feels easier to use</p>
-              <h2>You get an answer, not just an export file.</h2>
-              <p>
-                The best upgrade tool is not the one that makes the biggest promise. It is the one
-                that tells you whether the Apache NiFi upgrade path is viable, what changed, what can
-                be rewritten safely, and where you still need a person in the loop.
-              </p>
-            </div>
-
-            <div class="signal-grid">
-              <article class="signal-card">
-                <span class="signal-label">For platform teams</span>
-                <h3>Gate risky upgrades before they reach production</h3>
-                <p>JSON and Markdown reports make it easy to add policy checks in CI and still give human reviewers a readable migration summary.</p>
-              </article>
-              <article class="signal-card">
-                <span class="signal-label">For flow owners</span>
-                <h3>See the exact processor or service that triggered the finding</h3>
-                <p>Findings carry component name, type, scope, path, and evidence so people do not have to reverse-engineer the problem from raw exports.</p>
-              </article>
-              <article class="signal-card">
-                <span class="signal-label">For delivery teams</span>
-                <h3>Publish into the handoff that already fits your workflow</h3>
-                <p>Use filesystem outputs, Git-backed registry trees, or NiFi Registry version import without turning migration logic into hidden runtime behavior.</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
         <section class="section alt" id="workflow">
           <div class="wrap">
             <div class="section-heading">
@@ -239,38 +207,7 @@
           </div>
         </section>
 
-        <section class="section">
-          <div class="wrap grid two-up split-highlight">
-            <div class="statement-card">
-              <p class="section-kicker">Safer than export and import</p>
-              <h2>Secrets stay external, findings stay explainable.</h2>
-              <p>
-                NiFi intentionally does not export sensitive values in a way this tool can recover.
-                The advisor preserves references and structure, highlights what needs rehydration,
-                and avoids pretending it can recreate hidden values.
-              </p>
-              <ul class="check-list">
-                <li>Preserves exported structure and non-sensitive configuration</li>
-                <li>Flags deprecated and removed components before import</li>
-                <li>Keeps manual architectural decisions visible instead of guessing</li>
-              </ul>
-            </div>
-            <div class="code-card">
-              <pre><code>nifi-flow-upgrade run \
-  --source ./flow.json.gz \
-  --source-format flow-json-gz \
-  --source-version 1.27.0 \
-  --target-version 2.0.0 \
-  --rule-pack ./examples/rulepacks/nifi-1.27-to-2.0.official.yaml \
-  --publish \
-  --publisher fs \
-  --destination ./published \
-  --output-dir ./out</code></pre>
-            </div>
-          </div>
-        </section>
-
-        <section class="section alt" id="demos">
+        <section class="section" id="demos">
           <div class="wrap">
             <div class="section-heading">
               <p class="section-kicker">Try it quickly</p>
