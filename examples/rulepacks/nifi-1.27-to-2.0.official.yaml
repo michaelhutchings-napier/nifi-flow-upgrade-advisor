@@ -118,6 +118,119 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
+    - id: core.azure-queue-v12.required-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Legacy Azure Queue Storage processors should move to the v12 variants before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+          - org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      notes: Apache NiFi deprecated these processors in 1.22.0 in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12. A 1.27.x flow can still contain the legacy components, so review them before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.execute-script.legacy-engines-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Deprecated ExecuteScript engines should be replaced before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.script.ExecuteScript
+      match:
+        propertyValueIn:
+          property: Script Engine
+          values:
+            - ECMAScript
+            - lua
+            - ruby
+            - Jython
+      notes: Apache NiFi deprecated these ExecuteScript engines in the 1.x line. Groovy is the preferred in-product replacement and native Python support is available in NiFi 2.0.0 for relevant use cases.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.ignite-cache.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Ignite cache processors were deprecated for removal and should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.ignite.cache.GetIgniteCache
+          - org.apache.nifi.processors.ignite.cache.PutIgniteCache
+      notes: Apache NiFi deprecated GetIgniteCache and PutIgniteCache in 1.22.0 for removal in the 2.0 line. Review these flows and choose an alternative cache or service pattern before the major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.rethinkdb.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: RethinkDB processors were deprecated for removal and should be replaced before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.rethinkdb.GetRethinkDB
+          - org.apache.nifi.processors.rethinkdb.PutRethinkDB
+      notes: Apache NiFi deprecated RethinkDB processors in 1.23.0 for removal in 2.0.0. Review these flows and plan a replacement before the major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.encrypt-content.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: EncryptContent should be replaced with EncryptContentAge or EncryptContentPGP before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.EncryptContent
+      notes: Apache NiFi deprecated EncryptContent in the 1.x line. Review each use of EncryptContent and choose the Age or PGP replacement that matches the existing encryption flow before upgrading to 2.0.0.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.convert-avro-to-json.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: ConvertAvroToJSON should be replaced with ConvertRecord before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.avro.ConvertAvroToJSON
+      notes: Apache NiFi deprecated ConvertAvroToJSON in 1.26.0 with ConvertRecord as the recommended alternative. A 1.27.x flow can still contain ConvertAvroToJSON, so review it before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.cassandra-session-provider.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: CassandraSessionProvider should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.service.CassandraSessionProvider
+      notes: Apache NiFi deprecated CassandraSessionProvider in 1.26.0 because the underlying DataStax 3 driver is no longer current. Review dependent Cassandra flows before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.get-solr.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetSolr was deprecated for removal and should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.solr.GetSolr
+      notes: Apache NiFi deprecated GetSolr in 1.26.0 for later removal. Review Solr-based flows before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
     - id: core.get-http.replace
       category: component-replaced
       class: assisted-rewrite

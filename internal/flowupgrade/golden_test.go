@@ -292,6 +292,26 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         }
       },
       {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "properties": {}
+      },
+      {
+        "id": "script-1",
+        "name": "LegacyJythonScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "properties": {
+          "Script Engine": "Jython"
+        }
+      },
+      {
+        "id": "ignite-1",
+        "name": "IgniteCache",
+        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
+        "properties": {}
+      },
+      {
         "id": "get-http-1",
         "name": "FetchHTTP",
         "type": "org.apache.nifi.processors.standard.GetHTTP",
@@ -307,6 +327,30 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         "properties": {
           "Proxy Host": "proxy.example.com"
         }
+      },
+      {
+        "id": "rethink-1",
+        "name": "LookupOrders",
+        "type": "org.apache.nifi.processors.rethinkdb.GetRethinkDB",
+        "properties": {}
+      },
+      {
+        "id": "encrypt-1",
+        "name": "EncryptOrders",
+        "type": "org.apache.nifi.processors.standard.EncryptContent",
+        "properties": {}
+      },
+      {
+        "id": "avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "properties": {}
+      },
+      {
+        "id": "solr-1",
+        "name": "FetchFromSolr",
+        "type": "org.apache.nifi.processors.solr.GetSolr",
+        "properties": {}
       }
     ],
     "controllerServices": [
@@ -314,6 +358,12 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         "id": "cache-1",
         "name": "MapCache",
         "type": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService",
+        "properties": {}
+      },
+      {
+        "id": "cass-1",
+        "name": "OrdersCassandra",
+        "type": "org.apache.nifi.service.CassandraSessionProvider",
         "properties": {}
       }
     ]
