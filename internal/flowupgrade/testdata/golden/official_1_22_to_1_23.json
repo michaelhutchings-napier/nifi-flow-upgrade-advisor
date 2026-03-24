@@ -16,6 +16,12 @@
   },
   "findings": [
     {
+      "ruleId": "core.optional-standard-nars.review",
+      "class": "info",
+      "severity": "warning",
+      "message": "Some NARs moved out of the standard NiFi binary in 1.23.x."
+    },
+    {
       "ruleId": "core.reference-remote-resources.policy-review",
       "class": "info",
       "severity": "warning",
@@ -67,12 +73,6 @@
           "expectedValue": "RethinkDB"
         }
       ]
-    },
-    {
-      "ruleId": "core.optional-standard-nars.review",
-      "class": "info",
-      "severity": "warning",
-      "message": "Some NARs moved out of the standard NiFi binary in 1.23.x."
     }
   ]
 }

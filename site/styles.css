@@ -510,7 +510,8 @@ pre {
 
 .demo-grid,
 .story-grid,
-.link-grid {
+.link-grid,
+.media-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
@@ -574,6 +575,26 @@ pre {
   margin-top: 1rem;
 }
 
+.media-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.media-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: linear-gradient(180deg, #f7efe4, #f4e8d8);
+}
+
+.media-copy {
+  padding: 1.1rem 1.2rem 1.3rem;
+}
+
 .link-card {
   display: flex;
   flex-direction: column;
@@ -605,7 +626,8 @@ pre {
   .workflow-list,
   .story-grid,
   .demo-grid,
-  .link-grid {
+  .link-grid,
+  .media-grid {
     grid-template-columns: 1fr;
   }
 

@@ -3,12 +3,20 @@ package flowupgrade
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	semver "github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	rulePackBlockedBridgePattern = regexp.MustCompile(`^nifi-(\d+)\.(\d+)-to-(\d+)\.(\d+)-pre-(\d+)\.(\d+)\.blocked\.ya?ml$`)
+	rulePackPatchPattern         = regexp.MustCompile(`^nifi-(\d+)\.(\d+)-to-(\d+)\.(\d+)\.(\d+)\.patch-caveats\.ya?ml$`)
+	rulePackEdgePattern          = regexp.MustCompile(`^nifi-(\d+)\.(\d+)-to-(\d+)\.(\d+)\.(?:official|inferred)\.ya?ml$`)
 )
 
 var (
@@ -136,10 +144,6 @@ func validateRulePack(pack RulePack) error {
 			return fmt.Errorf("unsupported appliesToFormats value %q", format)
 		}
 	}
-	if len(pack.Spec.Rules) == 0 {
-		return fmt.Errorf("spec.rules must not be empty")
-	}
-
 	for _, rule := range pack.Spec.Rules {
 		if err := validateRule(rule); err != nil {
 			return fmt.Errorf("rule %q: %w", rule.ID, err)
@@ -278,5 +282,219 @@ func filterMatchingRulePacks(packs []RulePack, sourceVersion, targetVersion stri
 		}
 		matched = append(matched, pack)
 	}
-	return matched, nil
+
+	if containsBlockedBridgePack(matched) {
+		return matched, nil
+	}
+	if len(matched) > 0 {
+		return matched, nil
+	}
+
+	chained, ok := selectRulePackChain(packs, source, target, format)
+	if ok {
+		return chained, nil
+	}
+
+	return nil, nil
+}
+
+type rulePackRouteKind string
+
+const (
+	rulePackRouteEdge          rulePackRouteKind = "edge"
+	rulePackRoutePatchCaveat   rulePackRouteKind = "patch-caveat"
+	rulePackRouteBlockedBridge rulePackRouteKind = "blocked-bridge"
+)
+
+type rulePackRoute struct {
+	kind             rulePackRouteKind
+	pack             RulePack
+	fromMajor        int64
+	fromMinor        int64
+	toMajor          int64
+	toMinor          int64
+	toPatch          int64
+	blockSourceEndMA int64
+	blockSourceEndMI int64
+}
+
+func containsBlockedBridgePack(packs []RulePack) bool {
+	for _, pack := range packs {
+		if route, ok := parseRulePackRoute(pack); ok && route.kind == rulePackRouteBlockedBridge {
+			return true
+		}
+	}
+	return false
+}
+
+func selectRulePackChain(packs []RulePack, source, target *semver.Version, format SourceFormat) ([]RulePack, bool) {
+	routes := make([]rulePackRoute, 0, len(packs))
+	for _, pack := range packs {
+		if len(pack.Spec.AppliesToFormats) > 0 && !slices.Contains(pack.Spec.AppliesToFormats, format) {
+			continue
+		}
+		route, ok := parseRulePackRoute(pack)
+		if !ok {
+			continue
+		}
+		routes = append(routes, route)
+	}
+
+	selected := make([]RulePack, 0)
+
+	for _, route := range routes {
+		if route.kind != rulePackRouteBlockedBridge {
+			continue
+		}
+		if compareMinor(int64(source.Major()), int64(source.Minor()), route.fromMajor, route.fromMinor) >= 0 &&
+			compareMinor(int64(source.Major()), int64(source.Minor()), route.blockSourceEndMA, route.blockSourceEndMI) <= 0 &&
+			int64(target.Major()) >= route.toMajor &&
+			(int64(target.Major()) > route.toMajor || int64(target.Minor()) >= route.toMinor) {
+			selected = append(selected, route.pack)
+			return dedupeRulePacks(selected), true
+		}
+	}
+
+	edgesByMinor := map[string][]rulePackRoute{}
+	for _, route := range routes {
+		if route.kind != rulePackRouteEdge {
+			continue
+		}
+		key := minorKey(route.fromMajor, route.fromMinor)
+		edgesByMinor[key] = append(edgesByMinor[key], route)
+	}
+
+	type chainNode struct {
+		major int64
+		minor int64
+		path  []RulePack
+	}
+
+	startKey := minorKey(int64(source.Major()), int64(source.Minor()))
+	targetKey := minorKey(int64(target.Major()), int64(target.Minor()))
+	queue := []chainNode{{major: int64(source.Major()), minor: int64(source.Minor()), path: nil}}
+	seen := map[string]bool{startKey: true}
+	var found []RulePack
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if minorKey(current.major, current.minor) == targetKey {
+			found = current.path
+			break
+		}
+		for _, edge := range edgesByMinor[minorKey(current.major, current.minor)] {
+			nextKey := minorKey(edge.toMajor, edge.toMinor)
+			if seen[nextKey] {
+				continue
+			}
+			if compareMinor(edge.toMajor, edge.toMinor, int64(target.Major()), int64(target.Minor())) > 0 {
+				continue
+			}
+			seen[nextKey] = true
+			nextPath := append(append([]RulePack{}, current.path...), edge.pack)
+			queue = append(queue, chainNode{
+				major: edge.toMajor,
+				minor: edge.toMinor,
+				path:  nextPath,
+			})
+		}
+	}
+
+	if len(found) == 0 {
+		return nil, false
+	}
+	selected = append(selected, found...)
+
+	for _, route := range routes {
+		if route.kind != rulePackRoutePatchCaveat {
+			continue
+		}
+		if int64(source.Major()) == route.fromMajor &&
+			int64(source.Minor()) == route.fromMinor &&
+			int64(target.Major()) == route.toMajor &&
+			int64(target.Minor()) == route.toMinor &&
+			int64(target.Patch()) == route.toPatch {
+			selected = append(selected, route.pack)
+		}
+	}
+
+	return dedupeRulePacks(selected), true
+}
+
+func dedupeRulePacks(packs []RulePack) []RulePack {
+	result := make([]RulePack, 0, len(packs))
+	seen := map[string]bool{}
+	for _, pack := range packs {
+		if seen[pack.Path] {
+			continue
+		}
+		seen[pack.Path] = true
+		result = append(result, pack)
+	}
+	return result
+}
+
+func parseRulePackRoute(pack RulePack) (rulePackRoute, bool) {
+	name := filepath.Base(pack.Path)
+
+	if matches := rulePackBlockedBridgePattern.FindStringSubmatch(name); len(matches) == 7 {
+		return rulePackRoute{
+			kind:             rulePackRouteBlockedBridge,
+			pack:             pack,
+			fromMajor:        parseInt64(matches[1]),
+			fromMinor:        parseInt64(matches[2]),
+			blockSourceEndMA: parseInt64(matches[3]),
+			blockSourceEndMI: parseInt64(matches[4]),
+			toMajor:          parseInt64(matches[5]),
+			toMinor:          parseInt64(matches[6]),
+		}, true
+	}
+	if matches := rulePackPatchPattern.FindStringSubmatch(name); len(matches) == 6 {
+		return rulePackRoute{
+			kind:      rulePackRoutePatchCaveat,
+			pack:      pack,
+			fromMajor: parseInt64(matches[1]),
+			fromMinor: parseInt64(matches[2]),
+			toMajor:   parseInt64(matches[3]),
+			toMinor:   parseInt64(matches[4]),
+			toPatch:   parseInt64(matches[5]),
+		}, true
+	}
+	if matches := rulePackEdgePattern.FindStringSubmatch(name); len(matches) == 5 {
+		return rulePackRoute{
+			kind:      rulePackRouteEdge,
+			pack:      pack,
+			fromMajor: parseInt64(matches[1]),
+			fromMinor: parseInt64(matches[2]),
+			toMajor:   parseInt64(matches[3]),
+			toMinor:   parseInt64(matches[4]),
+		}, true
+	}
+	return rulePackRoute{}, false
+}
+
+func parseInt64(value string) int64 {
+	number, _ := strconv.ParseInt(value, 10, 64)
+	return number
+}
+
+func minorKey(major, minor int64) string {
+	return fmt.Sprintf("%d.%d", major, minor)
+}
+
+func compareMinor(leftMajor, leftMinor, rightMajor, rightMinor int64) int {
+	if leftMajor != rightMajor {
+		if leftMajor < rightMajor {
+			return -1
+		}
+		return 1
+	}
+	if leftMinor < rightMinor {
+		return -1
+	}
+	if leftMinor > rightMinor {
+		return 1
+	}
+	return 0
 }

@@ -1,0 +1,70 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.24-to-1.25-official
+  title: NiFi 1.24 to 1.25 migration guidance
+  description: Conservative official bridge pack based on Apache NiFi 1.25.0 release notes, the migration guidance page, and the deprecated components/features index.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+    - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+    - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+spec:
+  sourceVersionRange: ">=1.24.0 <1.25.0"
+  targetVersionRange: ">=1.25.0 <1.26.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.execute-script.jython.deprecated-125
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: ExecuteScript using the Jython engine is deprecated and should be reviewed before later NiFi 2.x upgrades.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.script.ExecuteScript
+      match:
+        propertyValueEquals:
+          property: Script Engine
+          value: Jython
+      notes: Apache NiFi deprecated the Jython Script Engine in 1.24.0 in favor of Groovy or native Python in 2.0.0. Keep this on the migration backlog while bridging through 1.25.x.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.encrypt-content.deprecated-125
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: EncryptContent is deprecated and should be replaced with EncryptContentAge or EncryptContentPGP before later major-version upgrades.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.EncryptContent
+      notes: Apache NiFi deprecated EncryptContent in 1.24.0. Upgrading to 1.25.x still works, but this component should be migrated before the NiFi 2.x step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.bootstrap-notifications.deprecated-125
+      category: manual-inspection
+      class: info
+      severity: info
+      message: Bootstrap lifecycle notifications are deprecated in NiFi 1.25.x and should be reviewed before later upgrades.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.25.0 deprecated Bootstrap Notification Services for removal in 2.0.0-M2. This is mostly an operational concern, but teams using start/stop notification hooks should plan an alternative.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.minifi-c2.deprecated-125
+      category: manual-inspection
+      class: info
+      severity: info
+      message: MiNiFi C2 Server is deprecated in NiFi 1.25.x and should be reviewed before later upgrades.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.25.0 deprecated MiNiFi C2 Server for removal in 2.0.0-M2. This does not rewrite flow artifacts, but it is an important platform-level migration note for teams bridging to later releases.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898

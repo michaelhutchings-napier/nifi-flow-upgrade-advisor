@@ -2,4 +2,6 @@
 /bin/
 flow-upgrade-out/
 demo/out/
+demo/fixtures/.nifi-flow-upgrade-desktop/
 AGENTS.md
+/desktop-app/src-tauri/target/

@@ -1,0 +1,21 @@
+[package]
+name = "nifi-flow-upgrade-advisor-desktop"
+version = "0.1.0"
+description = "Thin Tauri wrapper for nifi-flow-upgrade-advisor"
+authors = ["Michael Hutchings-Napier"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "nifi_flow_upgrade_advisor_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0" }
+
+[dependencies]
+flate2 = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.0.0", features = [] }

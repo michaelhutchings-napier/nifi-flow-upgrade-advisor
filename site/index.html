@@ -76,14 +76,13 @@
             <p class="eyebrow">Migrate Deliberately</p>
             <h1>Apache NiFi flow upgrade tool for safer migrations.</h1>
             <p class="lede">
-              <code>nifi-flow-upgrade-advisor</code> is a terminal-first Apache NiFi upgrade tool for
-              flow upgrade reviews, deterministic rewrites, and target validation. It helps platform
-              teams and flow owners answer one practical question:
+              <code>nifi-flow-upgrade-advisor</code> is a desktop-first Apache NiFi upgrade tool with
+              a CLI engine underneath for automation. It helps platform teams and flow owners answer one practical question:
               <em>is this flow safe to move to the target NiFi version?</em>
             </p>
             <div class="actions">
               <a class="button primary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor">View on GitHub</a>
-              <a class="button secondary" href="./docs/analyze.html">Start with analyze</a>
+              <a class="button secondary" href="./docs/desktop.html">Desktop quick guide</a>
             </div>
             <div class="signal-row">
               <span>Offline-first</span>
@@ -133,6 +132,39 @@
       </header>
 
       <main>
+        <section class="section alt">
+          <div class="wrap">
+            <div class="section-heading">
+              <p class="section-kicker">Desktop First</p>
+              <h2>Use the app first. Keep the CLI for automation.</h2>
+              <p>
+                The desktop app is now the default way to use the product. It scans a workspace,
+                detects likely flows, guides the upgrade path, and explains the result before you
+                ever need to look at raw command output.
+              </p>
+            </div>
+            <div class="media-grid">
+              <article class="media-card">
+                <img src="./assets/desktop-overview.svg" alt="Desktop workspace and flow selection screenshot">
+                <div class="media-copy">
+                  <h3>Start from the workspace</h3>
+                  <p>Pick a flow, confirm source and target versions, and let the app load the built-in upgrade coverage for you.</p>
+                </div>
+              </article>
+              <article class="media-card">
+                <img src="./assets/desktop-results.svg" alt="Desktop results and rewrite preview screenshot">
+                <div class="media-copy">
+                  <h3>See what to do next</h3>
+                  <p>Blocked, review, safe fixes, and info are separated clearly, with rewrite previews and next-action buttons.</p>
+                </div>
+              </article>
+            </div>
+            <div class="actions">
+              <a class="button secondary" href="./docs/desktop.html">Read the desktop guide</a>
+            </div>
+          </div>
+        </section>
+
         <section class="section" id="start">
           <div class="wrap">
             <div class="section-heading">
@@ -144,6 +176,10 @@
               </p>
             </div>
             <div class="link-grid">
+              <a class="link-card" href="./docs/desktop.html">
+                <strong>Use the desktop app</strong>
+                <span>Scan a workspace, pick a flow, and follow the app-first guided workflow before you think about CLI flags.</span>
+              </a>
               <a class="link-card" href="./docs/analyze.html">
                 <strong>Check an upgrade path</strong>
                 <span>Start with analyze to see blockers, manual changes, and safe rewrite candidates before you touch the flow.</span>
@@ -263,9 +299,13 @@
               </p>
             </div>
             <div class="link-grid">
+              <a class="link-card" href="./docs/desktop.html">
+                <strong>Desktop guide</strong>
+                <span>Use the app-first flow for everyday work, then drop to CLI only when you need automation.</span>
+              </a>
               <a class="link-card" href="./docs/cli.html">
                 <strong>CLI reference</strong>
-                <span>Look up commands, flags, reports, and exit behavior.</span>
+                <span>Use the CLI when you need CI, GitOps, or explicit command-level control.</span>
               </a>
               <a class="link-card" href="./docs/rule-pack-format.html">
                 <strong>Rule packs</strong>

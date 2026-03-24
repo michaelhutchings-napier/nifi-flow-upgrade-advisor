@@ -102,39 +102,6 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
 
-    - id: core.custom-advanced-ui.contract-updated
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: Custom or Advanced UI extensions should be reviewed for the NiFi 2.0.x root-path contract.
-      selector:
-        scope: flow-root
-      notes: Apache NiFi 2.0.0 changed the Advanced UI contract so the UI is opened at the web application root path instead of /configure.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
-    - id: core.data-viewer-ui.contract-updated
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: Custom Data Viewer extensions should be reviewed for the NiFi 2.0.x document-rendering contract.
-      selector:
-        scope: flow-root
-      notes: Apache NiFi 2.0.0 changed custom Data Viewer behavior from JSP inclusion to complete-document rendering in an iframe and updated the content access contract.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
-    - id: core.additional-details.markdown-migration
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: Custom extension additional details should be reviewed for the NiFi 2.0.x Markdown contract.
-      selector:
-        scope: flow-root
-      notes: Apache NiFi 2.0.0 replaced additionalDetails.html with additionalDetails.md for custom extension documentation.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
     - id: core.base64-encode-content.replace
       category: component-replaced
       class: auto-fix

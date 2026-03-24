@@ -605,6 +605,95 @@ func TestRunAnalyzeBlocksPre127DirectUpgradeTo20(t *testing.T) {
 	}
 }
 
+func TestRunAnalyzeBlocksPre127DirectUpgradeToLater2x(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "id": "root-1"
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.21.0",
+		TargetVersion: "2.8.0",
+		RulePackPaths: []string{filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.0-to-1.26-pre-2.0.blocked.yaml")},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		AnalysisName:  "bridge-upgrade-required-later-2x",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+	if len(result.Report.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
+	}
+	if result.Report.Findings[0].RuleID != "core.bridge-upgrade.requires-1.27" {
+		t.Fatalf("unexpected rule id %q", result.Report.Findings[0].RuleID)
+	}
+	if result.Report.Findings[0].Class != "blocked" {
+		t.Fatalf("expected blocked finding class, got %q", result.Report.Findings[0].Class)
+	}
+}
+
+func TestRunAnalyzeSupportsChained127To28Path(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "base64-proc-1",
+        "name": "EncodePayload",
+        "type": "org.apache.nifi.processors.standard.Base64EncodeContent",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.27.0"
+        },
+        "properties": {
+          "Mode": "Encode"
+        }
+      }
+    ]
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.27.0",
+		TargetVersion: "2.8.0",
+		RulePackPaths: []string{
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.0-to-2.1.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.1-to-2.2.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.2-to-2.3.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.4-to-2.5.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.5-to-2.6.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.6-to-2.7.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml"),
+		},
+		OutputDir:    filepath.Join(tmpDir, "out"),
+		AnalysisName: "chain-127-to-28",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+	if len(result.Report.RulePacks) != 9 {
+		t.Fatalf("expected 9 rule packs in chained path, got %d", len(result.Report.RulePacks))
+	}
+	if result.Report.Summary.ByClass["auto-fix"] == 0 {
+		t.Fatalf("expected chained path to include at least one auto-fix finding")
+	}
+}
+
 func TestRunAnalyzeOfficial23To24PackFindsExpectedChanges(t *testing.T) {
 	t.Parallel()
 
@@ -644,7 +733,6 @@ func TestRunAnalyzeOfficial23To24PackFindsExpectedChanges(t *testing.T) {
 		ruleIDs[finding.RuleID] = true
 	}
 	expected := []string{
-		"core.ocsp.deprecated",
 		"core.listen-http.rate-limit.removed",
 	}
 	for _, ruleID := range expected {
@@ -678,11 +766,8 @@ func TestRunAnalyzeOfficial24To25PackFindsExpectedChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAnalyze() error = %v", err)
 	}
-	if len(result.Report.Findings) != 1 {
-		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
-	}
-	if result.Report.Findings[0].RuleID != "core.custom-content-viewer.servlet-review" {
-		t.Fatalf("unexpected rule id %q", result.Report.Findings[0].RuleID)
+	if len(result.Report.Findings) != 0 {
+		t.Fatalf("expected 0 findings, got %d", len(result.Report.Findings))
 	}
 }
 
@@ -710,11 +795,8 @@ func TestRunAnalyzeOfficial25To26PackFindsExpectedChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAnalyze() error = %v", err)
 	}
-	if len(result.Report.Findings) != 1 {
-		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
-	}
-	if result.Report.Findings[0].RuleID != "core.2.5-to-2.6.guidance-review" {
-		t.Fatalf("unexpected rule id %q", result.Report.Findings[0].RuleID)
+	if len(result.Report.Findings) != 0 {
+		t.Fatalf("expected 0 findings, got %d", len(result.Report.Findings))
 	}
 }
 
@@ -801,9 +883,6 @@ func TestRunAnalyzeOfficial127To20PackFindsExpectedChanges(t *testing.T) {
 	expected := []string{
 		"core.distributed-map-cache-client.renamed",
 		"core.variable-registry.removed",
-		"core.custom-advanced-ui.contract-updated",
-		"core.data-viewer-ui.contract-updated",
-		"core.additional-details.markdown-migration",
 		"core.base64-encode-content.replace",
 		"core.get-http.replace",
 		"core.invoke-http.proxy-properties.replace",
@@ -1430,13 +1509,11 @@ func TestRunAnalyzeOfficial26To27PackFindsExpectedChanges(t *testing.T) {
 		ruleIDs[finding.RuleID] = true
 	}
 	expected := []string{
-		"core.ocsp.removed",
 		"core.get-asana-object.deprecated",
 		"core.get-asana-object.clear-state",
 		"core.restricted-ssl-context.deprecated-27",
 		"core.listen-syslog.port-to-udp-port-27",
 		"core.scripted-components.27.0-review",
-		"core.external-api.property-renames.review",
 	}
 	for _, ruleID := range expected {
 		if !ruleIDs[ruleID] {
@@ -1493,8 +1570,8 @@ func TestRunAnalyzeOfficial26To271DoesNotLoad27PatchCaveats(t *testing.T) {
 	for _, finding := range result.Report.Findings {
 		ruleIDs[finding.RuleID] = true
 	}
-	if !ruleIDs["core.external-api.property-renames.review"] {
-		t.Fatalf("expected general 2.7.x external API rename advisory to still apply")
+	if ruleIDs["core.external-api.property-renames.review"] {
+		t.Fatalf("did not expect general 2.7.x external API rename advisory after removing generic flow-root noise")
 	}
 }
 
@@ -1564,7 +1641,6 @@ func TestRunAnalyzeOfficial27To28PackFindsExpectedChanges(t *testing.T) {
 		"core.restricted-ssl-context.deprecated",
 		"core.listen-syslog.port-to-tcp-port",
 		"core.jolt.custom-class.recompile",
-		"core.nifi-registry.deprecated",
 	}
 	for _, ruleID := range expected {
 		if !ruleIDs[ruleID] {

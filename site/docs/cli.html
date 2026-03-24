@@ -22,8 +22,8 @@
         <p class="eyebrow">CLI Contract</p>
         <h1>One command surface for the full upgrade path.</h1>
         <p class="lede">
-          The product is intentionally CLI-first. It fits local terminal use, CI jobs, and
-          GitOps workflows without hiding migration behavior behind a UI.
+          The desktop app is the default human experience. The CLI remains the stable
+          command surface for CI, GitOps, scripted workflows, and advanced debugging.
         </p>
         <div class="actions">
           <a class="button primary" href="../index.html">Back to site</a>
@@ -46,6 +46,7 @@
             </ul>
           </div>
           <div class="code-card">
+            <p><strong>Use this when:</strong> you want repeatable automation or explicit command-level control.</p>
             <pre><code>nifi-flow-upgrade analyze \
   --source ./flow.json.gz \
   --source-format flow-json-gz \

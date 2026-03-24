@@ -1,0 +1,83 @@
+{
+  "rulePacks": [
+    "nifi-1.26-to-1.27-official"
+  ],
+  "sourceVersion": "1.26.0",
+  "targetVersion": "1.27.0",
+  "summary": {
+    "totalFindings": 6,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 2,
+      "manual-change": 4,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.couchbase-components.deprecated-127",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Couchbase components are deprecated in NiFi 1.27.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "cb-1",
+        "name": "OrdersCouchbase",
+        "type": "org.apache.nifi.couchbase.CouchbaseClusterService",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/OrdersCouchbase"
+      }
+    },
+    {
+      "ruleId": "core.couchbase-components.deprecated-127",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Couchbase components are deprecated in NiFi 1.27.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "cb-get-1",
+        "name": "FetchFromCouchbase",
+        "type": "org.apache.nifi.processors.couchbase.GetCouchbaseKey",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchFromCouchbase"
+      }
+    },
+    {
+      "ruleId": "core.datadog-reporting-task.deprecated-127",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "DataDogReportingTask is deprecated in NiFi 1.27.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "datadog-1",
+        "name": "DogStats",
+        "type": "org.apache.nifi.reporting.datadog.DataDogReportingTask",
+        "scope": "reporting-task",
+        "path": "rootGroup/reportingTasks/DogStats"
+      }
+    },
+    {
+      "ruleId": "core.encrypt-config-tools.deprecated-127",
+      "class": "info",
+      "severity": "info",
+      "message": "Property protection and encrypt-config tooling are deprecated in the NiFi 1.27.x line."
+    },
+    {
+      "ruleId": "core.invoke-aws-gateway-api.deprecated-127",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "InvokeAWSGatewayApi is deprecated in NiFi 1.27.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "api-1",
+        "name": "PublishApiGateway",
+        "type": "org.apache.nifi.processors.aws.wag.InvokeAWSGatewayApi",
+        "scope": "processor",
+        "path": "rootGroup/processors/PublishApiGateway"
+      }
+    },
+    {
+      "ruleId": "core.knox-and-kerberos-sso.deprecated-127",
+      "class": "info",
+      "severity": "info",
+      "message": "Apache Knox SSO and Kerberos SPNEGO authentication are deprecated in NiFi 1.27.x."
+    }
+  ]
+}

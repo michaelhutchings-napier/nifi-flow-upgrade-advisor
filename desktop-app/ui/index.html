@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NiFi Flow Upgrade Advisor Desktop</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Desktop Preview</p>
+          <h1>NiFi Flow Upgrade Advisor</h1>
+          <p class="lede">Detect a workspace, choose a flow, and run the same CLI commands with one click.</p>
+        </div>
+        <div class="status-cluster">
+          <span class="pill">Thin Tauri wrapper</span>
+          <span class="pill">CLI-backed</span>
+          <span class="pill">Offline-first</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Workspace</h2>
+            <button id="scanButton" class="button primary">Scan workspace</button>
+          </div>
+          <label class="field">
+            <span>Workspace path</span>
+            <input id="workspacePath" type="text" spellcheck="false">
+          </label>
+          <div id="scanSummary" class="note">Detecting the default workspace...</div>
+
+          <label class="field">
+            <span>Flow</span>
+            <select id="flowSelect"></select>
+          </label>
+          <p id="binaryNote" class="note inline-note">Using the built-in upgrade engine.</p>
+
+          <div class="grid two-up">
+            <label class="field">
+              <span>Source version</span>
+              <input id="sourceVersion" type="text" placeholder="1.27.0">
+            </label>
+            <label class="field">
+              <span>Target version</span>
+              <input id="targetVersion" type="text" placeholder="2.0.0">
+            </label>
+          </div>
+          <p id="sourceVersionNote" class="note inline-note">No embedded source version found.</p>
+
+          <p id="rulePackNote" class="note inline-note">Pick source and target versions to use the built-in upgrade coverage for this path.</p>
+
+          <details class="advanced-block">
+            <summary>Check installed target components (optional)</summary>
+            <p class="note inline-note">
+              Only use this if you want to confirm the target NiFi has the
+              component types this flow needs.
+            </p>
+            <label class="field compact-field">
+              <span>Installed components list</span>
+              <select id="manifestSelect">
+                <option value="">None</option>
+              </select>
+            </label>
+            <p id="manifestNote" class="note inline-note">No installed-components list selected.</p>
+          </details>
+
+          <input id="binarySelect" type="hidden" value="">
+
+          <details class="advanced-block">
+            <summary>Upgrade rules (advanced)</summary>
+            <p class="note inline-note">
+              The app auto-selects built-in upgrade coverage from the chosen
+              source and target versions. Only change this if you want to inspect
+              or override that path manually.
+            </p>
+            <label class="field compact-field">
+              <span>Rule packs</span>
+              <select id="rulePackSelect" multiple size="8"></select>
+            </label>
+          </details>
+
+          <label class="field">
+            <span>Output directory</span>
+            <input id="outputDir" type="text" spellcheck="false">
+          </label>
+
+          <div class="action-row">
+            <button data-action="analyze" class="button secondary">Analyze</button>
+            <button data-action="rewrite" class="button secondary">Rewrite</button>
+            <button data-action="validate" class="button secondary">Validate</button>
+            <button data-action="run" class="button secondary">Run</button>
+          </div>
+          <p id="rewriteAvailabilityNote" class="note inline-note"></p>
+          <p id="activeActionNote" class="note inline-note">Selected action: Run full workflow.</p>
+
+          <article class="action-guide">
+            <div class="action-guide-head">
+              <span id="actionGuideEyebrow" class="pill action-pill">Run</span>
+              <h3 id="actionGuideTitle">Full upgrade workflow</h3>
+            </div>
+            <p id="actionGuideBody" class="note">
+              Analyze, rewrite safe changes, then validate the result before any publish step.
+            </p>
+            <div id="actionGuideChecklist" class="selection-list compact-list"></div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Results</h2>
+            <span id="lastAction" class="note">No action run yet.</span>
+          </div>
+
+          <article class="result-overview">
+            <h3 id="resultHeadline">No results yet.</h3>
+            <p id="resultSubhead" class="note">Run a command to see a compact upgrade summary here first.</p>
+            <div id="resultMetrics" class="metric-grid metric-grid-four"></div>
+            <p id="resultMeta" class="note">No report summary yet.</p>
+            <button id="resultNextAction" class="button primary result-action" hidden>Next step</button>
+          </article>
+
+          <div id="findingSections" class="finding-sections"></div>
+          <article id="rewritePreview" class="result-card rewrite-preview" hidden>
+            <h3>Rewrite preview</h3>
+            <div id="rewritePreviewList" class="selection-list compact-list"></div>
+          </article>
+
+          <div class="result-grid">
+            <article class="result-card">
+              <h3>Command status</h3>
+              <div id="summaryBadges" class="badge-row"></div>
+              <details class="log-block">
+                <summary>Raw command output</summary>
+                <pre id="stdoutView" class="code-block">Waiting for a command...</pre>
+              </details>
+            </article>
+
+            <article class="result-card">
+              <h3>Reports</h3>
+              <p class="note">The app shows the results directly here. These files are optional exports for sharing or automation.</p>
+              <div id="reportLinks" class="report-list note">No reports yet.</div>
+              <pre id="reportView" class="code-block">Run a command to load Markdown or JSON report output here.</pre>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -3,7 +3,7 @@ kind: RulePack
 metadata:
   name: nifi-2.1-to-2.2-official
   title: NiFi 2.1 to 2.2 migration guidance
-  description: Official compatibility placeholder for the NiFi 2.1.x to 2.2.x upgrade step.
+  description: Official compatibility coverage pack for the NiFi 2.1.x to 2.2.x upgrade step. Apache Migration Guidance does not list a dedicated caveat for this minor hop.
   references:
     - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
 spec:
@@ -14,14 +14,4 @@ spec:
     - versioned-flow-snapshot
     - git-registry-dir
     - nifi-registry-export
-  rules:
-    - id: core.2.1-to-2.2.guidance-review
-      category: manual-inspection
-      class: info
-      severity: info
-      message: Apache Migration Guidance does not list a dedicated 2.1.x to 2.2.x caveat in this rule pack.
-      selector:
-        scope: flow-root
-      notes: Inference from the official Migration Guidance as of March 22, 2026. Continue with normal analyze, rewrite, and validate checks, plus live target validation where available.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+  rules: []

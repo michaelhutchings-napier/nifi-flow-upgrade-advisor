@@ -14,15 +14,4 @@ spec:
     - versioned-flow-snapshot
     - git-registry-dir
     - nifi-registry-export
-  rules:
-    - id: core.custom-content-viewer.servlet-review
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: Custom Content Viewer implementations should be reviewed for the NiFi 2.5.x servlet contract.
-      selector:
-        scope: flow-root
-      notes: Apache NiFi 2.5.0 changed the standard Content Viewer from Spring Boot to a simplified Java Servlet implementation. Custom Content Viewers should avoid Spring Boot dependencies and follow the new standard pattern.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
+  rules: []

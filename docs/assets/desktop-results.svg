@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img" aria-label="NiFi Flow Upgrade Advisor desktop results screenshot">
+  <rect width="1280" height="820" fill="#f4ebdf"/>
+  <rect x="32" y="32" width="1216" height="756" rx="28" fill="#fffaf4" stroke="#d9c9b5"/>
+  <rect x="56" y="56" width="1168" height="72" rx="20" fill="#21303c"/>
+  <text x="86" y="101" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">NiFi Flow Upgrade Advisor</text>
+  <rect x="56" y="152" width="1168" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
+  <text x="88" y="198" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">Results</text>
+  <text x="88" y="244" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="38" font-weight="700">Ready to rewrite: 1 safe fix available</text>
+  <text x="88" y="278" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">This flow can move forward. Rewrite can apply 1 safe fix.</text>
+  <rect x="88" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="278" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="468" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="658" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="112" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Blocked</text>
+  <text x="112" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <text x="302" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Safe fixes</text>
+  <text x="302" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">1</text>
+  <text x="492" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Review</text>
+  <text x="492" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <text x="682" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Info</text>
+  <text x="682" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <rect x="88" y="430" width="248" height="52" rx="26" fill="#0f6b78"/>
+  <text x="153" y="463" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Run Rewrite</text>
+  <rect x="88" y="516" width="1060" height="188" rx="20" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="120" y="560" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="24" font-weight="700">Rewrite preview</text>
+  <text x="120" y="596" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">Base64EncodeContent should be replaced with EncodeContent for NiFi 2.0.x.</text>
+  <text x="120" y="626" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">EncodePayload • processor</text>
+  <rect x="120" y="652" width="274" height="44" rx="22" fill="#f8e7e2" stroke="#d7a194"/>
+  <rect x="416" y="652" width="246" height="44" rx="22" fill="#e4f3ec" stroke="#8ec0ab"/>
+  <text x="146" y="680" fill="#9c4031" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Type: Base64EncodeContent</text>
+  <text x="444" y="680" fill="#1f7f5e" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Type: EncodeContent</text>
+</svg>

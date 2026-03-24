@@ -151,14 +151,3 @@ spec:
         - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformJSON/
         - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformRecord/
 
-    - id: core.nifi-registry.deprecated
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: The NiFi Registry project is deprecated for removal in a future major release.
-      selector:
-        scope: flow-root
-      notes: Prefer Git-backed Flow Registry Clients for new target-state workflows where possible.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
