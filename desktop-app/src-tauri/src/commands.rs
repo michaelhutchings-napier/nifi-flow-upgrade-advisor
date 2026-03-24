@@ -170,13 +170,7 @@ pub fn run_cli_action(request: CliActionRequest) -> Result<CliActionResult, Stri
             .args(&args)
             .current_dir(root)
             .output()
-            .map_err(|err| {
-                format!(
-                    "run go fallback from {}: {}",
-                    tool_root.display(),
-                    err
-                )
-            })?,
+            .map_err(|err| format!("run go fallback from {}: {}", tool_root.display(), err))?,
     };
     let duration_ms = start.elapsed().as_millis();
 
@@ -378,7 +372,9 @@ fn resolve_exec_target(request: &CliActionRequest) -> Result<ExecTarget, String>
     let preferred_go_run = prefer_go_run_fallback(&root);
     let default_binary = root.join("bin/nifi-flow-upgrade");
     let requested = request.binary_path.trim();
-    if preferred_go_run && (requested.is_empty() || Path::new(requested) == default_binary.as_path()) {
+    if preferred_go_run
+        && (requested.is_empty() || Path::new(requested) == default_binary.as_path())
+    {
         return Ok(ExecTarget::GoRun(root));
     }
     if !requested.is_empty() && Path::new(requested).exists() {
@@ -475,7 +471,10 @@ fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String>
 fn dedupe_entries(entries: &mut Vec<WorkspaceEntry>) {
     let mut deduped = Vec::new();
     for entry in entries.drain(..) {
-        if deduped.iter().any(|existing: &WorkspaceEntry| existing.path == entry.path) {
+        if deduped
+            .iter()
+            .any(|existing: &WorkspaceEntry| existing.path == entry.path)
+        {
             continue;
         }
         deduped.push(entry);
@@ -751,8 +750,14 @@ fn find_consistent_bundle_version_in_json(value: &serde_json::Value) -> Option<S
 fn collect_bundle_versions(value: &serde_json::Value, versions: &mut Vec<String>) {
     match value {
         serde_json::Value::Object(map) => {
-            if let Some(bundle) = map.get("bundle").and_then(|candidate| candidate.as_object()) {
-                if let Some(version) = bundle.get("version").and_then(|candidate| candidate.as_str()) {
+            if let Some(bundle) = map
+                .get("bundle")
+                .and_then(|candidate| candidate.as_object())
+            {
+                if let Some(version) = bundle
+                    .get("version")
+                    .and_then(|candidate| candidate.as_str())
+                {
                     versions.push(version.to_string());
                 }
             }
@@ -898,9 +903,13 @@ mod tests {
             .expect("scan external workspace");
 
         assert_eq!(state.workspace_root, temp_root.to_string_lossy());
-        assert!(state.flow_candidates.iter().any(|item| item.path == flow_path.to_string_lossy()));
+        assert!(state
+            .flow_candidates
+            .iter()
+            .any(|item| item.path == flow_path.to_string_lossy()));
         assert!(
-            state.rule_packs
+            state
+                .rule_packs
                 .iter()
                 .any(|item| item.display_path.contains("nifi-2.7-to-2.8.official.yaml")),
             "expected built-in rule packs from tool repo"
@@ -913,7 +922,10 @@ mod tests {
     fn go_run_fallback_is_available_without_built_binary() {
         let request = CliActionRequest {
             action: "analyze".into(),
-            workspace_path: repo_root().expect("repo root").to_string_lossy().to_string(),
+            workspace_path: repo_root()
+                .expect("repo root")
+                .to_string_lossy()
+                .to_string(),
             binary_path: String::new(),
             source_path: String::new(),
             source_format: "flow-json-gz".into(),
