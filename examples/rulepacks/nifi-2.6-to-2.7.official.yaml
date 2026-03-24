@@ -15,17 +15,6 @@ spec:
     - git-registry-dir
     - nifi-registry-export
   rules:
-    - id: core.ocsp.removed
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: OCSP responder support is removed in NiFi 2.7.x.
-      selector:
-        scope: flow-root
-      notes: Review deployment configuration for any use of nifi.security.ocsp.responder because Apache NiFi 2.7.0 removed framework support for OCSP validation.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
     - id: core.get-asana-object.deprecated
       category: manual-inspection
       class: manual-change
@@ -119,14 +108,3 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
         - https://nifi.apache.org/components/org.apache.nifi.processors.mongodb.gridfs.FetchGridFS/
-
-    - id: core.external-api.property-renames.review
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: External API-driven component provisioning may require property-name updates for NiFi 2.7.x.
-      selector:
-        scope: flow-root
-      notes: Apache NiFi 2.7.0 renamed many properties across components for consistency. Flows may import cleanly, but external tooling that creates components through the API should be reviewed separately.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance

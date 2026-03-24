@@ -1,0 +1,65 @@
+{
+  "rulePacks": [
+    "nifi-1.24-to-1.25-official"
+  ],
+  "sourceVersion": "1.24.0",
+  "targetVersion": "1.25.0",
+  "summary": {
+    "totalFindings": 4,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 2,
+      "manual-change": 2,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.bootstrap-notifications.deprecated-125",
+      "class": "info",
+      "severity": "info",
+      "message": "Bootstrap lifecycle notifications are deprecated in NiFi 1.25.x and should be reviewed before later upgrades."
+    },
+    {
+      "ruleId": "core.encrypt-content.deprecated-125",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "EncryptContent is deprecated and should be replaced with EncryptContentAge or EncryptContentPGP before later major-version upgrades.",
+      "component": {
+        "id": "encrypt-1",
+        "name": "EncryptOrders",
+        "type": "org.apache.nifi.processors.standard.EncryptContent",
+        "scope": "processor",
+        "path": "rootGroup/processors/EncryptOrders"
+      }
+    },
+    {
+      "ruleId": "core.execute-script.jython.deprecated-125",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "ExecuteScript using the Jython engine is deprecated and should be reviewed before later NiFi 2.x upgrades.",
+      "component": {
+        "id": "script-1",
+        "name": "LegacyJythonScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyJythonScript"
+      },
+      "evidence": [
+        {
+          "type": "property-value-equals",
+          "field": "Script Engine",
+          "actualValue": "Jython",
+          "expectedValue": "Jython"
+        }
+      ]
+    },
+    {
+      "ruleId": "core.minifi-c2.deprecated-125",
+      "class": "info",
+      "severity": "info",
+      "message": "MiNiFi C2 Server is deprecated in NiFi 1.25.x and should be reviewed before later upgrades."
+    }
+  ]
+}

@@ -15,17 +15,6 @@ spec:
     - git-registry-dir
     - nifi-registry-export
   rules:
-    - id: core.ocsp.deprecated
-      category: manual-inspection
-      class: info
-      severity: warning
-      message: OCSP responder support is deprecated for removal in NiFi 2.4.x.
-      selector:
-        scope: flow-root
-      notes: Review deployment configuration for any use of nifi.security.ocsp.responder because Apache NiFi deprecated this support in 2.4.0 and removed it in 2.7.0.
-      references:
-        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-
     - id: core.listen-http.rate-limit.removed
       category: property-removed
       class: manual-change
@@ -43,4 +32,3 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
         - https://nifi.apache.org/components/org.apache.nifi.processors.standard.ListenHTTP/
-

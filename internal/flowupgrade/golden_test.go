@@ -162,6 +162,116 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
 			goldenFile: "official_1_23_to_1_24.json",
 		},
 		{
+			name:          "official_1_24_to_1_25",
+			sourceVersion: "1.24.0",
+			targetVersion: "1.25.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.24-to-1.25.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "script-1",
+        "name": "LegacyJythonScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "properties": {
+          "Script Engine": "Jython"
+        }
+      },
+      {
+        "id": "encrypt-1",
+        "name": "EncryptOrders",
+        "type": "org.apache.nifi.processors.standard.EncryptContent",
+        "properties": {}
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_1_24_to_1_25.json",
+		},
+		{
+			name:          "official_1_25_to_1_26",
+			sourceVersion: "1.25.0",
+			targetVersion: "1.26.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.25-to-1.26.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "controllerServices": [
+      {
+        "id": "cass-1",
+        "name": "OrdersCassandra",
+        "type": "org.apache.nifi.service.CassandraSessionProvider",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "properties": {}
+      },
+      {
+        "id": "solr-1",
+        "name": "FetchFromSolr",
+        "type": "org.apache.nifi.processors.solr.GetSolr",
+        "properties": {}
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_1_25_to_1_26.json",
+		},
+		{
+			name:          "official_1_26_to_1_27",
+			sourceVersion: "1.26.0",
+			targetVersion: "1.27.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.26-to-1.27.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "controllerServices": [
+      {
+        "id": "cb-1",
+        "name": "OrdersCouchbase",
+        "type": "org.apache.nifi.couchbase.CouchbaseClusterService",
+        "properties": {}
+      }
+    ],
+    "reportingTasks": [
+      {
+        "id": "datadog-1",
+        "name": "DogStats",
+        "type": "org.apache.nifi.reporting.datadog.DataDogReportingTask",
+        "properties": {}
+      }
+    ],
+    "processors": [
+      {
+        "id": "api-1",
+        "name": "PublishApiGateway",
+        "type": "org.apache.nifi.processors.aws.wag.InvokeAWSGatewayApi",
+        "properties": {}
+      },
+      {
+        "id": "cb-get-1",
+        "name": "FetchFromCouchbase",
+        "type": "org.apache.nifi.processors.couchbase.GetCouchbaseKey",
+        "properties": {}
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_1_26_to_1_27.json",
+		},
+		{
 			name:          "official_1_27_to_2_0",
 			sourceVersion: "1.27.0",
 			targetVersion: "2.0.0",

@@ -41,12 +41,22 @@ The current repository should not own the core migration engine long term. It sh
 
 The intended user experience should stay simple:
 
+- desktop app first for most humans
+- CLI first for automation, CI, and GitOps
 - `analyze`: tell me whether this source version can move to this target version, what is deprecated or removed, and what must change
 - `rewrite`: apply only deterministic safe conversions and produce a rewritten artifact plus a rewrite report
 
-The first polished user experience should be CLI-first and CI-friendly.
+The polished default experience should be a desktop wrapper over the same engine, not a second migration engine.
 
-If a visual experience is added later, it should be a thin local web application or desktop-style wrapper around the same CLI and report files, not a second migration engine.
+The preferred desktop direction is a Tauri application that:
+
+- auto-detects likely flow artifacts in a selected workspace or repository
+- lets users select source and target versions
+- runs the existing `analyze`, `rewrite`, `validate`, and `run` commands
+- renders the existing JSON and Markdown reports
+- never forks the rule engine or rewrite logic away from the CLI
+
+The CLI remains the stable automation surface underneath the desktop experience.
 
 ## Core Principles
 
@@ -182,6 +192,13 @@ The current branch also includes:
 - an initial `validate` command focused on artifact readability, target extension inventory checks, live target NiFi API validation, and process group readiness checks before import or update
 - a `publish` command for filesystem, Git-backed registry layout output, and NiFi Registry import
 - a `run` command that orchestrates `analyze`, `rewrite`, `validate`, and optional `publish` without hiding the intermediate artifacts
+
+If the Tauri wrapper is enabled, it should remain a shell around these commands rather than a replacement for them. The desktop application may add:
+
+- workspace and flow auto-detection
+- one-click command execution
+- in-app report viewing
+- recent-project history
 
 ## Rule Engine
 

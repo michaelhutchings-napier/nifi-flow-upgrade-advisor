@@ -6,12 +6,14 @@ This document defines the implementation contract for the Flow Upgrade Advisor C
 
 This document started as the Phase 1 CLI contract and now records the implemented command surface for `analyze`, `rewrite`, `validate`, `publish`, and `run`.
 
-The current user experience is terminal-first. There is no graphical UI yet. The intended "UI" for the first usable milestone is:
+The current user experience is desktop-first for people and CLI-first for automation.
 
-- one boring CLI command per step
-- a concise stdout summary
+The desktop app is the default way to use the tool interactively. The CLI remains the stable command surface for:
+
+- one boring command per step
+- concise stdout summaries
 - machine-readable JSON output for CI
-- a human-readable Markdown report for pull requests and review
+- human-readable Markdown reports for pull requests and review
 
 The intended user-facing modes are:
 
@@ -19,7 +21,7 @@ The intended user-facing modes are:
 - `rewrite`: deterministic upgrade or conversion where the rule pack declares it safe
 - `validate`: target-facing checks on the produced or selected artifact
 
-If a visual application is added later, it should sit on top of these commands and the generated reports instead of inventing a separate workflow.
+The desktop app sits on top of these commands and generated reports instead of inventing a separate workflow.
 
 ## Binary Name
 

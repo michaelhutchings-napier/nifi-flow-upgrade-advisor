@@ -16,6 +16,42 @@
   },
   "findings": [
     {
+      "ruleId": "core.azure-queue-v12.migration",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.",
+      "component": {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyQueue"
+      }
+    },
+    {
+      "ruleId": "core.cassandra.compression-type.removed",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.",
+      "component": {
+        "id": "cassandra-1",
+        "name": "WriteCassandra",
+        "type": "org.apache.nifi.processors.cassandra.PutCassandraQL",
+        "scope": "processor",
+        "path": "rootGroup/processors/WriteCassandra"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "Compression Type",
+          "actualValue": "LZ4"
+        }
+      ],
+      "suggestedActions": [
+        "remove-property"
+      ]
+    },
+    {
       "ruleId": "core.dbcp-h2-url.unsupported",
       "class": "manual-change",
       "severity": "warning",
@@ -37,6 +73,19 @@
       ]
     },
     {
+      "ruleId": "core.ignite-cache.deprecated",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Ignite cache processors are deprecated for removal in NiFi 2.0.0.",
+      "component": {
+        "id": "ignite-1",
+        "name": "IgniteCache",
+        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
+        "scope": "processor",
+        "path": "rootGroup/processors/IgniteCache"
+      }
+    },
+    {
       "ruleId": "core.jndi-jms-ldap-provider.unsupported",
       "class": "manual-change",
       "severity": "warning",
@@ -56,19 +105,6 @@
           "expectedValue": "^ldaps?://"
         }
       ]
-    },
-    {
-      "ruleId": "core.azure-queue-v12.migration",
-      "class": "manual-change",
-      "severity": "warning",
-      "message": "Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.",
-      "component": {
-        "id": "azure-1",
-        "name": "LegacyQueue",
-        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
-        "scope": "processor",
-        "path": "rootGroup/processors/LegacyQueue"
-      }
     },
     {
       "ruleId": "core.script-engine.groovy-preferred",
@@ -93,42 +129,6 @@
             "ruby"
           ]
         }
-      ]
-    },
-    {
-      "ruleId": "core.ignite-cache.deprecated",
-      "class": "manual-change",
-      "severity": "warning",
-      "message": "Ignite cache processors are deprecated for removal in NiFi 2.0.0.",
-      "component": {
-        "id": "ignite-1",
-        "name": "IgniteCache",
-        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
-        "scope": "processor",
-        "path": "rootGroup/processors/IgniteCache"
-      }
-    },
-    {
-      "ruleId": "core.cassandra.compression-type.removed",
-      "class": "manual-change",
-      "severity": "warning",
-      "message": "Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.",
-      "component": {
-        "id": "cassandra-1",
-        "name": "WriteCassandra",
-        "type": "org.apache.nifi.processors.cassandra.PutCassandraQL",
-        "scope": "processor",
-        "path": "rootGroup/processors/WriteCassandra"
-      },
-      "evidence": [
-        {
-          "type": "property-exists",
-          "field": "Compression Type",
-          "actualValue": "LZ4"
-        }
-      ],
-      "suggestedActions": [
-        "remove-property"
       ]
     }
   ]

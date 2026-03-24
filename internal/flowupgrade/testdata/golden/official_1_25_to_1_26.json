@@ -1,0 +1,64 @@
+{
+  "rulePacks": [
+    "nifi-1.25-to-1.26-official"
+  ],
+  "sourceVersion": "1.25.0",
+  "targetVersion": "1.26.0",
+  "summary": {
+    "totalFindings": 4,
+    "byClass": {
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 1,
+      "manual-change": 3,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.cassandra-session-provider.deprecated-126",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "CassandraSessionProvider is deprecated in NiFi 1.26.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "cass-1",
+        "name": "OrdersCassandra",
+        "type": "org.apache.nifi.service.CassandraSessionProvider",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/OrdersCassandra"
+      }
+    },
+    {
+      "ruleId": "core.convert-avro-to-json.deprecated-126",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "ConvertAvroToJSON is deprecated in NiFi 1.26.x in favor of ConvertRecord.",
+      "component": {
+        "id": "avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "scope": "processor",
+        "path": "rootGroup/processors/ConvertOrders"
+      }
+    },
+    {
+      "ruleId": "core.get-solr.deprecated-126",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetSolr is deprecated in NiFi 1.26.x and should be reviewed before later upgrades.",
+      "component": {
+        "id": "solr-1",
+        "name": "FetchFromSolr",
+        "type": "org.apache.nifi.processors.solr.GetSolr",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchFromSolr"
+      }
+    },
+    {
+      "ruleId": "core.integration-bundles.deprecated-126",
+      "class": "info",
+      "severity": "info",
+      "message": "NiFi 1.26.x deprecates several integration bundles including Solr, Spark Livy, Ranger, and Hive 3 components."
+    }
+  ]
+}

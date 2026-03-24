@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Desktop Guide | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="Use the NiFi Flow Upgrade Advisor desktop app to analyze, rewrite, validate, and run upgrades without starting from raw CLI commands."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/desktop.html">
+    <meta property="og:title" content="Desktop Guide | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="The fastest way to use the tool: scan a workspace, pick a flow, analyze it, rewrite safe fixes, and validate the result.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/desktop.html">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Desktop Guide</p>
+        <h1>Start with the desktop app, not raw commands.</h1>
+        <p class="lede">
+          The desktop app is the easiest way to use the product. It scans a workspace, detects likely flows,
+          suggests the built-in upgrade coverage, and walks you through analyze, rewrite, validate, and run.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/desktop-guide.md">GitHub doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap">
+          <div class="section-heading">
+            <p class="section-kicker">Quick Start</p>
+            <h2>A short path from scan to upgraded artifact.</h2>
+          </div>
+          <div class="workflow-list">
+            <article class="workflow-step-card">
+              <div class="workflow-number">01</div>
+              <div>
+                <h3>Open the app and scan your workspace</h3>
+                <p>The app detects likely flows, optional target component lists, and the built-in upgrade coverage available in the repo.</p>
+              </div>
+            </article>
+            <article class="workflow-step-card">
+              <div class="workflow-number">02</div>
+              <div>
+                <h3>Pick a flow and confirm versions</h3>
+                <p>If the flow carries embedded version metadata, the app fills it in. If not, it tells you to enter the source version manually.</p>
+              </div>
+            </article>
+            <article class="workflow-step-card">
+              <div class="workflow-number">03</div>
+              <div>
+                <h3>Analyze first</h3>
+                <p>See blockers, review items, safe fixes, and info notes before anything changes.</p>
+              </div>
+            </article>
+            <article class="workflow-step-card">
+              <div class="workflow-number">04</div>
+              <div>
+                <h3>Rewrite only if safe fixes exist</h3>
+                <p>The app tells you when no safe rewrites are available, and rewrite writes a separate upgraded artifact instead of overwriting the original flow.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap media-grid">
+          <article class="media-card">
+            <img src="../assets/desktop-overview.svg" alt="Desktop workspace and flow selection screenshot">
+            <div class="media-copy">
+              <h3>Workspace-first</h3>
+              <p>Scan the repo, choose a flow, and let the app handle the upgrade-path plumbing for you.</p>
+            </div>
+          </article>
+          <article class="media-card">
+            <img src="../assets/desktop-results.svg" alt="Desktop analysis and rewrite preview screenshot">
+            <div class="media-copy">
+              <h3>Results that explain themselves</h3>
+              <p>Blocked, review, safe fixes, and info are broken out clearly, with next actions and rewrite previews.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>When to use Validate</h2>
+            <p>
+              Use validate when you want to confirm the target version, installed component types,
+              or live target readiness after rewrite.
+            </p>
+          </div>
+          <div class="card">
+            <h2>When to use the CLI</h2>
+            <p>
+              Use the CLI for CI, scripted workflows, GitOps, and advanced debugging. The desktop app
+              is just a wrapper around the same engine and reports.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

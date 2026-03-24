@@ -5,33 +5,27 @@
   "sourceVersion": "2.6.0",
   "targetVersion": "2.7.0",
   "summary": {
-    "totalFindings": 7,
+    "totalFindings": 5,
     "byClass": {
       "auto-fix": 1,
       "blocked": 0,
-      "info": 2,
+      "info": 0,
       "manual-change": 4,
       "manual-inspection": 0
     }
   },
   "findings": [
     {
-      "ruleId": "core.ocsp.removed",
-      "class": "info",
-      "severity": "warning",
-      "message": "OCSP responder support is removed in NiFi 2.7.x."
-    },
-    {
-      "ruleId": "core.get-asana-object.deprecated",
+      "ruleId": "core.fetch-gridfs.manual-review-27",
       "class": "manual-change",
       "severity": "warning",
-      "message": "GetAsanaObject is deprecated for removal in NiFi 2.7.x.",
+      "message": "FetchGridFS instances may need manual property updates after upgrade to NiFi 2.7.x.",
       "component": {
-        "id": "asana-1",
-        "name": "AsanaImport",
-        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "id": "gridfs-1",
+        "name": "FetchGrid",
+        "type": "org.apache.nifi.processors.mongodb.gridfs.FetchGridFS",
         "scope": "processor",
-        "path": "rootGroup/processors/AsanaImport"
+        "path": "rootGroup/processors/FetchGrid"
       }
     },
     {
@@ -48,16 +42,16 @@
       }
     },
     {
-      "ruleId": "core.restricted-ssl-context.deprecated-27",
+      "ruleId": "core.get-asana-object.deprecated",
       "class": "manual-change",
       "severity": "warning",
-      "message": "StandardRestrictedSSLContextService is deprecated for removal in NiFi 2.7.x.",
+      "message": "GetAsanaObject is deprecated for removal in NiFi 2.7.x.",
       "component": {
-        "id": "ssl-1",
-        "name": "RestrictedSSL",
-        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
-        "scope": "controller-service",
-        "path": "rootGroup/controllerServices/RestrictedSSL"
+        "id": "asana-1",
+        "name": "AsanaImport",
+        "type": "org.apache.nifi.processors.asana.GetAsanaObject",
+        "scope": "processor",
+        "path": "rootGroup/processors/AsanaImport"
       }
     },
     {
@@ -85,23 +79,17 @@
       ]
     },
     {
-      "ruleId": "core.fetch-gridfs.manual-review-27",
+      "ruleId": "core.restricted-ssl-context.deprecated-27",
       "class": "manual-change",
       "severity": "warning",
-      "message": "FetchGridFS instances may need manual property updates after upgrade to NiFi 2.7.x.",
+      "message": "StandardRestrictedSSLContextService is deprecated for removal in NiFi 2.7.x.",
       "component": {
-        "id": "gridfs-1",
-        "name": "FetchGrid",
-        "type": "org.apache.nifi.processors.mongodb.gridfs.FetchGridFS",
-        "scope": "processor",
-        "path": "rootGroup/processors/FetchGrid"
+        "id": "ssl-1",
+        "name": "RestrictedSSL",
+        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/RestrictedSSL"
       }
-    },
-    {
-      "ruleId": "core.external-api.property-renames.review",
-      "class": "info",
-      "severity": "warning",
-      "message": "External API-driven component provisioning may require property-name updates for NiFi 2.7.x."
     }
   ]
 }

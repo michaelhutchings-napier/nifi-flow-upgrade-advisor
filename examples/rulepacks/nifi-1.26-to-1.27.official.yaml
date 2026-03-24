@@ -1,0 +1,85 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.26-to-1.27-official
+  title: NiFi 1.26 to 1.27 migration guidance
+  description: Conservative official bridge pack based on Apache NiFi 1.27.0 release notes and the deprecated components/features index.
+  references:
+    - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+    - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+spec:
+  sourceVersionRange: ">=1.26.0 <1.27.0"
+  targetVersionRange: ">=1.27.0 <2.0.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.invoke-aws-gateway-api.deprecated-127
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: InvokeAWSGatewayApi is deprecated in NiFi 1.27.x and should be reviewed before later upgrades.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.aws.wag.InvokeAWSGatewayApi
+      notes: Apache NiFi 1.27.0 deprecated InvokeAWSGatewayApi for removal. Review affected API gateway flows before continuing toward the 2.x line.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+        - https://nifi.apache.org/docs/nifi-docs/
+
+    - id: core.datadog-reporting-task.deprecated-127
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: DataDogReportingTask is deprecated in NiFi 1.27.x and should be reviewed before later upgrades.
+      selector:
+        scope: reporting-task
+        componentType: org.apache.nifi.reporting.datadog.DataDogReportingTask
+      notes: Apache NiFi 1.27.0 deprecated DataDogReportingTask for removal in the 2.x line.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-datadog-nar/1.8.0/org.apache.nifi.reporting.datadog.DataDogReportingTask/index.html
+
+    - id: core.couchbase-components.deprecated-127
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Couchbase components are deprecated in NiFi 1.27.x and should be reviewed before later upgrades.
+      selector:
+        componentTypes:
+          - org.apache.nifi.couchbase.CouchbaseClusterService
+          - org.apache.nifi.couchbase.CouchbaseKeyValueLookupService
+          - org.apache.nifi.couchbase.CouchbaseMapCacheClient
+          - org.apache.nifi.couchbase.CouchbaseRecordLookupService
+          - org.apache.nifi.processors.couchbase.GetCouchbaseKey
+      notes: Apache NiFi 1.27.0 deprecated several Couchbase components for removal. Review Couchbase-backed flows before continuing toward the NiFi 2.x line.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-couchbase-nar/1.28.0/
+
+    - id: core.knox-and-kerberos-sso.deprecated-127
+      category: manual-inspection
+      class: info
+      severity: info
+      message: Apache Knox SSO and Kerberos SPNEGO authentication are deprecated in NiFi 1.27.x.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.27.0 deprecated Apache Knox SSO and Kerberos SPNEGO authentication for removal, recommending OpenID Connect or SAML 2 instead. This is a platform-level migration note rather than a flow rewrite.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.encrypt-config-tools.deprecated-127
+      category: manual-inspection
+      class: info
+      severity: info
+      message: Property protection and encrypt-config tooling are deprecated in the NiFi 1.27.x line.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.27.x deprecated property protection and related encrypt-config tooling for removal. Review deployment automation and secret-handling workflows before later upgrades.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures

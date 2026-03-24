@@ -1,0 +1,69 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.25-to-1.26-official
+  title: NiFi 1.25 to 1.26 migration guidance
+  description: Conservative official bridge pack based on Apache NiFi 1.26.0 release notes and the deprecated components/features index.
+  references:
+    - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+    - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+spec:
+  sourceVersionRange: ">=1.25.0 <1.26.0"
+  targetVersionRange: ">=1.26.0 <1.27.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.cassandra-session-provider.deprecated-126
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: CassandraSessionProvider is deprecated in NiFi 1.26.x and should be reviewed before later upgrades.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.service.CassandraSessionProvider
+      notes: Apache NiFi 1.26.0 deprecated CassandraSessionProvider because the underlying DataStax 3 driver is no longer current. Review dependent Cassandra flows before later major-version upgrades.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-cassandra-services-nar/1.28.0/org.apache.nifi.service.CassandraSessionProvider/
+
+    - id: core.convert-avro-to-json.deprecated-126
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: ConvertAvroToJSON is deprecated in NiFi 1.26.x in favor of ConvertRecord.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.avro.ConvertAvroToJSON
+      notes: Apache NiFi 1.26.0 deprecated ConvertAvroToJSON with ConvertRecord as the recommended alternative.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-avro-nar/1.28.0/org.apache.nifi.processors.avro.ConvertAvroToJSON/
+
+    - id: core.get-solr.deprecated-126
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetSolr is deprecated in NiFi 1.26.x and should be reviewed before later upgrades.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.solr.GetSolr
+      notes: Apache NiFi 1.26.0 deprecated Solr components for removal. Review Solr-based flows while bridging through 1.26.x.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+        - https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-solr-nar/1.5.0/org.apache.nifi.processors.solr.GetSolr/
+
+    - id: core.integration-bundles.deprecated-126
+      category: manual-inspection
+      class: info
+      severity: info
+      message: NiFi 1.26.x deprecates several integration bundles including Solr, Spark Livy, Ranger, and Hive 3 components.
+      selector:
+        scope: flow-root
+      notes: Apache NiFi 1.26.0 deprecated several integration areas for removal, including Spark Livy components, Solr components, Apache Ranger integration, and Hive 3 components. Review those areas before later upgrades even if this specific flow does not match one of the bundled component rules yet.
+      references:
+        - https://cwiki.apache.org/confluence/pages/viewpage.action?navigatingVersions=true&pageId=373885898

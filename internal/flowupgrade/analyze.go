@@ -76,6 +76,23 @@ func RunAnalyze(cfg AnalyzeConfig) (*AnalyzeResult, error) {
 		}
 	}
 	findings = append(findings, extensionsManifestFindings(document, matchingPacks, extensionsManifest)...)
+	slices.SortFunc(findings, func(a, b MigrationFinding) int {
+		if cmp := strings.Compare(a.RuleID, b.RuleID); cmp != 0 {
+			return cmp
+		}
+		aPath := ""
+		if a.Component != nil {
+			aPath = a.Component.Path
+		}
+		bPath := ""
+		if b.Component != nil {
+			bPath = b.Component.Path
+		}
+		if cmp := strings.Compare(aPath, bPath); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a.Message, b.Message)
+	})
 
 	analysisName := cfg.AnalysisName
 	if strings.TrimSpace(analysisName) == "" {
@@ -599,16 +616,6 @@ func renderMarkdownReport(report MigrationReport) string {
 		builder.WriteString(fmt.Sprintf("- Extensions Manifest: `%s`\n", report.Target.ExtensionsManifestPath))
 	}
 	builder.WriteString(fmt.Sprintf("- Format: `%s`\n\n", report.Source.Format))
-
-	builder.WriteString("## Rule Packs\n\n")
-	if len(report.RulePacks) == 0 {
-		builder.WriteString("- none\n\n")
-	} else {
-		for _, pack := range report.RulePacks {
-			builder.WriteString(fmt.Sprintf("- `%s` from `%s`\n", pack.Name, pack.Path))
-		}
-		builder.WriteString("\n")
-	}
 
 	builder.WriteString("## Summary\n\n")
 	builder.WriteString(fmt.Sprintf("- Total findings: `%d`\n", report.Summary.TotalFindings))

@@ -1,8 +1,14 @@
 # nifi-flow-upgrade-advisor
 
-`nifi-flow-upgrade-advisor` is an offline CLI for Apache NiFi flow upgrade analysis, deterministic rewrites, and target validation.
+`nifi-flow-upgrade-advisor` is a desktop-first Apache NiFi flow upgrade tool with a CLI engine underneath for automation.
 
 It is intentionally separate from runtime platforms such as NiFi-Fabric. The job of this repo is to inspect a source flow artifact, compare it with a selected target NiFi version, explain what changed, apply only mechanically safe rewrites, and validate the result before publish.
+
+The desktop app is now the easiest way to use the product. It gives teams a guided workspace scan, one-click `analyze`, `rewrite`, `validate`, and `run`, and clearer result views without replacing the underlying automation surface. The CLI remains the stable engine for CI, GitOps, and scripted workflows.
+
+![Desktop overview](docs/assets/desktop-overview.svg)
+
+![Desktop results](docs/assets/desktop-results.svg)
 
 ## Scope
 
@@ -47,6 +53,7 @@ What `publish` covers now:
 
 - [`cmd/nifi-flow-upgrade`](cmd/nifi-flow-upgrade)
 - [`internal/flowupgrade`](internal/flowupgrade)
+- `desktop-app` for the Tauri desktop wrapper
 - [`docs/design.md`](docs/design.md)
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
@@ -58,6 +65,29 @@ What `publish` covers now:
 - [`examples/manifests`](examples/manifests)
 
 ## Quick Start
+
+### Desktop app first
+
+Build and launch the desktop app:
+
+```bash
+cargo run --manifest-path desktop-app/src-tauri/Cargo.toml
+```
+
+Then:
+
+1. scan your workspace
+2. choose a flow
+3. confirm source and target versions
+4. click `Analyze`
+5. click `Rewrite` only when safe fixes are available
+6. click `Validate` or `Run` when you want target checks or the guided sequence
+
+Desktop guide:
+
+- [`docs/desktop-guide.md`](docs/desktop-guide.md)
+
+### CLI and release install
 
 Build:
 
@@ -71,7 +101,9 @@ Install from a release:
 curl -fsSL https://raw.githubusercontent.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/main/install.sh | bash
 ```
 
-Analyze:
+The desktop app is a thin Tauri wrapper around the same CLI. It can scan a workspace, detect likely flows and upgrade coverage, and run `analyze`, `rewrite`, `validate`, and `run` without creating a second migration engine.
+
+Advanced CLI example:
 
 ```bash
 ./nifi-flow-upgrade analyze \
@@ -175,6 +207,7 @@ Website:
 
 - local site files: [`site/`](site/)
 - GitHub Pages workflow: [`.github/workflows/pages.yaml`](.github/workflows/pages.yaml)
+- desktop-first guide page: [`site/docs/desktop.html`](site/docs/desktop.html)
 
 Repo ownership:
 
