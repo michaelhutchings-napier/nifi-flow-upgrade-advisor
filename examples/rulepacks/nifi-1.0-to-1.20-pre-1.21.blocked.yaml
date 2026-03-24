@@ -1,0 +1,26 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-1.0-to-1.20-pre-1.21-blocked
+  title: Built-in upgrade coverage starts at NiFi 1.21.x
+  description: Source versions earlier than 1.21.x should be re-exported from a newer baseline before using the advisor's built-in version-to-version guidance.
+spec:
+  sourceVersionRange: ">=1.0.0 <1.21.0"
+  targetVersionRange: ">=1.21.0 <3.0.0"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules:
+    - id: core.pre-1.21.support-baseline-required
+      category: blocked
+      class: blocked
+      severity: error
+      message: This advisor's built-in upgrade coverage starts at NiFi 1.21.x.
+      selector:
+        scope: flow-root
+      actions:
+        - type: mark-blocked
+      notes: Re-export this flow from a NiFi 1.21.x or newer source before using built-in version-to-version guidance. Once the source artifact is on a 1.21.x or newer baseline, the advisor can chain the remaining upgrade path automatically.

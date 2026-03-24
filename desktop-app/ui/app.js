@@ -289,6 +289,21 @@ function compareMinorKeys(leftKey, rightKey) {
   return left.minor - right.minor;
 }
 
+function compareVersions(leftVersion, rightVersion) {
+  const left = parseVersion(leftVersion);
+  const right = parseVersion(rightVersion);
+  if (!left || !right) {
+    return 0;
+  }
+  if (left.major !== right.major) {
+    return left.major - right.major;
+  }
+  if (left.minor !== right.minor) {
+    return left.minor - right.minor;
+  }
+  return (left.patch ?? 0) - (right.patch ?? 0);
+}
+
 function isMinorKeyInRange(value, start, end) {
   return compareMinorKeys(value, start) >= 0 && compareMinorKeys(value, end) <= 0;
 }
@@ -349,8 +364,7 @@ function bestRulePackSelection(sourceVersion, targetVersion) {
       continue;
     }
     if (
-      target.major === parseVersion(pack.blockTarget)?.major &&
-      compareMinorKeys(target.minorKey, pack.blockTarget) >= 0 &&
+      compareVersions(target.full, `${pack.blockTarget}.0`) >= 0 &&
       isMinorKeyInRange(source.minorKey, pack.blockSourceStart, pack.blockSourceEnd)
     ) {
       include(pack);
@@ -661,8 +675,11 @@ function renderResultOverview(report, result) {
     const info = byClass["info"] || 0;
     const topFinding = Array.isArray(report.findings) && report.findings.length > 0 ? report.findings[0] : null;
     const isBridgeUpgradeBlock = topFinding?.ruleId === "core.bridge-upgrade.requires-1.27";
+    const isPre121BaselineBlock = topFinding?.ruleId === "core.pre-1.21.support-baseline-required";
 
-    if (isBridgeUpgradeBlock) {
+    if (isPre121BaselineBlock) {
+      headline.textContent = "Upgrade path blocked: re-export this flow from NiFi 1.21.x or newer first";
+    } else if (isBridgeUpgradeBlock) {
       headline.textContent = "Upgrade path blocked: move this flow to 1.27.x before targeting NiFi 2.x";
     } else if (blocked > 0) {
       headline.textContent = `Blocked upgrade: ${blocked} required change${blocked === 1 ? "" : "s"}`;
@@ -677,7 +694,9 @@ function renderResultOverview(report, result) {
     subhead.textContent =
       report.kind === "ValidationReport"
         ? topFinding?.message || `Validated ${sourceVersion} -> ${targetVersion} against the chosen target checks.`
-        : isBridgeUpgradeBlock
+        : isPre121BaselineBlock
+          ? "Built-in version-to-version coverage starts at NiFi 1.21.x."
+          : isBridgeUpgradeBlock
           ? "Apache NiFi requires a bridge upgrade to 1.27.x before entering the 2.x line."
           : topFinding?.message || `Analyzed ${sourceVersion} -> ${targetVersion} using the built-in upgrade coverage.`;
 

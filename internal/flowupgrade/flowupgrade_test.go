@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	semver "github.com/Masterminds/semver/v3"
 )
 
 func TestRunRulePackLintSampleSucceeds(t *testing.T) {
@@ -636,6 +638,89 @@ func TestRunAnalyzeBlocksPre127DirectUpgradeToLater2x(t *testing.T) {
 	}
 	if result.Report.Findings[0].Class != "blocked" {
 		t.Fatalf("expected blocked finding class, got %q", result.Report.Findings[0].Class)
+	}
+}
+
+func TestRunAnalyzeBlocksPre121UntilSupportedBaseline(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "id": "root-1"
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.20.0",
+		TargetVersion: "1.27.0",
+		RulePackPaths: []string{filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.0-to-1.20-pre-1.21.blocked.yaml")},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		AnalysisName:  "pre-121-baseline-required",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+	if len(result.Report.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
+	}
+	if result.Report.Findings[0].RuleID != "core.pre-1.21.support-baseline-required" {
+		t.Fatalf("unexpected rule id %q", result.Report.Findings[0].RuleID)
+	}
+	if result.Report.Findings[0].Class != "blocked" {
+		t.Fatalf("expected blocked finding class, got %q", result.Report.Findings[0].Class)
+	}
+}
+
+func TestBuiltInRulePackCoverageAcrossSupportedUpgradePairs(t *testing.T) {
+	t.Parallel()
+
+	paths, err := filepath.Glob(filepath.Join("..", "..", "examples", "rulepacks", "*.yaml"))
+	if err != nil {
+		t.Fatalf("glob example rule packs: %v", err)
+	}
+	filtered := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if strings.Contains(filepath.Base(path), ".sample.") {
+			continue
+		}
+		filtered = append(filtered, path)
+	}
+	packs, err := LoadRulePacks(filtered)
+	if err != nil {
+		t.Fatalf("LoadRulePacks() error = %v", err)
+	}
+
+	versions := []string{
+		"1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0",
+		"1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0",
+		"1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0",
+		"2.0.0", "2.1.0", "2.2.0", "2.3.0", "2.4.0", "2.5.0", "2.6.0", "2.7.0", "2.7.1", "2.8.0",
+	}
+	const minimumSupportedTarget = "1.21.0"
+
+	var missing []string
+	for i := range versions {
+		for j := i + 1; j < len(versions); j++ {
+			source := versions[i]
+			target := versions[j]
+			if compareVersionStrings(target, minimumSupportedTarget) < 0 {
+				continue
+			}
+			matching, err := filterMatchingRulePacks(packs, source, target, SourceFormatFlowJSONGZ)
+			if err != nil {
+				t.Fatalf("filterMatchingRulePacks(%s, %s) error = %v", source, target, err)
+			}
+			if len(matching) == 0 {
+				missing = append(missing, source+"->"+target)
+			}
+		}
+	}
+	if len(missing) > 0 {
+		t.Fatalf("expected built-in coverage for all supported upgrade pairs, missing %d: %s", len(missing), strings.Join(missing, ", "))
 	}
 }
 
@@ -2811,4 +2896,16 @@ func writeGzipFile(t *testing.T, path, content string) {
 	if err := zw.Close(); err != nil {
 		t.Fatalf("close gzip writer: %v", err)
 	}
+}
+
+func compareVersionStrings(left, right string) int {
+	leftVersion, err := semver.NewVersion(left)
+	if err != nil {
+		panic(err)
+	}
+	rightVersion, err := semver.NewVersion(right)
+	if err != nil {
+		panic(err)
+	}
+	return leftVersion.Compare(rightVersion)
 }
