@@ -7,20 +7,20 @@
   "summary": {
     "totalFindings": 6,
     "byClass": {
-      "assisted-rewrite": 1,
+      "assisted-rewrite": 2,
       "auto-fix": 0,
       "blocked": 0,
       "info": 0,
-      "manual-change": 5,
+      "manual-change": 4,
       "manual-inspection": 0
     }
   },
   "findings": [
     {
-      "ruleId": "core.azure-queue-v12.migration",
-      "class": "manual-change",
+      "ruleId": "core.azure-queue-get-v12.migration",
+      "class": "assisted-rewrite",
       "severity": "warning",
-      "message": "Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.",
+      "message": "GetAzureQueueStorage should move to GetAzureQueueStorage_v12 in NiFi 1.22.x.",
       "component": {
         "id": "azure-1",
         "name": "LegacyQueue",
@@ -29,6 +29,7 @@
         "path": "rootGroup/processors/LegacyQueue"
       },
       "suggestedActions": [
+        "replace-component-type",
         "update-bundle-coordinate"
       ]
     },

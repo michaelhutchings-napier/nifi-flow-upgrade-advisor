@@ -13,7 +13,8 @@ This directory contains runnable examples for `nifi-flow-upgrade-advisor`.
 - `./demo/bridge-upgrade-1.21-to-2.0.sh`: blocked bridge-upgrade requirement before `2.0.x`
 - `./demo/h2-dbcp-1.21-to-1.22.sh`: manual-change for H2 JDBC URLs on DBCP/Hikari
 - `./demo/jndi-jms-ldap-1.21-to-1.22.sh`: manual-change for LDAP Provider URLs on JNDI JMS
-- `./demo/messaging-platform-1.21-to-1.22.sh`: customer story showing assisted Cassandra cleanup plus guided JMS/Azure/script review
+- `./demo/messaging-platform-1.21-to-1.22.sh`: customer story showing assisted Cassandra and Azure cleanup plus guided JMS/script review
+- `./demo/convert-avro-1.25-to-1.26.sh`: assisted rewrite for `ConvertAvroToJSON -> ConvertRecord`
 - `./demo/invoke-http-url-encoding-1.23-to-1.24.sh`: manual-change for URL encoding review
 - `./demo/listen-http-2.3-to-2.4.sh`: assisted rewrite for removed ListenHTTP rate limiting
 - `./demo/edge-ingest-2.3-to-2.4.sh`: customer story showing assisted ListenHTTP rate-limit cleanup
@@ -105,9 +106,21 @@ Observed summary:
 This flow shows a mixed bridge-upgrade story:
 
 - assisted removal of the deprecated Cassandra `Compression Type` property
-- guided Azure Queue v12 migration
+- assisted Azure Queue v12 processor replacement
 - guided LDAP-backed JMS review
 - guided scripted-component engine review
+
+### ConvertAvroToJSON 1.25 to 1.26
+
+```bash
+./demo/convert-avro-1.25-to-1.26.sh
+```
+
+This flow shows a focused assisted rewrite:
+
+- `ConvertAvroToJSON` is deprecated in favor of `ConvertRecord`
+- rewrite scaffolds the component-type replacement into a separate artifact
+- record-reader and record-writer service choices still stay visible for human review
 
 ### Edge Ingest 2.3 to 2.4
 

@@ -32,12 +32,19 @@ spec:
 
     - id: core.convert-avro-to-json.deprecated-126
       category: component-replaced
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
       message: ConvertAvroToJSON is deprecated in NiFi 1.26.x in favor of ConvertRecord.
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.avro.ConvertAvroToJSON
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.avro.ConvertAvroToJSON
+          to: org.apache.nifi.processors.standard.ConvertRecord
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-standard-nar
       notes: Apache NiFi 1.26.0 deprecated ConvertAvroToJSON with ConvertRecord as the recommended alternative.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures

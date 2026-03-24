@@ -14,6 +14,7 @@ examples=(
   "h2-dbcp-1.21-to-1.22.sh"
   "jndi-jms-ldap-1.21-to-1.22.sh"
   "messaging-platform-1.21-to-1.22.sh"
+  "convert-avro-1.25-to-1.26.sh"
   "invoke-http-url-encoding-1.23-to-1.24.sh"
   "integration-platform-1.22-to-1.23.sh"
   "listen-http-2.3-to-2.4.sh"

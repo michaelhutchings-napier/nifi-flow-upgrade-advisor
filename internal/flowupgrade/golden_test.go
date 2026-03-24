@@ -563,6 +563,16 @@ func TestRealisticFixturesAnalyze(t *testing.T) {
 			},
 			minFindings: 1,
 		},
+		{
+			name:          "convert_avro_1_25_to_1_26",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "convert-avro-1.25-flow.json"),
+			sourceVersion: "1.25.0",
+			targetVersion: "1.26.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.25-to-1.26.official.yaml"),
+			},
+			minFindings: 1,
+		},
 	}
 
 	for _, tc := range cases {

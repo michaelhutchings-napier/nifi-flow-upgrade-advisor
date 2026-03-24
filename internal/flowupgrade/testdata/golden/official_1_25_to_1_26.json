@@ -7,11 +7,11 @@
   "summary": {
     "totalFindings": 4,
     "byClass": {
-      "assisted-rewrite": 0,
+      "assisted-rewrite": 1,
       "auto-fix": 0,
       "blocked": 0,
       "info": 1,
-      "manual-change": 3,
+      "manual-change": 2,
       "manual-inspection": 0
     }
   },
@@ -31,7 +31,7 @@
     },
     {
       "ruleId": "core.convert-avro-to-json.deprecated-126",
-      "class": "manual-change",
+      "class": "assisted-rewrite",
       "severity": "warning",
       "message": "ConvertAvroToJSON is deprecated in NiFi 1.26.x in favor of ConvertRecord.",
       "component": {
@@ -40,7 +40,11 @@
         "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
         "scope": "processor",
         "path": "rootGroup/processors/ConvertOrders"
-      }
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "update-bundle-coordinate"
+      ]
     },
     {
       "ruleId": "core.get-solr.deprecated-126",

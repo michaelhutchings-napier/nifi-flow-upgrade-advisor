@@ -390,6 +390,19 @@ function bestRulePackSelection(sourceVersion, targetVersion) {
   return selected;
 }
 
+function describeRulePackSelection(selectedPaths) {
+  const parsed = selectedPaths
+    .map((path) => state.rulePacks.find((candidate) => candidate.path === path))
+    .map(parseRulePack)
+    .filter(Boolean);
+
+  const bridgeBlocks = parsed.filter((pack) => pack.isBlockedBridge).length;
+  const patchCaveats = parsed.filter((pack) => pack.isPatchCaveat).length;
+  const versionSteps = parsed.filter((pack) => !pack.isBlockedBridge && !pack.isPatchCaveat).length;
+
+  return { bridgeBlocks, patchCaveats, versionSteps };
+}
+
 function noRulePackRequired(sourceVersion, targetVersion) {
   const source = parseVersion(sourceVersion);
   const target = parseVersion(targetVersion);
@@ -406,17 +419,30 @@ function autoSelectRulePacks() {
   const select = byId("rulePackSelect");
   const sourceVersion = byId("sourceVersion").value;
   const targetVersion = byId("targetVersion").value;
-  const selected = new Set(bestRulePackSelection(byId("sourceVersion").value, byId("targetVersion").value));
+  const selectedPaths = bestRulePackSelection(byId("sourceVersion").value, byId("targetVersion").value);
+  const selected = new Set(selectedPaths);
 
   for (const opt of select.options) {
     opt.selected = selected.has(opt.value);
   }
 
   const hasPair = parseVersion(sourceVersion) && parseVersion(targetVersion);
+  const summary = describeRulePackSelection(selectedPaths);
   setText(
     "rulePackNote",
     selected.size > 0
-      ? `Built-in upgrade coverage found for ${sourceVersion} -> ${targetVersion}.`
+      ? [
+          `Built-in upgrade coverage ready for ${sourceVersion} -> ${targetVersion}.`,
+          summary.versionSteps > 0
+            ? `${summary.versionSteps} version step${summary.versionSteps === 1 ? "" : "s"} selected.`
+            : null,
+          summary.patchCaveats > 0
+            ? `${summary.patchCaveats} patch caveat${summary.patchCaveats === 1 ? "" : "s"} included.`
+            : null,
+          summary.bridgeBlocks > 0 ? "Bridge guidance included for this path." : null,
+        ]
+          .filter(Boolean)
+          .join(" ")
       : noRulePackRequired(sourceVersion, targetVersion)
         ? "No upgrade packs are needed for this version step."
       : hasPair
@@ -784,7 +810,52 @@ function resetResultOverview() {
   byId("resultMeta").textContent = "No report summary yet.";
   setResultNextAction(null);
   state.latestReport = null;
+  renderRunSteps(null);
   renderActionSelection();
+}
+
+function renderRunSteps(report) {
+  const card = byId("runStepsCard");
+  const list = byId("runStepsList");
+  if (!card || !list) {
+    return;
+  }
+  list.innerHTML = "";
+  card.hidden = true;
+
+  if (!report || report.kind !== "RunReport" || !Array.isArray(report.steps) || report.steps.length === 0) {
+    return;
+  }
+
+  report.steps.forEach((step) => {
+    const row = document.createElement("div");
+    row.className = "selection-list-item step-item";
+
+    const copy = document.createElement("div");
+    copy.className = "step-copy";
+
+    const name = document.createElement("div");
+    name.className = "step-name";
+    name.textContent = step.name || "step";
+    copy.appendChild(name);
+
+    if (step.message) {
+      const message = document.createElement("div");
+      message.className = "step-message";
+      message.textContent = step.message;
+      copy.appendChild(message);
+    }
+
+    const status = document.createElement("span");
+    status.className = `step-status ${step.status === "completed" ? "completed" : step.status === "skipped" ? "skipped" : "other"}`;
+    status.textContent = step.status || "unknown";
+
+    row.appendChild(copy);
+    row.appendChild(status);
+    list.appendChild(row);
+  });
+
+  card.hidden = false;
 }
 
 function findingSectionTitle(kind) {
@@ -1108,6 +1179,7 @@ async function renderReports(result) {
   }
   state.latestReport = jsonReport;
   renderResultOverview(jsonReport, result);
+  renderRunSteps(jsonReport);
   renderFindingSections(jsonReport);
   renderRewritePreview(jsonReport);
   renderActionSelection();

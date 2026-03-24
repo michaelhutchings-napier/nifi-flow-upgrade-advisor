@@ -32,7 +32,7 @@ echo
 echo "Expected outcome:"
 echo "  - analyze shows a mix of assisted and manual findings"
 echo "  - rewrite removes the deprecated Cassandra Compression Type property"
-echo "  - Azure Queue and LDAP-backed JMS still stay as guided manual review items"
+echo "  - Azure Queue moves to the v12 processor shape while LDAP-backed JMS stays as guided manual review"
 echo
 print_demo_footer "${OUT_DIR}" \
   "${OUT_DIR}/migration-report.json" \

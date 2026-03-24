@@ -232,6 +232,65 @@ select[multiple] {
   color: var(--text);
 }
 
+.selection-list-item.step-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.step-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.step-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.step-message {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.step-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.step-status.completed {
+  background: rgba(31, 127, 94, 0.12);
+  color: var(--success);
+  border-color: rgba(31, 127, 94, 0.16);
+}
+
+.step-status.skipped {
+  background: rgba(171, 101, 29, 0.12);
+  color: var(--warning);
+  border-color: rgba(171, 101, 29, 0.18);
+}
+
+.step-status.other {
+  background: rgba(15, 107, 120, 0.08);
+  color: var(--primary-strong);
+  border-color: rgba(15, 107, 120, 0.16);
+}
+
+.run-steps-card {
+  margin-bottom: 16px;
+}
+
 .compact-list {
   margin-bottom: 0;
 }

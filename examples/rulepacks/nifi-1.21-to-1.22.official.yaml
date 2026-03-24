@@ -50,21 +50,41 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
 
-    - id: core.azure-queue-v12.migration
+    - id: core.azure-queue-get-v12.migration
       category: component-replaced
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
-      message: Legacy Azure Queue Storage processors are deprecated in favor of the v12 variants in NiFi 1.22.x.
+      message: GetAzureQueueStorage should move to GetAzureQueueStorage_v12 in NiFi 1.22.x.
       selector:
         scope: processor
-        componentTypes:
-          - org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
-          - org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+        componentType: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
       actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage_v12
         - type: update-bundle-coordinate
           group: org.apache.nifi
           artifact: nifi-azure-nar
-      notes: Apache NiFi 1.22.0 deprecated these processors in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12.
+      notes: Apache NiFi 1.22.0 deprecated the legacy Azure Queue Storage processors in favor of the v12 variants. The rewrite can scaffold the new processor type, but Azure SDK behavior and credential handling should still be reviewed before rollout.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+
+    - id: core.azure-queue-put-v12.migration
+      category: component-replaced
+      class: assisted-rewrite
+      severity: warning
+      message: PutAzureQueueStorage should move to PutAzureQueueStorage_v12 in NiFi 1.22.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage_v12
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
+      notes: Apache NiFi 1.22.0 deprecated the legacy Azure Queue Storage processors in favor of the v12 variants. The rewrite can scaffold the new processor type, but Azure SDK behavior and credential handling should still be reviewed before rollout.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
 
