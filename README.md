@@ -222,7 +222,3 @@ Repo ownership:
 - use Parameter Contexts, Parameter Providers, and environment-local secret sources for secret rehydration
 - rule packs should cite official Apache migration notes and release caveats
 - `auto-fix` in `analyze` means “safe deterministic rewrite candidate found”, not “the flow has already been changed”
-
-## Relationship To NiFi-Fabric
-
-NiFi-Fabric should consume this repo as external tooling. It can carry a thin pointer under `tools/` and reference pinned versions, but it should not own this engine directly.

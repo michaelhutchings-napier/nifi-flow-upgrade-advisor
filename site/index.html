@@ -62,7 +62,6 @@
             </span>
           </a>
           <nav class="topnav" aria-label="Primary">
-            <a href="#workflow">How it works</a>
             <a href="#start">Start here</a>
             <a href="#demos">Demos</a>
             <a href="#docs">Docs</a>
@@ -203,46 +202,6 @@
           </div>
         </section>
 
-        <section class="section alt" id="workflow">
-          <div class="wrap">
-            <div class="section-heading">
-              <p class="section-kicker">Workflow</p>
-              <h2>A simple path from “can we upgrade?” to “here is the reviewed result.”</h2>
-            </div>
-
-            <div class="workflow-list">
-              <article class="workflow-step-card">
-                <div class="workflow-number">01</div>
-                <div>
-                  <h3>Analyze the source artifact</h3>
-                  <p>Load <code>flow.json.gz</code>, versioned snapshots, NiFi Registry exports, Git-backed registry directories, or legacy <code>flow.xml.gz</code> and compare them against the selected target version.</p>
-                </div>
-              </article>
-              <article class="workflow-step-card">
-                <div class="workflow-number">02</div>
-                <div>
-                  <h3>Rewrite only what is mechanically safe</h3>
-                  <p>Property renames, type replacements, and other deterministic transforms are applied only when the rule pack makes the mapping explicit and confidence is high.</p>
-                </div>
-              </article>
-              <article class="workflow-step-card">
-                <div class="workflow-number">03</div>
-                <div>
-                  <h3>Validate against the target</h3>
-                  <p>Check target NiFi version, extension inventory, and process-group readiness before you attempt an import or update.</p>
-                </div>
-              </article>
-              <article class="workflow-step-card">
-                <div class="workflow-number">04</div>
-                <div>
-                  <h3>Publish deliberately</h3>
-                  <p>Push the reviewed artifact into a filesystem handoff, a Git-backed registry layout, or NiFi Registry without hiding what changed.</p>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-
         <section class="section" id="demos">
           <div class="wrap">
             <div class="section-heading">
@@ -291,11 +250,11 @@
         <section class="section" id="docs">
           <div class="wrap">
             <div class="section-heading">
-              <p class="section-kicker">Need More Detail?</p>
-              <h2>Go deeper only when you need to.</h2>
+              <p class="section-kicker">Docs</p>
+              <h2>Everything else lives in the docs, not on the homepage.</h2>
               <p>
-                The product should feel simple first. The deeper reference material is still here,
-                but it does not need to compete with the main story on the homepage.
+                Start with the desktop guide or examples first. The CLI reference and deeper
+                migration notes are there when you need them.
               </p>
             </div>
             <div class="link-grid">
@@ -315,11 +274,6 @@
                 <strong>Troubleshooting</strong>
                 <span>Handle blocked findings, target mismatches, and missing secret values faster.</span>
               </a>
-            </div>
-            <div class="actions">
-              <a class="button secondary" href="./docs/examples.html">Browse examples</a>
-              <a class="button secondary" href="./docs/nifi-1x-to-2x-migration.html">1.x to 2.x guide</a>
-              <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/README.md">Project README</a>
             </div>
           </div>
         </section>
