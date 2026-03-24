@@ -118,16 +118,41 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
-    - id: core.azure-queue-v12.required-20
+    - id: core.get-azure-queue-v12.required-20
       category: component-replaced
       class: manual-change
       severity: warning
-      message: Legacy Azure Queue Storage processors should move to the v12 variants before NiFi 2.0.x.
+      message: GetAzureQueueStorage should move to GetAzureQueueStorage_v12 before NiFi 2.0.x.
       selector:
         scope: processor
-        componentTypes:
-          - org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
-          - org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+        componentType: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage_v12
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
+      notes: Apache NiFi deprecated these processors in 1.22.0 in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12. A 1.27.x flow can still contain the legacy components, so review them before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.put-azure-queue-v12.required-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: PutAzureQueueStorage should move to PutAzureQueueStorage_v12 before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage_v12
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
       notes: Apache NiFi deprecated these processors in 1.22.0 in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12. A 1.27.x flow can still contain the legacy components, so review them before the 2.0 step.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
@@ -203,6 +228,13 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.avro.ConvertAvroToJSON
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.avro.ConvertAvroToJSON
+          to: org.apache.nifi.processors.standard.ConvertRecord
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-standard-nar
       notes: Apache NiFi deprecated ConvertAvroToJSON in 1.26.0 with ConvertRecord as the recommended alternative. A 1.27.x flow can still contain ConvertAvroToJSON, so review it before the 2.0 step.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
@@ -264,6 +296,18 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetJMSQueue
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetJMSQueue
+          to: org.apache.nifi.jms.processors.ConsumeJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: set-property-if-absent
+          property: Destination Type
+          value: QUEUE
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -276,6 +320,18 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetJMSTopic
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetJMSTopic
+          to: org.apache.nifi.jms.processors.ConsumeJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: set-property-if-absent
+          property: Destination Type
+          value: TOPIC
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider, external JMS client libraries, and Destination Type TOPIC.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -288,6 +344,16 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.twitter.GetTwitter
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.twitter.GetTwitter
+          to: org.apache.nifi.processors.twitter.ConsumeTwitter
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-social-media-nar
+        - type: emit-parameter-scaffold
+          parameterName: TwitterBearerToken
+          sensitive: true
       notes: Apache's 2.0 migration guide says the replacement moves from Twitter API v1 and Hosebird Client to Twitter API v2 with OAuth 2 Bearer Token and possible external filter-rule setup.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -300,6 +366,10 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.HashAttribute
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.HashAttribute
+          to: org.apache.nifi.processors.standard.CryptographicHashAttribute
       notes: Apache's 2.0 migration guide recommends expression-language hash functions in UpdateAttribute and highlights MD5 as unsuitable for cryptographic use.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -312,6 +382,10 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.HashContent
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.HashContent
+          to: org.apache.nifi.processors.standard.CryptographicHashContent
       notes: Apache's 2.0 migration guide maps HashContent to CryptographicHashContent, but equivalent attribute naming may also require an UpdateAttribute step.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -360,6 +434,15 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.PutJMS
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.PutJMS
+          to: org.apache.nifi.jms.processors.PublishJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to PublishJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0

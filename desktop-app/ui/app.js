@@ -939,6 +939,13 @@ function renderFindingSections(report) {
           item.appendChild(notes);
         }
 
+        if (Array.isArray(finding.suggestedActions) && finding.suggestedActions.length > 0) {
+          const suggestions = document.createElement("div");
+          suggestions.className = "finding-item-meta";
+          suggestions.textContent = `Suggested next steps: ${finding.suggestedActions.map(formatActionPreview).join(" ")}`;
+          item.appendChild(suggestions);
+        }
+
         body.appendChild(item);
       });
     }
@@ -965,6 +972,8 @@ function formatActionPreview(action) {
       return `Copy property ${params.from || "unknown"} into ${params.to || "unknown"}.`;
     case "update-bundle-coordinate":
       return "Update bundle coordinates to the target component bundle.";
+    case "emit-parameter-scaffold":
+      return `Create a parameter placeholder named ${params.parameterName || "parameter"} for the reviewed migration.`;
     default:
       return action.type;
   }

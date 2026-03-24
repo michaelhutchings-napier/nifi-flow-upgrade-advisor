@@ -17,19 +17,6 @@
   },
   "findings": [
     {
-      "ruleId": "core.azure-queue-v12.required-20",
-      "class": "manual-change",
-      "severity": "warning",
-      "message": "Legacy Azure Queue Storage processors should move to the v12 variants before NiFi 2.0.x.",
-      "component": {
-        "id": "azure-1",
-        "name": "LegacyQueue",
-        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
-        "scope": "processor",
-        "path": "rootGroup/processors/LegacyQueue"
-      }
-    },
-    {
       "ruleId": "core.base64-encode-content.replace",
       "class": "auto-fix",
       "severity": "warning",
@@ -69,7 +56,11 @@
         "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
         "scope": "processor",
         "path": "rootGroup/processors/ConvertOrders"
-      }
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "update-bundle-coordinate"
+      ]
     },
     {
       "ruleId": "core.distributed-map-cache-client.renamed",
@@ -124,6 +115,23 @@
             "Jython"
           ]
         }
+      ]
+    },
+    {
+      "ruleId": "core.get-azure-queue-v12.required-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetAzureQueueStorage should move to GetAzureQueueStorage_v12 before NiFi 2.0.x.",
+      "component": {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyQueue"
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "update-bundle-coordinate"
       ]
     },
     {
