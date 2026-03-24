@@ -7,7 +7,7 @@ DEMO_BINARY="${BINARY:-${DEMO_ROOT}/bin/nifi-flow-upgrade}"
 
 ensure_demo_binary() {
   mkdir -p "${DEMO_ROOT}/bin"
-  if [[ ! -x "${DEMO_BINARY}" ]]; then
+  if [[ ! -x "${DEMO_BINARY}" ]] || find "${DEMO_ROOT}/cmd" "${DEMO_ROOT}/internal" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "${DEMO_BINARY}" | grep -q .; then
     echo "Building nifi-flow-upgrade into ${DEMO_BINARY}"
     (
       cd "${DEMO_ROOT}"

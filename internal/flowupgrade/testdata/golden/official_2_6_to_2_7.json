@@ -7,6 +7,7 @@
   "summary": {
     "totalFindings": 5,
     "byClass": {
+      "assisted-rewrite": 0,
       "auto-fix": 1,
       "blocked": 0,
       "info": 0,

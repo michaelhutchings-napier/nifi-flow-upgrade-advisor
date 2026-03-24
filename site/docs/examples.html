@@ -25,9 +25,9 @@
         <p class="eyebrow">Examples</p>
         <h1>Ten-plus examples users can actually run.</h1>
         <p class="lede">
-          The examples cover blocked upgrades, bridge requirements, manual-change paths,
-          manual-inspection findings, info-only guidance, and safe auto-fixes across both
-          `1.x` and `2.x` migration lines.
+          The examples cover blocked upgrades, bridge requirements, assisted rewrites,
+          manual-change paths, manual-inspection findings, info-only guidance, and safe auto-fixes
+          across both `1.x` and `2.x` migration lines.
         </p>
         <div class="actions">
           <a class="button primary" href="../index.html">Back to site</a>
@@ -43,26 +43,27 @@
           <h2>Three richer examples that feel closer to a real migration review.</h2>
           <p>
             These featured stories use fuller fixtures and show the mixed-result cases real teams care
-            about: blocked findings, safe rewrites, manual-change guidance, and policy review in the
-            same flow.
+            about: blocked findings, safe rewrites, assisted rewrites, manual-change guidance, and
+            policy review in the same flow.
           </p>
         </div>
         <div class="wrap story-grid">
           <article class="story-card">
             <div class="story-head">
-              <div class="demo-status blocked-pill">Blocked + Auto-fix + Manual</div>
+              <div class="demo-status blocked-pill">Blocked + Safe + Assisted + Manual</div>
               <h3>Orders Platform 1.27 to 2.0</h3>
               <p>
                 A fuller upgrade story with variable-registry blocking, cache-service renames,
-                Base64 replacement, and manual HTTP migration guidance in one run.
+                Base64 replacement, and assisted HTTP migration guidance in one run.
               </p>
             </div>
             <div class="story-stats">
-              <span>Total `8`</span>
+              <span>Total `5`</span>
               <span>Auto-fix `2`</span>
-              <span>Manual-change `2`</span>
+              <span>Assisted `1`</span>
+              <span>Manual-change `1`</span>
               <span>Blocked `1`</span>
-              <span>Rewrite `2 applied`</span>
+              <span>Rewrite `6 applied`</span>
             </div>
             <pre class="report-snippet"><code>## blocked
 - core.variable-registry.removed: Variable Registry expressions require explicit migration planning before NiFi 2.0.x.
@@ -71,8 +72,10 @@
 - core.distributed-map-cache-client.renamed
 - core.base64-encode-content.replace
 
-## manual-change
+## assisted-rewrite
 - core.get-http.replace
+
+## manual-change
 - core.invoke-http.proxy-properties.replace</code></pre>
             <div class="demo-actions">
               <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/orders-platform-1.27-to-2.0.sh">View script</a>
@@ -160,9 +163,9 @@
             <pre><code>./demo/asana-2.7-to-2.8.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status manual-pill">Manual-change</div>
+            <div class="demo-status manual-pill">Assisted rewrite</div>
             <h2>GetHTTP to InvokeHTTP</h2>
-            <p>The advisor explains the documented migration but applies zero rewrite operations.</p>
+            <p>The advisor scaffolds the target InvokeHTTP shape while keeping timeout, SSL, and response handling review visible.</p>
             <pre><code>./demo/get-http-1.27-to-2.0.sh</code></pre>
           </article>
           <article class="demo-card">

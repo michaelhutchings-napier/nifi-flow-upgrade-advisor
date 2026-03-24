@@ -4,7 +4,7 @@
 
 This document defines the `v1alpha1` rule-pack file format for the Flow Upgrade Advisor.
 
-The format is designed so the tool can analyze flows cleanly now and execute a narrow deterministic rewrite subset safely.
+The format is designed so the tool can analyze flows cleanly now and execute a narrow deterministic or assisted rewrite subset safely.
 
 ## Goals
 
@@ -34,7 +34,7 @@ spec:
   rules:
     - id: core.example-rule
       category: property-renamed
-      class: auto-fix
+      class: assisted-rewrite
       severity: warning
       message: Example message.
       selector:
@@ -114,7 +114,7 @@ Allowed values:
 
 ### `spec.rules`
 
-Required non-empty list.
+Required list. It may be empty for placeholder or coverage-only packs that exist to make a multi-hop path explicit without adding findings of their own.
 
 ## Rule Fields
 
@@ -158,10 +158,17 @@ Required.
 Allowed values:
 
 - `auto-fix`
+- `assisted-rewrite`
 - `manual-change`
 - `manual-inspection`
 - `blocked`
 - `info`
+
+`assisted-rewrite` sits between `auto-fix` and `manual-change`:
+
+- it is executable during `rewrite`
+- it may scaffold target properties or component replacements
+- it still requires human review before import
 
 ### `severity`
 
@@ -255,9 +262,17 @@ Allowed action types in `v1alpha1`:
 
 - `rename-property`
 - `set-property`
+- `set-property-if-absent`
+- `copy-property`
 - `remove-property`
 - `replace-property-value`
 - `update-bundle-coordinate`
+- `replace-component-type`
+
+The common split is:
+
+- `auto-fix`: actions that should produce a mechanically finished rewrite
+- `assisted-rewrite`: actions that scaffold the target shape while keeping the final decision visible to a human
 - `replace-component-type`
 - `emit-parameter-scaffold`
 - `mark-blocked`

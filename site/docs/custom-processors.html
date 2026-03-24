@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Custom NiFi Processors And Services | nifi-flow-upgrade-advisor</title>
+    <meta
+      name="description"
+      content="How to use private rule packs for custom NiFi processors and controller services, including auto-fix, assisted-rewrite, and manual-change examples."
+    >
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/custom-processors.html">
+    <meta property="og:title" content="Custom NiFi Processors And Services | nifi-flow-upgrade-advisor">
+    <meta property="og:description" content="Teach the advisor about internal processors and services with private rule packs and clear migration tiers.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/custom-processors.html">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Custom NiFi Processors And Services | nifi-flow-upgrade-advisor">
+    <meta name="twitter:description" content="Use private rule packs for internal processors and services with auto-fix, assisted-rewrite, and manual-change examples.">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="hero hero-small">
+      <div class="wrap">
+        <p class="eyebrow">Custom Components</p>
+        <h1>Teach the advisor about your own processors and services.</h1>
+        <p class="lede">
+          Private NiFi components are supported through private rule packs. The safest pattern is
+          to start with review-focused rules, then promote them to assisted or automatic rewrites only
+          when your team owns the migration contract.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="../index.html">Back to site</a>
+          <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/docs/custom-processors-and-services.md">Open source doc</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="wrap grid two-up">
+          <div class="card">
+            <h2>Recommended tiers</h2>
+            <ul>
+              <li><code>auto-fix</code> for mechanically safe internal renames</li>
+              <li><code>assisted-rewrite</code> when the tool can scaffold the target shape but a person still needs to review it</li>
+              <li><code>manual-change</code> for migrations that depend on libraries, credentials, or architecture</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Good first uses</h2>
+            <ul>
+              <li>package and type renames</li>
+              <li>property renames and copied values</li>
+              <li>bundle-coordinate updates</li>
+              <li>internal service replacements where your team controls both sides</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap grid two-up">
+          <div class="code-card">
+            <pre><code>class: assisted-rewrite
+actions:
+  - type: replace-component-type
+    from: com.acme.nifi.CustomerApiFetcher
+    to: com.acme.nifi.HttpCustomerFetcher
+  - type: copy-property
+    from: Legacy URL
+    to: Remote URL
+  - type: set-property-if-absent
+    property: HTTP Method
+    value: GET</code></pre>
+          </div>
+          <div class="card">
+            <h2>Why assisted rewrite exists</h2>
+            <p>
+              Some internal migrations are too specific for blind auto-fix but too repetitive to
+              leave completely manual. Assisted rewrite gives you a reviewable middle tier: the tool
+              scaffolds the target shape in a separate output artifact and keeps the final decision visible.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

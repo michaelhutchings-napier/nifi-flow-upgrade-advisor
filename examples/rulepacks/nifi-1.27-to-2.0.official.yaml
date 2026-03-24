@@ -120,13 +120,26 @@ spec:
 
     - id: core.get-http.replace
       category: component-replaced
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
       message: GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetHTTP
-      notes: Apache's 2.0 migration guide maps GetHTTP to InvokeHTTP with HTTP Method GET, HTTP URL, and Response FlowFile Naming Strategy URL_PATH. Review timeout and SSL behavior during migration.
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetHTTP
+          to: org.apache.nifi.processors.standard.InvokeHTTP
+        - type: rename-property
+          from: URL
+          to: HTTP URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: GET
+        - type: set-property-if-absent
+          property: Response FlowFile Naming Strategy
+          value: URL_PATH
+      notes: Apache's 2.0 migration guide maps GetHTTP to InvokeHTTP with HTTP Method GET, HTTP URL, and Response FlowFile Naming Strategy URL_PATH. The rewrite scaffolds those properties but still leaves timeout, SSL, and response-handling review visible to a human.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
@@ -206,13 +219,23 @@ spec:
 
     - id: core.post-http.replace
       category: component-replaced
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
       message: PostHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.PostHTTP
-      notes: Apache's 2.0 migration guide maps PostHTTP to InvokeHTTP, but FlowFile packaging, HTTPS handling, and header behavior must be reviewed during migration.
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.PostHTTP
+          to: org.apache.nifi.processors.standard.InvokeHTTP
+        - type: rename-property
+          from: URL
+          to: HTTP URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: POST
+      notes: Apache's 2.0 migration guide maps PostHTTP to InvokeHTTP. The rewrite scaffolds the target processor type and core request properties, but FlowFile packaging, HTTPS handling, and header behavior still need review.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 

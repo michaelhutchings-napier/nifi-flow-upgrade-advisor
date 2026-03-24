@@ -8,7 +8,7 @@ This directory contains runnable examples for `nifi-flow-upgrade-advisor`.
 - `./demo/orders-platform-2.7-to-2.8.sh`: featured mixed-result story with blocked removals, a safe property rewrite, and manual review items
 - `./demo/integration-platform-1.22-to-1.23.sh`: featured policy-review story with broader affected-component coverage
 - `./demo/base64-1.27-to-2.0.sh`: safe auto-fix replacing `Base64EncodeContent` with `EncodeContent`
-- `./demo/get-http-1.27-to-2.0.sh`: manual-change path for `GetHTTP -> InvokeHTTP`
+- `./demo/get-http-1.27-to-2.0.sh`: assisted rewrite path for `GetHTTP -> InvokeHTTP`
 - `./demo/asana-2.7-to-2.8.sh`: blocked upgrade for removed Asana components
 - `./demo/bridge-upgrade-1.21-to-2.0.sh`: blocked bridge-upgrade requirement before `2.0.x`
 - `./demo/h2-dbcp-1.21-to-1.22.sh`: manual-change for H2 JDBC URLs on DBCP/Hikari
@@ -41,17 +41,17 @@ This flow combines:
 - blocked `VARIABLE_REGISTRY` usage
 - safe `DistributedMapCacheClientService -> MapCacheClientService`
 - safe `Base64EncodeContent -> EncodeContent`
-- manual `GetHTTP -> InvokeHTTP`
+- assisted `GetHTTP -> InvokeHTTP`
 - manual `InvokeHTTP` proxy-service migration
 
 Observed summary:
 
-- total findings: `8`
+- total findings: `5`
 - auto-fix: `2`
-- manual-change: `2`
+- assisted-rewrite: `1`
+- manual-change: `1`
 - blocked: `1`
-- info: `3`
-- rewrite operations applied: `2`
+- rewrite operations applied: `6`
 
 ### Orders Platform 2.7 to 2.8
 
@@ -114,13 +114,13 @@ Expected result:
 - `rewrite` applies the replacement
 - the rewritten artifact contains `org.apache.nifi.processors.standard.EncodeContent`
 
-## GetHTTP Manual-Change Demo
+## GetHTTP Assisted Rewrite Demo
 
 This demo models a NiFi `1.27.0` flow containing:
 
 - `org.apache.nifi.processors.standard.GetHTTP`
 
-The official `1.27 -> 2.0` rule pack treats this as a documented migration that still needs a human decision. Apache maps it to `InvokeHTTP`, but the tool does not silently replace it because timeout, SSL, and response-handling choices still matter.
+The official `1.27 -> 2.0` rule pack now treats this as an assisted rewrite. Apache maps it to `InvokeHTTP`, and the tool scaffolds the target processor type and key properties, but timeout, SSL, and response-handling choices still remain visible for human review.
 
 Run it:
 
@@ -130,9 +130,9 @@ Run it:
 
 Expected result:
 
-- `analyze` shows a `manual-change` finding
-- `rewrite` applies `0` operations
-- the rewritten artifact exists, but the tool does not guess through the processor replacement
+- `analyze` shows an `assisted-rewrite` finding
+- `rewrite` applies scaffold operations into a separate rewritten artifact
+- the rewritten artifact is reviewable, not a claim that the migration is fully finished
 
 ## Asana Removal Demo
 
@@ -194,8 +194,8 @@ For the Base64 demo, you should see the opposite pattern:
 - a non-zero `auto-fix` count during `analyze`
 - one applied rewrite operation during `rewrite`
 
-For the GetHTTP manual-change demo, the middle path should be clear:
+For the GetHTTP assisted rewrite demo, the middle path should be clear:
 
-- `manual-change` is non-zero during `analyze`
-- `rewrite` produces a reviewed copy but applies zero operations
-- the report stays explicit about what a human still needs to change
+- `assisted-rewrite` is non-zero during `analyze`
+- `rewrite` produces a reviewed copy and scaffolds the target InvokeHTTP shape
+- the report stays explicit about what a human still needs to review

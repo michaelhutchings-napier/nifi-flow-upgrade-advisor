@@ -7,10 +7,11 @@
   "summary": {
     "totalFindings": 5,
     "byClass": {
+      "assisted-rewrite": 1,
       "auto-fix": 2,
       "blocked": 1,
       "info": 0,
-      "manual-change": 2,
+      "manual-change": 1,
       "manual-inspection": 0
     }
   },
@@ -49,7 +50,7 @@
     },
     {
       "ruleId": "core.get-http.replace",
-      "class": "manual-change",
+      "class": "assisted-rewrite",
       "severity": "warning",
       "message": "GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.",
       "component": {
@@ -58,7 +59,13 @@
         "type": "org.apache.nifi.processors.standard.GetHTTP",
         "scope": "processor",
         "path": "rootGroup/processors/FetchHTTP"
-      }
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "rename-property",
+        "set-property-if-absent",
+        "set-property-if-absent"
+      ]
     },
     {
       "ruleId": "core.invoke-http.proxy-properties.replace",

@@ -299,6 +299,11 @@ select[multiple] {
   color: var(--warning);
 }
 
+.finding-section.section-assisted-rewrite .section-icon {
+  background: rgba(120, 77, 171, 0.14);
+  color: #6d44a6;
+}
+
 .finding-section.section-auto-fix .section-icon {
   background: rgba(31, 127, 94, 0.14);
   color: var(--success);
@@ -338,6 +343,10 @@ select[multiple] {
 
 .finding-section.section-review .finding-item {
   border-left: 4px solid rgba(171, 101, 29, 0.6);
+}
+
+.finding-section.section-assisted-rewrite .finding-item {
+  border-left: 4px solid rgba(120, 77, 171, 0.55);
 }
 
 .finding-section.section-auto-fix .finding-item {
@@ -494,10 +503,6 @@ select[multiple] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 14px 0;
-}
-
-.metric-grid-four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .metric-card {

@@ -10,11 +10,11 @@ import (
 )
 
 type goldenSnapshot struct {
-	RulePacks     []string          `json:"rulePacks"`
-	SourceVersion string            `json:"sourceVersion"`
-	TargetVersion string            `json:"targetVersion"`
-	Summary       ReportSummary     `json:"summary"`
-	Findings      []goldenFinding   `json:"findings"`
+	RulePacks     []string        `json:"rulePacks"`
+	SourceVersion string          `json:"sourceVersion"`
+	TargetVersion string          `json:"targetVersion"`
+	Summary       ReportSummary   `json:"summary"`
+	Findings      []goldenFinding `json:"findings"`
 }
 
 type goldenFinding struct {

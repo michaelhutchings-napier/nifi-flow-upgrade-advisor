@@ -1849,6 +1849,194 @@ spec:
 	}
 }
 
+func TestRunAnalyzeIncludesAssistedRewriteFindings(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	rulePackPath := filepath.Join(tmpDir, "assisted-analyze-rulepack.yaml")
+
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "proc-1",
+        "name": "LegacyFetcher",
+        "type": "org.apache.nifi.example.LegacyFetcher",
+        "properties": {
+          "URL": "https://example.com/orders"
+        }
+      }
+    ]
+  }
+}`)
+
+	if err := os.WriteFile(rulePackPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: assisted-analyze-pack
+spec:
+  sourceVersionRange: ">=1.27.0 <2.0.0"
+  targetVersionRange: ">=2.0.0 <2.1.0"
+  appliesToFormats:
+    - flow-json-gz
+  rules:
+    - id: assisted.fetcher.scaffold
+      category: component-replaced
+      class: assisted-rewrite
+      severity: warning
+      message: Scaffold the replacement fetcher configuration.
+      selector:
+        componentType: org.apache.nifi.example.LegacyFetcher
+      match:
+        propertyExists: URL
+      actions:
+        - type: copy-property
+          from: URL
+          to: Remote URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: GET
+`), 0o644); err != nil {
+		t.Fatalf("write rule pack: %v", err)
+	}
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.27.0",
+		TargetVersion: "2.0.0",
+		RulePackPaths: []string{rulePackPath},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		AnalysisName:  "assisted-analyze",
+		FailOn:        "never",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+
+	if got := result.Report.Summary.ByClass["assisted-rewrite"]; got != 1 {
+		t.Fatalf("expected 1 assisted-rewrite finding, got %d", got)
+	}
+	if len(result.Report.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
+	}
+	actions := result.Report.Findings[0].SuggestedActions
+	if len(actions) != 2 {
+		t.Fatalf("expected 2 suggested actions, got %d", len(actions))
+	}
+	if actions[0].Type != "copy-property" {
+		t.Fatalf("expected first action copy-property, got %q", actions[0].Type)
+	}
+	if actions[1].Type != "set-property-if-absent" {
+		t.Fatalf("expected second action set-property-if-absent, got %q", actions[1].Type)
+	}
+}
+
+func TestRunRewriteSupportsAssistedRewriteScaffolds(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	rulePackPath := filepath.Join(tmpDir, "assisted-rewrite-rulepack.yaml")
+
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "proc-1",
+        "name": "LegacyFetcher",
+        "type": "org.apache.nifi.example.LegacyFetcher",
+        "properties": {
+          "URL": "https://example.com/orders"
+        }
+      }
+    ]
+  }
+}`)
+
+	if err := os.WriteFile(rulePackPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: assisted-rewrite-pack
+spec:
+  sourceVersionRange: ">=1.27.0 <2.0.0"
+  targetVersionRange: ">=2.0.0 <2.1.0"
+  appliesToFormats:
+    - flow-json-gz
+  rules:
+    - id: assisted.fetcher.scaffold
+      category: component-replaced
+      class: assisted-rewrite
+      severity: warning
+      message: Scaffold the replacement fetcher configuration.
+      selector:
+        componentType: org.apache.nifi.example.LegacyFetcher
+      match:
+        propertyExists: URL
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.example.LegacyFetcher
+          to: org.apache.nifi.example.HttpFetcher
+        - type: copy-property
+          from: URL
+          to: Remote URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: GET
+`), 0o644); err != nil {
+		t.Fatalf("write rule pack: %v", err)
+	}
+
+	result, err := RunRewrite(RewriteConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.27.0",
+		TargetVersion: "2.0.0",
+		RulePackPaths: []string{rulePackPath},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		RewriteName:   "assisted-rewrite",
+	})
+	if err != nil {
+		t.Fatalf("RunRewrite() error = %v", err)
+	}
+
+	if result.Report.Summary.AppliedOperations != 3 {
+		t.Fatalf("expected 3 applied operations, got %d", result.Report.Summary.AppliedOperations)
+	}
+	if got := result.Report.Summary.AppliedByClass["assisted-rewrite"]; got != 3 {
+		t.Fatalf("expected 3 applied assisted-rewrite operations, got %d", got)
+	}
+	if result.Report.Operations[0].Class != "assisted-rewrite" {
+		t.Fatalf("expected assisted-rewrite class on operation, got %q", result.Report.Operations[0].Class)
+	}
+
+	_, content, err := readSourceArtifact(result.RewrittenFlowPath, SourceFormatFlowJSONGZ)
+	if err != nil {
+		t.Fatalf("read rewritten artifact: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(content), &payload); err != nil {
+		t.Fatalf("unmarshal rewritten artifact: %v", err)
+	}
+	processor := payload["rootGroup"].(map[string]any)["processors"].([]any)[0].(map[string]any)
+	properties := processor["properties"].(map[string]any)
+	if processor["type"] != "org.apache.nifi.example.HttpFetcher" {
+		t.Fatalf("expected rewritten component type, got %v", processor["type"])
+	}
+	if properties["URL"] != "https://example.com/orders" {
+		t.Fatalf("expected original URL property to remain, got %v", properties["URL"])
+	}
+	if properties["Remote URL"] != "https://example.com/orders" {
+		t.Fatalf("expected scaffolded Remote URL property, got %v", properties["Remote URL"])
+	}
+	if properties["HTTP Method"] != "GET" {
+		t.Fatalf("expected scaffolded HTTP Method GET, got %v", properties["HTTP Method"])
+	}
+}
+
 func TestRunRewriteSkipsPropertyValueReplacementWhenValueDiffers(t *testing.T) {
 	t.Parallel()
 

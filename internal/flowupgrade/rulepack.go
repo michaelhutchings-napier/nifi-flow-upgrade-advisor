@@ -33,6 +33,7 @@ var (
 	}
 	allowedFindingClasses = map[string]struct{}{
 		"auto-fix":          {},
+		"assisted-rewrite":  {},
 		"manual-change":     {},
 		"manual-inspection": {},
 		"blocked":           {},
@@ -53,6 +54,8 @@ var (
 	allowedActionTypes = map[string]struct{}{
 		"rename-property":          {},
 		"set-property":             {},
+		"set-property-if-absent":   {},
+		"copy-property":            {},
 		"remove-property":          {},
 		"replace-property-value":   {},
 		"update-bundle-coordinate": {},
@@ -220,6 +223,14 @@ func validateAction(action RuleAction) error {
 	case "set-property":
 		if strings.TrimSpace(action.Property) == "" || action.Value == "" {
 			return fmt.Errorf("set-property requires property and value")
+		}
+	case "set-property-if-absent":
+		if strings.TrimSpace(action.Property) == "" || action.Value == "" {
+			return fmt.Errorf("set-property-if-absent requires property and value")
+		}
+	case "copy-property":
+		if strings.TrimSpace(action.From) == "" || strings.TrimSpace(action.To) == "" {
+			return fmt.Errorf("copy-property requires from and to")
 		}
 	case "remove-property":
 		if strings.TrimSpace(action.Name) == "" {

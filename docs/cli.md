@@ -18,7 +18,7 @@ The desktop app is the default way to use the tool interactively. The CLI remain
 The intended user-facing modes are:
 
 - `analyze`: inspection and preflight
-- `rewrite`: deterministic upgrade or conversion where the rule pack declares it safe
+- `rewrite`: deterministic upgrade plus assisted scaffolding where the rule pack declares it safe enough to generate a reviewable output artifact
 - `validate`: target-facing checks on the produced or selected artifact
 
 The desktop app sits on top of these commands and generated reports instead of inventing a separate workflow.
@@ -98,6 +98,7 @@ nifi-flow-upgrade rewrite \
 Current rewrite support is intentionally narrow:
 
 - only rules with `class: auto-fix` execute actions
+- rules with `class: assisted-rewrite` also execute, but should be treated as reviewable scaffolds rather than finished migrations
 - only deterministic action types execute
 - current artifact support includes file-based JSON inputs such as `flow-json-gz`, `versioned-flow-snapshot`, and `nifi-registry-export`
 - `git-registry-dir` rewrite support is also implemented for JSON files inside Git-backed registry trees

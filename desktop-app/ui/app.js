@@ -153,7 +153,11 @@ function renderActionSelection() {
     latestReport && latestReport.kind === "MigrationReport"
       ? Number(latestReport.summary?.byClass?.["auto-fix"] || 0)
       : null;
-  const hasNoSafeRewrites = rewriteSafeFixes === 0;
+  const rewriteAssisted =
+    latestReport && latestReport.kind === "MigrationReport"
+      ? Number(latestReport.summary?.byClass?.["assisted-rewrite"] || 0)
+      : null;
+  const hasNoRewrites = rewriteSafeFixes === 0 && rewriteAssisted === 0;
 
   document.querySelectorAll("[data-action]").forEach((button) => {
     const action = button.dataset.action;
@@ -161,18 +165,28 @@ function renderActionSelection() {
     button.classList.toggle("is-running", action === running);
     button.disabled =
       (running !== null && action !== running) ||
-      (action === "rewrite" && running === null && hasNoSafeRewrites);
+      (action === "rewrite" && running === null && hasNoRewrites);
     button.setAttribute("aria-pressed", String(action === selected));
   });
 
-  if (rewriteSafeFixes === null) {
+  if (rewriteSafeFixes === null || rewriteAssisted === null) {
     setText("rewriteAvailabilityNote", "");
-  } else if (hasNoSafeRewrites) {
-    setText("rewriteAvailabilityNote", "No safe rewrites are available for this flow.");
-  } else {
+  } else if (hasNoRewrites) {
+    setText("rewriteAvailabilityNote", "No rewrites are available for this flow.");
+  } else if (rewriteSafeFixes > 0 && rewriteAssisted > 0) {
+    setText(
+      "rewriteAvailabilityNote",
+      `${rewriteSafeFixes} safe rewrite${rewriteSafeFixes === 1 ? "" : "s"} and ${rewriteAssisted} assisted rewrite${rewriteAssisted === 1 ? "" : "s"} available for this flow.`
+    );
+  } else if (rewriteSafeFixes > 0) {
     setText(
       "rewriteAvailabilityNote",
       `${rewriteSafeFixes} safe rewrite${rewriteSafeFixes === 1 ? "" : "s"} available for this flow.`
+    );
+  } else {
+    setText(
+      "rewriteAvailabilityNote",
+      `${rewriteAssisted} assisted rewrite${rewriteAssisted === 1 ? "" : "s"} available for this flow.`
     );
   }
 
@@ -588,7 +602,7 @@ function focusReportView() {
 }
 
 function focusRelevantFindings() {
-  const priorities = ["blocked", "review", "auto-fix", "info"];
+  const priorities = ["blocked", "assisted-rewrite", "review", "auto-fix", "info"];
   for (const kind of priorities) {
     const section = document.querySelector(`.finding-section.section-${kind}`);
     if (section) {
@@ -642,6 +656,7 @@ function renderResultOverview(report, result) {
     const byClass = report.summary?.byClass || {};
     const blocked = byClass["blocked"] || 0;
     const autoFix = byClass["auto-fix"] || 0;
+    const assisted = byClass["assisted-rewrite"] || 0;
     const manual = (byClass["manual-change"] || 0) + (byClass["manual-inspection"] || 0);
     const info = byClass["info"] || 0;
     const topFinding = Array.isArray(report.findings) && report.findings.length > 0 ? report.findings[0] : null;
@@ -651,10 +666,10 @@ function renderResultOverview(report, result) {
       headline.textContent = "Upgrade path blocked: move this flow to 1.27.x before targeting NiFi 2.x";
     } else if (blocked > 0) {
       headline.textContent = `Blocked upgrade: ${blocked} required change${blocked === 1 ? "" : "s"}`;
+    } else if (autoFix > 0 || assisted > 0) {
+      headline.textContent = `Rewrite available: ${autoFix} safe, ${assisted} assisted`;
     } else if (manual > 0) {
       headline.textContent = `Review needed: ${manual} change${manual === 1 ? "" : "s"}`;
-    } else if (autoFix > 0) {
-      headline.textContent = `Ready to rewrite: ${autoFix} safe fix${autoFix === 1 ? "" : "es"} available`;
     } else {
       headline.textContent = "No flow-specific upgrade issues found.";
     }
@@ -668,6 +683,7 @@ function renderResultOverview(report, result) {
 
     metrics.appendChild(metricCard("Blocked", blocked));
     metrics.appendChild(metricCard("Safe fixes", autoFix));
+    metrics.appendChild(metricCard("Assisted", assisted));
     metrics.appendChild(metricCard("Review items", manual));
     metrics.appendChild(metricCard("Info", info));
     meta.textContent = `Flow ${sourceLabel} • Target ${targetVersion}`;
@@ -678,9 +694,15 @@ function renderResultOverview(report, result) {
       }
     } else if (blocked > 0) {
       setResultNextAction({ label: "Review blockers", onClick: () => focusFindingSection("blocked") });
-    } else if (autoFix > 0) {
+    } else if (autoFix > 0 || assisted > 0) {
       setResultNextAction({ label: "Run Rewrite", onClick: () => runAction("rewrite") });
-      subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"}.`;
+      if (autoFix > 0 && assisted > 0) {
+        subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"} and scaffold ${assisted} reviewable change${assisted === 1 ? "" : "s"}.`;
+      } else if (autoFix > 0) {
+        subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"}.`;
+      } else {
+        subhead.textContent = `This flow can move forward. Rewrite can scaffold ${assisted} reviewable change${assisted === 1 ? "" : "s"}.`;
+      }
     } else if (manual > 0) {
       setResultNextAction({ label: "Review findings", onClick: () => focusFindingSection("review") });
     } else {
@@ -694,10 +716,14 @@ function renderResultOverview(report, result) {
     const applied = report.summary?.appliedOperations || 0;
     const skipped = report.summary?.skippedOperations || 0;
     const total = report.summary?.totalOperations || 0;
+    const appliedSafe = report.summary?.appliedByClass?.["auto-fix"] || 0;
+    const appliedAssisted = report.summary?.appliedByClass?.["assisted-rewrite"] || 0;
     headline.textContent =
-      applied > 0 ? `Rewrite applied: ${applied} safe change${applied === 1 ? "" : "s"}` : "No safe rewrites applied.";
-    subhead.textContent = `Rewrote ${sourceVersion} -> ${targetVersion} using deterministic migration actions only.`;
+      applied > 0 ? `Rewrite applied: ${applied} change${applied === 1 ? "" : "s"}` : "No rewrites applied.";
+    subhead.textContent = `Rewrote ${sourceVersion} -> ${targetVersion} using safe and assisted migration actions only.`;
     metrics.appendChild(metricCard("Applied", applied));
+    metrics.appendChild(metricCard("Safe", appliedSafe));
+    metrics.appendChild(metricCard("Assisted", appliedAssisted));
     metrics.appendChild(metricCard("Skipped", skipped));
     metrics.appendChild(metricCard("Total ops", total));
     meta.textContent = `Flow ${sourceLabel} • Target ${targetVersion}`;
@@ -748,6 +774,8 @@ function findingSectionTitle(kind) {
       return "Blocked";
     case "review":
       return "Review";
+    case "assisted-rewrite":
+      return "Assisted rewrites";
     case "auto-fix":
       return "Safe fixes";
     case "info":
@@ -763,6 +791,8 @@ function findingSectionIcon(kind) {
       return "!";
     case "review":
       return "?";
+    case "assisted-rewrite":
+      return "~";
     case "auto-fix":
       return "✓";
     case "info":
@@ -779,6 +809,8 @@ function summarizeSection(kind, count) {
         return "No blockers found.";
       case "review":
         return "No review items found.";
+      case "assisted-rewrite":
+        return "No assisted rewrites available.";
       case "auto-fix":
         return "No safe fixes available.";
       case "info":
@@ -792,6 +824,8 @@ function summarizeSection(kind, count) {
       return `${count} blocker${count === 1 ? "" : "s"} need attention.`;
     case "review":
       return `${count} review item${count === 1 ? "" : "s"} to check.`;
+    case "assisted-rewrite":
+      return `${count} assisted rewrite${count === 1 ? "" : "s"} can be scaffolded.`;
     case "auto-fix":
       return `${count} safe fix${count === 1 ? "" : "es"} can be applied.`;
     case "info":
@@ -824,6 +858,7 @@ function renderFindingSections(report) {
 
   const grouped = {
     blocked: report.findings.filter((finding) => finding.class === "blocked"),
+    "assisted-rewrite": report.findings.filter((finding) => finding.class === "assisted-rewrite"),
     review: report.findings.filter((finding) => finding.class === "manual-change" || finding.class === "manual-inspection"),
     "auto-fix": report.findings.filter((finding) => finding.class === "auto-fix"),
     info: report.findings.filter((finding) => finding.class === "info"),
@@ -904,7 +939,11 @@ function formatActionPreview(action) {
     case "replace-component-type":
       return `Replace component type ${baseName(params.from || "old")} with ${baseName(params.to || "new")}.`;
     case "set-property":
-      return `Set property ${params.name || "unknown"} to ${params.value || "value"}.`;
+      return `Set property ${params.property || "unknown"} to ${params.value || "value"}.`;
+    case "set-property-if-absent":
+      return `Create property ${params.property || "unknown"} with ${params.value || "value"} if it is missing.`;
+    case "copy-property":
+      return `Copy property ${params.from || "unknown"} into ${params.to || "unknown"}.`;
     case "update-bundle-coordinate":
       return "Update bundle coordinates to the target component bundle.";
     default:
@@ -932,8 +971,18 @@ function previewDiffFromAction(action) {
       };
     case "set-property":
       return {
-        before: `Property: ${params.name || "unknown"}`,
+        before: `Property: ${params.property || "unknown"}`,
         after: `Set to ${params.value || "value"}`,
+      };
+    case "set-property-if-absent":
+      return {
+        before: `Property: ${params.property || "unknown"}`,
+        after: `Create ${params.value || "value"}`,
+      };
+    case "copy-property":
+      return {
+        before: `Property: ${params.from || "unknown"}`,
+        after: `Copy to ${params.to || "unknown"}`,
       };
     default:
       return null;
@@ -950,12 +999,14 @@ function renderRewritePreview(report) {
     return;
   }
 
-  const autoFixFindings = report.findings.filter((finding) => finding.class === "auto-fix");
-  if (autoFixFindings.length === 0) {
+  const rewriteableFindings = report.findings.filter(
+    (finding) => finding.class === "auto-fix" || finding.class === "assisted-rewrite"
+  );
+  if (rewriteableFindings.length === 0) {
     return;
   }
 
-  autoFixFindings.forEach((finding) => {
+  rewriteableFindings.forEach((finding) => {
     const item = document.createElement("div");
     item.className = "preview-item";
 
@@ -968,7 +1019,7 @@ function renderRewritePreview(report) {
     if (detail) {
       const meta = document.createElement("div");
       meta.className = "preview-meta";
-      meta.textContent = detail;
+      meta.textContent = `${finding.class === "assisted-rewrite" ? "Assisted rewrite" : "Safe fix"} • ${detail}`;
       item.appendChild(meta);
     }
 
