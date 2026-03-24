@@ -26,7 +26,7 @@
         <h1>Ten-plus examples users can actually run.</h1>
         <p class="lede">
           The examples cover blocked upgrades, bridge requirements, assisted rewrites,
-          manual-change paths, manual-inspection findings, info-only guidance, and safe auto-fixes
+          manual-change paths, assisted rewrites, manual-inspection findings, and safe auto-fixes
           across both `1.x` and `2.x` migration lines.
         </p>
         <div class="actions">
@@ -163,7 +163,7 @@
             <pre><code>./demo/asana-2.7-to-2.8.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status manual-pill">Assisted rewrite</div>
+            <div class="demo-status assisted-pill">Assisted rewrite</div>
             <h2>GetHTTP to InvokeHTTP</h2>
             <p>The advisor scaffolds the target InvokeHTTP shape while keeping timeout, SSL, and response handling review visible.</p>
             <pre><code>./demo/get-http-1.27-to-2.0.sh</code></pre>
@@ -199,9 +199,9 @@
             <pre><code>./demo/invoke-http-url-encoding-1.23-to-1.24.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status manual-pill">Manual-change</div>
+            <div class="demo-status assisted-pill">Assisted rewrite</div>
             <h2>ListenHTTP rate limit removed</h2>
-            <p>Shows removed rate-limit behavior for `2.3 -> 2.4` without pretending the review is automatic.</p>
+            <p>Shows removed rate-limit behavior for `2.3 -> 2.4` with a reviewed assisted cleanup.</p>
             <pre><code>./demo/listen-http-2.3-to-2.4.sh</code></pre>
           </article>
           <article class="demo-card">
@@ -217,9 +217,9 @@
             <pre><code>./demo/jolt-custom-class-2.7-to-2.8.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status success-pill">Info-only</div>
-            <h2>Content viewer contract note</h2>
-            <p>Shows a low-drama info example for the `2.4 -> 2.5` content-viewer contract change.</p>
+            <div class="demo-status quiet-pill">Quiet path</div>
+            <h2>Content viewer clean path</h2>
+            <p>Shows a low-drama clean-path example where the built-in coverage finds no flow-specific issues.</p>
             <pre><code>./demo/content-viewer-2.4-to-2.5.sh</code></pre>
           </article>
           <article class="demo-card">

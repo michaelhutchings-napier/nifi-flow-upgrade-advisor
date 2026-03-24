@@ -13,11 +13,13 @@ This directory contains runnable examples for `nifi-flow-upgrade-advisor`.
 - `./demo/bridge-upgrade-1.21-to-2.0.sh`: blocked bridge-upgrade requirement before `2.0.x`
 - `./demo/h2-dbcp-1.21-to-1.22.sh`: manual-change for H2 JDBC URLs on DBCP/Hikari
 - `./demo/jndi-jms-ldap-1.21-to-1.22.sh`: manual-change for LDAP Provider URLs on JNDI JMS
+- `./demo/messaging-platform-1.21-to-1.22.sh`: customer story showing assisted Cassandra cleanup plus guided JMS/Azure/script review
 - `./demo/invoke-http-url-encoding-1.23-to-1.24.sh`: manual-change for URL encoding review
-- `./demo/listen-http-2.3-to-2.4.sh`: manual-change for removed ListenHTTP rate limiting
+- `./demo/listen-http-2.3-to-2.4.sh`: assisted rewrite for removed ListenHTTP rate limiting
+- `./demo/edge-ingest-2.3-to-2.4.sh`: customer story showing assisted ListenHTTP rate-limit cleanup
 - `./demo/listen-syslog-2.6-to-2.7.sh`: safe auto-fix for `Port -> TCP Port`
 - `./demo/jolt-custom-class-2.7-to-2.8.sh`: manual-inspection for Jolt recompilation
-- `./demo/content-viewer-2.4-to-2.5.sh`: info-only example for content-viewer contract changes
+- `./demo/content-viewer-2.4-to-2.5.sh`: quiet-path example with no flow-specific findings
 - `./demo/reference-remote-resources-1.22-to-1.23.sh`: policy-review example for new restricted-resource access
 
 Run all demos:
@@ -93,6 +95,31 @@ Observed summary:
 - manual-change: `1`
 - manual-inspection: `4`
 - info: `2`
+
+### Messaging Platform 1.21 to 1.22
+
+```bash
+./demo/messaging-platform-1.21-to-1.22.sh
+```
+
+This flow shows a mixed bridge-upgrade story:
+
+- assisted removal of the deprecated Cassandra `Compression Type` property
+- guided Azure Queue v12 migration
+- guided LDAP-backed JMS review
+- guided scripted-component engine review
+
+### Edge Ingest 2.3 to 2.4
+
+```bash
+./demo/edge-ingest-2.3-to-2.4.sh
+```
+
+This flow shows an assisted property cleanup:
+
+- `ListenHTTP` no longer supports `Max Data to Receive per Second`
+- rewrite removes the property into a separate reviewed artifact
+- the report reminds the user to decide whether a new external rate-limiting approach is needed
 
 ## Base64 Auto-Fix Demo
 

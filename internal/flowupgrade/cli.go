@@ -82,9 +82,10 @@ func runAnalyzeCommand(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stdout, "Analysis %s completed\n", result.Report.Metadata.Name)
-	fmt.Fprintf(stdout, "Findings: total=%d auto-fix=%d manual-change=%d manual-inspection=%d blocked=%d info=%d\n",
+	fmt.Fprintf(stdout, "Findings: total=%d auto-fix=%d assisted-rewrite=%d manual-change=%d manual-inspection=%d blocked=%d info=%d\n",
 		result.Report.Summary.TotalFindings,
 		result.Report.Summary.ByClass["auto-fix"],
+		result.Report.Summary.ByClass["assisted-rewrite"],
 		result.Report.Summary.ByClass["manual-change"],
 		result.Report.Summary.ByClass["manual-inspection"],
 		result.Report.Summary.ByClass["blocked"],

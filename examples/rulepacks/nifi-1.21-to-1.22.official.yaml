@@ -60,6 +60,10 @@ spec:
         componentTypes:
           - org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
           - org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      actions:
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
       notes: Apache NiFi 1.22.0 deprecated these processors in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
@@ -98,7 +102,7 @@ spec:
 
     - id: core.cassandra.compression-type.removed
       category: property-removed
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
       message: Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.
       selector:
@@ -115,4 +119,3 @@ spec:
       notes: Apache NiFi 1.22.0 removed this property from AbstractCassandraProcessor. If non-default compression is still required, move that configuration to a Cassandra Connection Provider service before upgrade.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-

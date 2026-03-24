@@ -198,7 +198,7 @@ The featured customer-story demos are:
 The Asana demo produces a blocked `2.7.1 -> 2.8.0` result for removed components.
 The Base64 demo shows a real deterministic auto-fix and rewrite for `1.27.0 -> 2.0.0`.
 The GetHTTP demo shows the assisted-rewrite path where the tool scaffolds the target InvokeHTTP shape but still keeps human review visible.
-The demo catalog now includes 10+ runnable examples across blocked, bridge-required, manual-change, manual-inspection, info-only, auto-fix, and mixed-result customer stories.
+The demo catalog now includes 10+ runnable examples across blocked, bridge-required, manual-change, manual-inspection, assisted rewrite, auto-fix, and mixed-result customer stories.
 
 More realistic local fixtures for product testing live under [`demo/fixtures`](demo/fixtures), including:
 

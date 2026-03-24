@@ -7,11 +7,11 @@
   "summary": {
     "totalFindings": 6,
     "byClass": {
-      "assisted-rewrite": 0,
+      "assisted-rewrite": 1,
       "auto-fix": 0,
       "blocked": 0,
       "info": 0,
-      "manual-change": 6,
+      "manual-change": 5,
       "manual-inspection": 0
     }
   },
@@ -27,11 +27,14 @@
         "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
         "scope": "processor",
         "path": "rootGroup/processors/LegacyQueue"
-      }
+      },
+      "suggestedActions": [
+        "update-bundle-coordinate"
+      ]
     },
     {
       "ruleId": "core.cassandra.compression-type.removed",
-      "class": "manual-change",
+      "class": "assisted-rewrite",
       "severity": "warning",
       "message": "Cassandra processors no longer support the Compression Type property in NiFi 1.22.x.",
       "component": {

@@ -162,6 +162,31 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
 			goldenFile: "official_1_23_to_1_24.json",
 		},
 		{
+			name:          "official_2_3_to_2_4",
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "listen-http-1",
+        "name": "ReceiveWebhook",
+        "type": "org.apache.nifi.processors.standard.ListenHTTP",
+        "properties": {
+          "Listening Port": "8443",
+          "Max Data to Receive per Second": "10 MB"
+        }
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_2_3_to_2_4.json",
+		},
+		{
 			name:          "official_1_24_to_1_25",
 			sourceVersion: "1.24.0",
 			targetVersion: "1.25.0",
@@ -517,6 +542,26 @@ func TestRealisticFixturesAnalyze(t *testing.T) {
 				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml"),
 			},
 			minFindings: 3,
+		},
+		{
+			name:          "messaging_platform_1_21_to_1_22",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "messaging-platform-1.21-flow.json"),
+			sourceVersion: "1.21.0",
+			targetVersion: "1.22.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.21-to-1.22.official.yaml"),
+			},
+			minFindings: 4,
+		},
+		{
+			name:          "edge_ingest_2_3_to_2_4",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "edge-ingest-2.3-flow.json"),
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			},
+			minFindings: 1,
 		},
 	}
 

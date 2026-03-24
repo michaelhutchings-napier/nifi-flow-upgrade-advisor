@@ -1,0 +1,23 @@
+{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "Edge Ingest",
+    "processors": [
+      {
+        "id": "listen-1",
+        "name": "ReceiveWebhook",
+        "type": "org.apache.nifi.processors.standard.ListenHTTP",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.3.0"
+        },
+        "properties": {
+          "Listening Port": "8443",
+          "Base Path": "/hooks/orders",
+          "Max Data to Receive per Second": "10 MB"
+        }
+      }
+    ]
+  }
+}
