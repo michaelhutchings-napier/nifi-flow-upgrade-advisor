@@ -580,15 +580,54 @@ fn looks_like_git_registry_dir(path: &Path) -> bool {
     if !path.is_dir() {
         return false;
     }
+    looks_like_git_registry_dir_inner(path, 0)
+}
+
+fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
+    if depth > 3 {
+        return false;
+    }
+
     let Ok(entries) = fs::read_dir(path) else {
         return false;
     };
+
     for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() && path.extension() == Some(OsStr::new("json")) {
+        let candidate = entry.path();
+        if candidate.is_dir() {
+            if looks_like_git_registry_dir_inner(&candidate, depth + 1) {
+                return true;
+            }
+            continue;
+        }
+        if candidate.extension() != Some(OsStr::new("json")) {
+            continue;
+        }
+        let name = candidate
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if matches!(
+            name,
+            "migration-report.json"
+                | "rewrite-report.json"
+                | "validation-report.json"
+                | "run-report.json"
+        ) {
+            continue;
+        }
+
+        let Ok(body) = fs::read_to_string(&candidate) else {
+            continue;
+        };
+        if body.contains("\"flowContents\"")
+            || body.contains("\"externalControllerServices\"")
+            || body.contains("\"parameterContexts\"")
+        {
             return true;
         }
     }
+
     false
 }
 
