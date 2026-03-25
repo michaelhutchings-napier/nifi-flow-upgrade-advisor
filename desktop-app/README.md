@@ -28,7 +28,13 @@ The first desktop milestone focuses on:
 
 ## Expected Run Model
 
-On a machine with the normal Tauri desktop prerequisites installed, the app should run from:
+Desktop prerequisites:
+
+- install Rust with `rustup` so `cargo` is available
+- install the normal Tauri desktop prerequisites for your OS
+- on Linux, make sure the WebKit/GTK desktop libraries required by Tauri are present
+
+Then the app should run from:
 
 ```bash
 cargo run --manifest-path desktop-app/src-tauri/Cargo.toml

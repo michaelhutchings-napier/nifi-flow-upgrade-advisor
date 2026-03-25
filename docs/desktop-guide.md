@@ -2,6 +2,12 @@
 
 The desktop app is now the easiest way to use `nifi-flow-upgrade-advisor`.
 
+## Prerequisites
+
+- Install Rust with `rustup` so `cargo` is available.
+- Install the normal Tauri desktop prerequisites for your OS.
+- On Linux, make sure the WebKit/GTK desktop libraries required by Tauri are present.
+
 ## Quick flow
 
 1. Launch the desktop app.
