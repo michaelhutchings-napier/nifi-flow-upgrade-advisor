@@ -74,6 +74,37 @@ function preferredJsonReportPath(paths) {
   return paths.find((path) => path.endsWith(".json")) || null;
 }
 
+function reportGroupName(path) {
+  const name = String(path || "").split("/").pop() || "";
+  const base = name.replace(/\.(md|json)$/, "");
+  const labelMap = {
+    "migration-report": "Analyze",
+    "rewrite-report": "Rewrite",
+    "validation-report": "Validate",
+    "run-report": "Run",
+  };
+  return labelMap[base] || baseName(base || name || "Report");
+}
+
+function groupReportPaths(paths) {
+  const groups = new Map();
+  for (const reportPath of paths) {
+    const key = reportGroupName(reportPath);
+    if (!groups.has(key)) {
+      groups.set(key, { label: key, md: null, json: null });
+    }
+    const group = groups.get(key);
+    if (reportPath.endsWith(".md")) {
+      group.md = reportPath;
+    } else if (reportPath.endsWith(".json")) {
+      group.json = reportPath;
+    }
+  }
+  return ["Analyze", "Rewrite", "Validate", "Run"]
+    .map((label) => groups.get(label))
+    .filter(Boolean);
+}
+
 function displaySourceLabel(report) {
   const flow = selectedFlowCandidate();
   if (flow?.displayPath) {
@@ -1229,16 +1260,62 @@ async function renderReports(result) {
   renderRewritePreview(jsonReport);
   renderActionSelection();
 
-  for (const reportPath of state.reports) {
-    const button = document.createElement("button");
-    button.className = "button secondary";
-    button.textContent = reportLabel(reportPath);
-    button.title = reportPath.split("/").pop();
-    button.addEventListener("click", async () => {
-      const content = await invoke("read_text_file", { path: reportPath });
-      view.textContent = content;
-    });
-    list.appendChild(button);
+  const groups = groupReportPaths(state.reports);
+  for (const group of groups) {
+    const card = document.createElement("div");
+    card.className = "report-card";
+
+    const head = document.createElement("div");
+    head.className = "report-card-head";
+
+    const title = document.createElement("div");
+    title.className = "report-card-title";
+    title.textContent = group.label;
+    head.appendChild(title);
+
+    const meta = document.createElement("div");
+    meta.className = "report-card-meta";
+    meta.textContent = group.md ? "Readable report available" : "Structured export only";
+    head.appendChild(meta);
+    card.appendChild(head);
+
+    const actions = document.createElement("div");
+    actions.className = "report-card-actions";
+    const primaryPath = group.md || group.json;
+    if (primaryPath) {
+      const button = document.createElement("button");
+      button.className = "button secondary";
+      button.textContent = group.md ? `Open ${group.label} report` : `Open ${group.label} export`;
+      button.addEventListener("click", async () => {
+        const content = await invoke("read_text_file", { path: primaryPath });
+        view.textContent = content;
+      });
+      actions.appendChild(button);
+    }
+    card.appendChild(actions);
+
+    if (group.json) {
+      const advanced = document.createElement("details");
+      advanced.className = "report-advanced";
+      const summary = document.createElement("summary");
+      summary.textContent = "Automation details";
+      advanced.appendChild(summary);
+
+      const advancedActions = document.createElement("div");
+      advancedActions.className = "report-advanced-actions";
+      const jsonButton = document.createElement("button");
+      jsonButton.className = "button secondary";
+      jsonButton.textContent = `Open ${group.label} JSON`;
+      jsonButton.addEventListener("click", async () => {
+        const content = await invoke("read_text_file", { path: group.json });
+        view.textContent = content;
+      });
+      advancedActions.appendChild(jsonButton);
+      advanced.appendChild(advancedActions);
+      card.appendChild(advanced);
+    }
+
+    list.appendChild(card);
   }
 
   let defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];

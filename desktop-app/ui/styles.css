@@ -623,12 +623,58 @@ select[multiple] {
 
 .report-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin-top: 12px;
 }
 
-.report-list button {
-  justify-content: flex-start;
+.report-card {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 244, 0.88);
+}
+
+.report-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.report-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.report-card-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.report-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-advanced {
+  margin-top: 10px;
+}
+
+.report-advanced summary {
+  cursor: pointer;
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.report-advanced-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .badge.error {
