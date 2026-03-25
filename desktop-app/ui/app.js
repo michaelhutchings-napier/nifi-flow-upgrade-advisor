@@ -1245,8 +1245,8 @@ function renderResultOverview(report, result) {
     return;
   }
 
-  const sourceVersion = report.source?.nifiVersion || "unknown";
-  const targetVersion = report.target?.nifiVersion || "unknown";
+  const sourceVersion = report.source?.nifiVersion || byId("sourceVersion").value.trim() || "unknown";
+  const targetVersion = report.target?.nifiVersion || byId("targetVersion").value.trim() || "unknown";
   const sourceLabel = displaySourceLabel(report);
 
   if (report.kind === "MigrationReport" || report.kind === "ValidationReport") {
