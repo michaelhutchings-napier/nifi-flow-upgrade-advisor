@@ -10,6 +10,10 @@ use std::time::Instant;
 const MAX_PREVIEW_FINDINGS_PER_CLASS: usize = 25;
 const MAX_PREVIEW_OPERATIONS: usize = 50;
 const MAX_INLINE_VIEW_BYTES: u64 = 512 * 1024;
+const MAX_SCAN_DEPTH: usize = 5;
+const MAX_FILE_BYTES_FOR_CONTENT_SNIFF: u64 = 256 * 1024;
+const MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION: u64 = 2 * 1024 * 1024;
+const MAX_ENTRIES_PER_DIRECTORY: usize = 2000;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -846,6 +850,9 @@ fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String>
 
     dedupe_entries(&mut rule_packs);
     dedupe_entries(&mut manifests);
+    flow_candidates.sort_by(|a, b| a.display_path.cmp(&b.display_path));
+    rule_packs.sort_by(|a, b| a.display_path.cmp(&b.display_path));
+    manifests.sort_by(|a, b| a.display_path.cmp(&b.display_path));
 
     Ok(BootstrapState {
         workspace_root: workspace_root.to_string_lossy().to_string(),
@@ -878,28 +885,25 @@ fn scan_dir(
     manifests: &mut Vec<WorkspaceEntry>,
     depth: usize,
 ) -> Result<(), String> {
-    if depth > 5 {
+    if depth > MAX_SCAN_DEPTH {
         return Ok(());
     }
 
     let entries =
         fs::read_dir(current).map_err(|err| format!("scan {}: {}", current.display(), err))?;
-    for entry in entries {
+    for (index, entry) in entries.enumerate() {
+        if index >= MAX_ENTRIES_PER_DIRECTORY {
+            break;
+        }
         let entry = entry.map_err(|err| format!("scan entry: {}", err))?;
         let path = entry.path();
         let name = entry.file_name();
         let name = name.to_string_lossy();
 
-        if name == ".git"
-            || name == "target"
-            || name == "node_modules"
-            || name == ".nifi-flow-upgrade-desktop"
-            || (name == "out" && current.ends_with("demo"))
-        {
-            continue;
-        }
-
         if path.is_dir() {
+            if should_skip_dir(&name, current) {
+                continue;
+            }
             if looks_like_git_registry_dir(&path) {
                 flows.push(new_entry(
                     root,
@@ -937,15 +941,12 @@ fn scan_dir(
         }
     }
 
-    flows.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-    rule_packs.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-    manifests.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-
     Ok(())
 }
 
 fn detect_flow_format(path: &Path) -> Option<(&'static str, &'static str)> {
     let name = path.file_name()?.to_string_lossy();
+    let lowered = name.to_ascii_lowercase();
     if name.ends_with(".json.gz") {
         return Some(("Flow artifact", "flow-json-gz"));
     }
@@ -953,7 +954,12 @@ fn detect_flow_format(path: &Path) -> Option<(&'static str, &'static str)> {
         return Some(("Legacy flow.xml.gz", "flow-xml-gz"));
     }
     if name.ends_with(".json") {
-        let body = fs::read_to_string(path).ok()?;
+        if !looks_like_flow_json_name(&lowered)
+            && file_size(path).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF)
+        {
+            return None;
+        }
+        let body = read_text_prefix(path, MAX_FILE_BYTES_FOR_CONTENT_SNIFF).ok()?;
         if body.contains("\"rootGroup\"") || body.contains("\"parameterContexts\"") {
             return Some(("Flow fixture JSON", "flow-json-fixture"));
         }
@@ -980,7 +986,10 @@ fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
         return false;
     };
 
-    for entry in entries.flatten() {
+    for (index, entry) in entries.flatten().enumerate() {
+        if index >= MAX_ENTRIES_PER_DIRECTORY {
+            break;
+        }
         let candidate = entry.path();
         if candidate.is_dir() {
             if looks_like_git_registry_dir_inner(&candidate, depth + 1) {
@@ -1005,7 +1014,10 @@ fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
             continue;
         }
 
-        let Ok(body) = fs::read_to_string(&candidate) else {
+        if file_size(&candidate).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF) {
+            continue;
+        }
+        let Ok(body) = read_text_prefix(&candidate, MAX_FILE_BYTES_FOR_CONTENT_SNIFF) else {
             continue;
         };
         if body.contains("\"flowContents\"")
@@ -1046,6 +1058,9 @@ fn new_entry(
 fn detect_source_version(path: &Path) -> Option<VersionDetection> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     if name.ends_with(".json.gz") {
+        if file_size(path).is_some_and(|size| size > MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION) {
+            return None;
+        }
         let content = fs::read(path).ok()?;
         let mut reader = flate2::read::GzDecoder::new(&content[..]);
         let mut decoded = String::new();
@@ -1053,6 +1068,9 @@ fn detect_source_version(path: &Path) -> Option<VersionDetection> {
         return detect_version_from_text(&decoded);
     }
     if name.ends_with(".xml.gz") {
+        if file_size(path).is_some_and(|size| size > MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION) {
+            return None;
+        }
         let content = fs::read(path).ok()?;
         let mut reader = flate2::read::GzDecoder::new(&content[..]);
         let mut decoded = String::new();
@@ -1060,10 +1078,49 @@ fn detect_source_version(path: &Path) -> Option<VersionDetection> {
         return detect_version_from_text(&decoded);
     }
     if name.ends_with(".json") || name.ends_with(".yaml") || name.ends_with(".yml") {
-        let body = fs::read_to_string(path).ok()?;
+        if file_size(path).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF) {
+            return None;
+        }
+        let body = read_text_prefix(path, MAX_FILE_BYTES_FOR_CONTENT_SNIFF).ok()?;
         return detect_version_from_text(&body);
     }
     None
+}
+
+fn should_skip_dir(name: &str, current: &Path) -> bool {
+    name == ".git"
+        || name == "target"
+        || name == "node_modules"
+        || name == ".nifi-flow-upgrade-desktop"
+        || name == ".idea"
+        || name == ".vscode"
+        || name == ".gradle"
+        || name == ".terraform"
+        || name == ".venv"
+        || name == "__pycache__"
+        || name == "vendor"
+        || name == "dist"
+        || name == "build"
+        || name == "coverage"
+        || name == ".next"
+        || name == ".yarn"
+        || (name.starts_with('.') && name != ".github")
+        || (name == "out" && current.ends_with("demo"))
+}
+
+fn file_size(path: &Path) -> Option<u64> {
+    fs::metadata(path).ok().map(|meta| meta.len())
+}
+
+fn read_text_prefix(path: &Path, max_bytes: u64) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|err| format!("read {}: {}", path.display(), err))?;
+    let limit = usize::try_from(max_bytes).unwrap_or(usize::MAX);
+    let prefix = &bytes[..bytes.len().min(limit)];
+    Ok(String::from_utf8_lossy(prefix).to_string())
+}
+
+fn looks_like_flow_json_name(name: &str) -> bool {
+    name.contains("flow") || name.contains("snapshot") || name.contains("registry")
 }
 
 fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
