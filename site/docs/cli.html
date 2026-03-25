@@ -42,7 +42,7 @@
             <h2>Core commands</h2>
             <ul>
               <li><code>analyze</code> compares a source artifact against a target version and emits JSON and Markdown findings.</li>
-              <li><code>rewrite</code> applies only deterministic safe actions from an analysis plan.</li>
+              <li><code>rewrite</code> applies deterministic safe actions and reviewable assisted scaffolds from an analysis plan.</li>
               <li><code>validate</code> checks target version, extension inventory, and destination process-group readiness.</li>
               <li><code>publish</code> hands off reviewed outputs to a filesystem, Git-backed registry tree, or NiFi Registry.</li>
               <li><code>run</code> orchestrates the full flow end to end.</li>
@@ -70,6 +70,7 @@
               <li>Markdown output is review-friendly for flow owners and platform teams.</li>
               <li>Blocked findings return a non-zero exit code so pipelines can stop early.</li>
               <li><code>auto-fix</code> means a safe rewrite candidate exists, not that the artifact has already changed.</li>
+              <li><code>assisted-rewrite</code> means the tool can scaffold part of the migration, but a human still needs to review the result.</li>
             </ul>
           </div>
           <div class="card">

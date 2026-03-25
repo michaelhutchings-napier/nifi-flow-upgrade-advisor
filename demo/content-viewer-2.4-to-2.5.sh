@@ -14,7 +14,7 @@ rm -rf "${OUT_DIR}"
 ensure_demo_binary
 gzip_fixture "${FIXTURE_JSON}" "${SOURCE_GZ}"
 
-echo "Running content-viewer 2.4.0 -> 2.5.0 info-only demo"
+echo "Running content-viewer 2.4.0 -> 2.5.0 quiet-path demo"
 if run_demo_analyze "${SOURCE_GZ}" "2.4.0" "2.5.0" "${RULE_PACK}" "${OUT_DIR}"; then
   ANALYZE_EXIT=0
 else
@@ -24,7 +24,8 @@ echo
 echo "Analyze exit code: ${ANALYZE_EXIT}"
 echo "Expected outcome:"
 echo "  - analyze exits 0"
-echo "  - report carries an info finding about the content-viewer contract"
+echo "  - no flow-specific findings are produced for this minimal fixture"
+echo "  - this is a clean-path example rather than a migration-warning example"
 print_demo_footer "${OUT_DIR}" \
   "${OUT_DIR}/migration-report.json" \
   "${OUT_DIR}/migration-report.md"

@@ -6,7 +6,7 @@
     <title>NiFi 1.x to 2.x Migration Guide | nifi-flow-upgrade-advisor</title>
     <meta
       name="description"
-      content="A practical user-facing guide to NiFi 1.x to 2.x migration: bridge upgrades, common blockers, safe rewrites, and what to review manually."
+      content="A practical user-facing guide to NiFi 1.x to 2.x migration: bridge upgrades, common blockers, safe rewrites, assisted rewrites, and what to review manually."
     >
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/nifi-1x-to-2x-migration.html">
@@ -44,7 +44,7 @@
             <ul>
               <li>analyze the current 1.x flow</li>
               <li>check whether a bridge upgrade is required first</li>
-              <li>apply safe rewrites only</li>
+              <li>apply safe and assisted rewrites where the rule pack makes them explicit</li>
               <li>review blocked and manual-change findings</li>
               <li>validate against the target 2.x runtime</li>
             </ul>
@@ -68,7 +68,7 @@
             <h2>A good first demo</h2>
             <p>
               Start with the Orders Platform `1.27 -> 2.0` story. It shows the real mixed-result
-              case: one blocked finding, two safe rewrites, and two manual-change findings in a
+              case: one blocked finding, two safe rewrites, one assisted rewrite, and one manual-change finding in a
               single flow.
             </p>
           </div>

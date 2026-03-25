@@ -14,7 +14,7 @@
     <meta property="og:title" content="Apache NiFi Flow Upgrade Tool | nifi-flow-upgrade-advisor">
     <meta
       property="og:description"
-      content="Analyze NiFi upgrades, apply deterministic safe rewrites, validate target readiness, and publish reviewed upgraded flow artifacts."
+      content="Analyze NiFi upgrades, apply deterministic safe rewrites and assisted scaffolds, validate target readiness, and publish reviewed upgraded flow artifacts."
     >
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="nifi-flow-upgrade-advisor">
@@ -107,14 +107,14 @@
                 <span class="step-index">2</span>
                 <div>
                   <strong>Rewrite</strong>
-                  <p>0 safe rewrites, manual replacement required</p>
+                  <p>0 safe rewrites, no automatic conversion path</p>
                 </div>
               </div>
               <div class="pipeline-step blocked">
                 <span class="step-index">3</span>
                 <div>
                   <strong>Validate</strong>
-                  <p>Target 2.8 runtime does not include Asana components</p>
+                  <p>Skipped until the blocked upgrade findings are resolved</p>
                 </div>
               </div>
             </div>
@@ -181,11 +181,11 @@
               </a>
               <a class="link-card" href="./docs/analyze.html">
                 <strong>Check an upgrade path</strong>
-                <span>Start with analyze to see blockers, manual changes, and safe rewrite candidates before you touch the flow.</span>
+                <span>Start with analyze to see blockers, assisted rewrites, manual changes, and safe rewrite candidates before you touch the flow.</span>
               </a>
               <a class="link-card" href="./docs/rewrite.html">
-                <strong>Apply safe rewrites</strong>
-                <span>Use rewrite when you want the tool to handle the deterministic part and leave risky migration work visible.</span>
+                <strong>Apply rewrites</strong>
+                <span>Use rewrite when you want the tool to handle the deterministic part, scaffold reviewable changes, and leave risky migration work visible.</span>
               </a>
               <a class="link-card" href="./docs/validate.html">
                 <strong>Validate the target</strong>
@@ -231,9 +231,9 @@
                 </div>
               </article>
               <article class="demo-card">
-                <div class="demo-status manual-pill">Manual-change path</div>
+                <div class="demo-status manual-pill">Assisted rewrite</div>
                 <h3>GetHTTP on 1.27 to 2.0</h3>
-                <p>The demo shows the middle case: Apache documents the migration, but the tool keeps the replacement as human-reviewed work instead of silently guessing.</p>
+                <p>The demo shows the middle case: Apache documents the migration, and the tool scaffolds the target InvokeHTTP shape while still leaving final review visible to a human.</p>
                 <pre><code>./demo/get-http-1.27-to-2.0.sh</code></pre>
                 <div class="demo-actions">
                   <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/get-http-1.27-to-2.0.sh">View script</a>
@@ -268,7 +268,7 @@
               </a>
               <a class="link-card" href="./docs/rule-pack-format.html">
                 <strong>Rule packs</strong>
-                <span>Understand how upgrade rules are authored and why rewrites stay explicit.</span>
+                <span>Understand how upgrade rules are authored, including private packs for custom processors and services.</span>
               </a>
               <a class="link-card" href="./docs/troubleshooting.html">
                 <strong>Troubleshooting</strong>

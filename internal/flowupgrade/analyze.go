@@ -519,6 +519,12 @@ func suggestedAction(action RuleAction) SuggestedAction {
 	case "set-property":
 		params["property"] = action.Property
 		params["value"] = action.Value
+	case "set-property-if-absent":
+		params["property"] = action.Property
+		params["value"] = action.Value
+	case "copy-property":
+		params["from"] = action.From
+		params["to"] = action.To
 	case "remove-property":
 		params["name"] = action.Name
 	case "replace-property-value":
@@ -549,6 +555,7 @@ func summarizeRulePacks(packs []RulePack) []RulePackRef {
 func summarizeFindings(findings []MigrationFinding) ReportSummary {
 	byClass := map[string]int{
 		"auto-fix":          0,
+		"assisted-rewrite":  0,
 		"manual-change":     0,
 		"manual-inspection": 0,
 		"blocked":           0,
@@ -620,12 +627,13 @@ func renderMarkdownReport(report MigrationReport) string {
 	builder.WriteString("## Summary\n\n")
 	builder.WriteString(fmt.Sprintf("- Total findings: `%d`\n", report.Summary.TotalFindings))
 	builder.WriteString(fmt.Sprintf("- Auto-fix: `%d`\n", report.Summary.ByClass["auto-fix"]))
+	builder.WriteString(fmt.Sprintf("- Assisted-rewrite: `%d`\n", report.Summary.ByClass["assisted-rewrite"]))
 	builder.WriteString(fmt.Sprintf("- Manual-change: `%d`\n", report.Summary.ByClass["manual-change"]))
 	builder.WriteString(fmt.Sprintf("- Manual-inspection: `%d`\n", report.Summary.ByClass["manual-inspection"]))
 	builder.WriteString(fmt.Sprintf("- Blocked: `%d`\n", report.Summary.ByClass["blocked"]))
 	builder.WriteString(fmt.Sprintf("- Info: `%d`\n\n", report.Summary.ByClass["info"]))
 
-	order := []string{"blocked", "manual-change", "manual-inspection", "auto-fix", "info"}
+	order := []string{"blocked", "manual-change", "manual-inspection", "assisted-rewrite", "auto-fix", "info"}
 	grouped := map[string][]MigrationFinding{}
 	for _, finding := range report.Findings {
 		grouped[finding.Class] = append(grouped[finding.Class], finding)
@@ -671,6 +679,8 @@ func renderMarkdownReport(report MigrationReport) string {
 	builder.WriteString("## Recommended Next Steps\n\n")
 	if report.Summary.ByClass["blocked"] > 0 {
 		builder.WriteString("- Resolve blocked findings before upgrade.\n")
+	} else if report.Summary.ByClass["assisted-rewrite"] > 0 || report.Summary.ByClass["auto-fix"] > 0 {
+		builder.WriteString("- Rewrite can apply the deterministic and assisted scaffolding steps in a separate artifact. Review the resulting flow before import.\n")
 	} else if report.Summary.ByClass["manual-change"] > 0 || report.Summary.ByClass["manual-inspection"] > 0 {
 		builder.WriteString("- Review manual-change and manual-inspection findings before moving to rewrite or validation.\n")
 	} else {

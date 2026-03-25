@@ -5,12 +5,13 @@
   "sourceVersion": "1.27.0",
   "targetVersion": "2.0.0",
   "summary": {
-    "totalFindings": 5,
+    "totalFindings": 13,
     "byClass": {
+      "assisted-rewrite": 1,
       "auto-fix": 2,
       "blocked": 1,
       "info": 0,
-      "manual-change": 2,
+      "manual-change": 9,
       "manual-inspection": 0
     }
   },
@@ -32,6 +33,36 @@
       ]
     },
     {
+      "ruleId": "core.cassandra-session-provider.deprecated-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "CassandraSessionProvider should be reviewed before NiFi 2.0.x.",
+      "component": {
+        "id": "cass-1",
+        "name": "OrdersCassandra",
+        "type": "org.apache.nifi.service.CassandraSessionProvider",
+        "scope": "controller-service",
+        "path": "rootGroup/controllerServices/OrdersCassandra"
+      }
+    },
+    {
+      "ruleId": "core.convert-avro-to-json.deprecated-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "ConvertAvroToJSON should be replaced with ConvertRecord before NiFi 2.0.x.",
+      "component": {
+        "id": "avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "scope": "processor",
+        "path": "rootGroup/processors/ConvertOrders"
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "update-bundle-coordinate"
+      ]
+    },
+    {
       "ruleId": "core.distributed-map-cache-client.renamed",
       "class": "auto-fix",
       "severity": "warning",
@@ -48,8 +79,64 @@
       ]
     },
     {
-      "ruleId": "core.get-http.replace",
+      "ruleId": "core.encrypt-content.deprecated-20",
       "class": "manual-change",
+      "severity": "warning",
+      "message": "EncryptContent should be replaced with EncryptContentAge or EncryptContentPGP before NiFi 2.0.x.",
+      "component": {
+        "id": "encrypt-1",
+        "name": "EncryptOrders",
+        "type": "org.apache.nifi.processors.standard.EncryptContent",
+        "scope": "processor",
+        "path": "rootGroup/processors/EncryptOrders"
+      }
+    },
+    {
+      "ruleId": "core.execute-script.legacy-engines-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Deprecated ExecuteScript engines should be replaced before NiFi 2.0.x.",
+      "component": {
+        "id": "script-1",
+        "name": "LegacyJythonScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyJythonScript"
+      },
+      "evidence": [
+        {
+          "type": "property-value-in",
+          "field": "Script Engine",
+          "actualValue": "Jython",
+          "allowedValues": [
+            "ECMAScript",
+            "lua",
+            "ruby",
+            "Jython"
+          ]
+        }
+      ]
+    },
+    {
+      "ruleId": "core.get-azure-queue-v12.required-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetAzureQueueStorage should move to GetAzureQueueStorage_v12 before NiFi 2.0.x.",
+      "component": {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "scope": "processor",
+        "path": "rootGroup/processors/LegacyQueue"
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "update-bundle-coordinate"
+      ]
+    },
+    {
+      "ruleId": "core.get-http.replace",
+      "class": "assisted-rewrite",
       "severity": "warning",
       "message": "GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.",
       "component": {
@@ -58,6 +145,38 @@
         "type": "org.apache.nifi.processors.standard.GetHTTP",
         "scope": "processor",
         "path": "rootGroup/processors/FetchHTTP"
+      },
+      "suggestedActions": [
+        "replace-component-type",
+        "rename-property",
+        "set-property-if-absent",
+        "set-property-if-absent"
+      ]
+    },
+    {
+      "ruleId": "core.get-solr.deprecated-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "GetSolr was deprecated for removal and should be reviewed before NiFi 2.0.x.",
+      "component": {
+        "id": "solr-1",
+        "name": "FetchFromSolr",
+        "type": "org.apache.nifi.processors.solr.GetSolr",
+        "scope": "processor",
+        "path": "rootGroup/processors/FetchFromSolr"
+      }
+    },
+    {
+      "ruleId": "core.ignite-cache.deprecated-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "Ignite cache processors were deprecated for removal and should be reviewed before NiFi 2.0.x.",
+      "component": {
+        "id": "ignite-1",
+        "name": "IgniteCache",
+        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
+        "scope": "processor",
+        "path": "rootGroup/processors/IgniteCache"
       }
     },
     {
@@ -79,6 +198,19 @@
           "actualValue": "proxy.example.com"
         }
       ]
+    },
+    {
+      "ruleId": "core.rethinkdb.deprecated-20",
+      "class": "manual-change",
+      "severity": "warning",
+      "message": "RethinkDB processors were deprecated for removal and should be replaced before NiFi 2.0.x.",
+      "component": {
+        "id": "rethink-1",
+        "name": "LookupOrders",
+        "type": "org.apache.nifi.processors.rethinkdb.GetRethinkDB",
+        "scope": "processor",
+        "path": "rootGroup/processors/LookupOrders"
+      }
     },
     {
       "ruleId": "core.variable-registry.removed",

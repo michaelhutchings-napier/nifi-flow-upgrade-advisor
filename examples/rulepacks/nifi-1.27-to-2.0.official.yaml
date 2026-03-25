@@ -118,15 +118,173 @@ spec:
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
-    - id: core.get-http.replace
+    - id: core.get-azure-queue-v12.required-20
       category: component-replaced
       class: manual-change
+      severity: warning
+      message: GetAzureQueueStorage should move to GetAzureQueueStorage_v12 before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage_v12
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
+      notes: Apache NiFi deprecated these processors in 1.22.0 in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12. A 1.27.x flow can still contain the legacy components, so review them before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.put-azure-queue-v12.required-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: PutAzureQueueStorage should move to PutAzureQueueStorage_v12 before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage
+          to: org.apache.nifi.processors.azure.storage.queue.PutAzureQueueStorage_v12
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-azure-nar
+      notes: Apache NiFi deprecated these processors in 1.22.0 in favor of GetAzureQueueStorage_v12 and PutAzureQueueStorage_v12. A 1.27.x flow can still contain the legacy components, so review them before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.execute-script.legacy-engines-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Deprecated ExecuteScript engines should be replaced before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.script.ExecuteScript
+      match:
+        propertyValueIn:
+          property: Script Engine
+          values:
+            - ECMAScript
+            - lua
+            - ruby
+            - Jython
+      notes: Apache NiFi deprecated these ExecuteScript engines in the 1.x line. Groovy is the preferred in-product replacement and native Python support is available in NiFi 2.0.0 for relevant use cases.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.ignite-cache.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: Ignite cache processors were deprecated for removal and should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.ignite.cache.GetIgniteCache
+          - org.apache.nifi.processors.ignite.cache.PutIgniteCache
+      notes: Apache NiFi deprecated GetIgniteCache and PutIgniteCache in 1.22.0 for removal in the 2.0 line. Review these flows and choose an alternative cache or service pattern before the major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.rethinkdb.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: RethinkDB processors were deprecated for removal and should be replaced before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentTypes:
+          - org.apache.nifi.processors.rethinkdb.GetRethinkDB
+          - org.apache.nifi.processors.rethinkdb.PutRethinkDB
+      notes: Apache NiFi deprecated RethinkDB processors in 1.23.0 for removal in 2.0.0. Review these flows and plan a replacement before the major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.encrypt-content.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: EncryptContent should be replaced with EncryptContentAge or EncryptContentPGP before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.EncryptContent
+      notes: Apache NiFi deprecated EncryptContent in the 1.x line. Review each use of EncryptContent and choose the Age or PGP replacement that matches the existing encryption flow before upgrading to 2.0.0.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.convert-avro-to-json.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: ConvertAvroToJSON should be replaced with ConvertRecord before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.avro.ConvertAvroToJSON
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.avro.ConvertAvroToJSON
+          to: org.apache.nifi.processors.standard.ConvertRecord
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-standard-nar
+      notes: Apache NiFi deprecated ConvertAvroToJSON in 1.26.0 with ConvertRecord as the recommended alternative. A 1.27.x flow can still contain ConvertAvroToJSON, so review it before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.cassandra-session-provider.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: CassandraSessionProvider should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: controller-service
+        componentType: org.apache.nifi.service.CassandraSessionProvider
+      notes: Apache NiFi deprecated CassandraSessionProvider in 1.26.0 because the underlying DataStax 3 driver is no longer current. Review dependent Cassandra flows before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.get-solr.deprecated-20
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetSolr was deprecated for removal and should be reviewed before NiFi 2.0.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.solr.GetSolr
+      notes: Apache NiFi deprecated GetSolr in 1.26.0 for later removal. Review Solr-based flows before the 2.0 step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Deprecated%2BComponents%2Band%2BFeatures
+
+    - id: core.get-http.replace
+      category: component-replaced
+      class: assisted-rewrite
       severity: warning
       message: GetHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetHTTP
-      notes: Apache's 2.0 migration guide maps GetHTTP to InvokeHTTP with HTTP Method GET, HTTP URL, and Response FlowFile Naming Strategy URL_PATH. Review timeout and SSL behavior during migration.
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetHTTP
+          to: org.apache.nifi.processors.standard.InvokeHTTP
+        - type: rename-property
+          from: URL
+          to: HTTP URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: GET
+        - type: set-property-if-absent
+          property: Response FlowFile Naming Strategy
+          value: URL_PATH
+      notes: Apache's 2.0 migration guide maps GetHTTP to InvokeHTTP with HTTP Method GET, HTTP URL, and Response FlowFile Naming Strategy URL_PATH. The rewrite scaffolds those properties but still leaves timeout, SSL, and response-handling review visible to a human.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
@@ -138,6 +296,18 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetJMSQueue
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetJMSQueue
+          to: org.apache.nifi.jms.processors.ConsumeJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: set-property-if-absent
+          property: Destination Type
+          value: QUEUE
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -150,6 +320,18 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.GetJMSTopic
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.GetJMSTopic
+          to: org.apache.nifi.jms.processors.ConsumeJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: set-property-if-absent
+          property: Destination Type
+          value: TOPIC
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to ConsumeJMS with a JMSConnectionFactoryProvider, external JMS client libraries, and Destination Type TOPIC.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -162,6 +344,16 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.twitter.GetTwitter
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.twitter.GetTwitter
+          to: org.apache.nifi.processors.twitter.ConsumeTwitter
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-social-media-nar
+        - type: emit-parameter-scaffold
+          parameterName: TwitterBearerToken
+          sensitive: true
       notes: Apache's 2.0 migration guide says the replacement moves from Twitter API v1 and Hosebird Client to Twitter API v2 with OAuth 2 Bearer Token and possible external filter-rule setup.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -174,6 +366,10 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.HashAttribute
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.HashAttribute
+          to: org.apache.nifi.processors.standard.CryptographicHashAttribute
       notes: Apache's 2.0 migration guide recommends expression-language hash functions in UpdateAttribute and highlights MD5 as unsuitable for cryptographic use.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -186,6 +382,10 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.HashContent
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.HashContent
+          to: org.apache.nifi.processors.standard.CryptographicHashContent
       notes: Apache's 2.0 migration guide maps HashContent to CryptographicHashContent, but equivalent attribute naming may also require an UpdateAttribute step.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
@@ -206,13 +406,23 @@ spec:
 
     - id: core.post-http.replace
       category: component-replaced
-      class: manual-change
+      class: assisted-rewrite
       severity: warning
       message: PostHTTP should be replaced with InvokeHTTP for NiFi 2.0.x.
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.PostHTTP
-      notes: Apache's 2.0 migration guide maps PostHTTP to InvokeHTTP, but FlowFile packaging, HTTPS handling, and header behavior must be reviewed during migration.
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.PostHTTP
+          to: org.apache.nifi.processors.standard.InvokeHTTP
+        - type: rename-property
+          from: URL
+          to: HTTP URL
+        - type: set-property-if-absent
+          property: HTTP Method
+          value: POST
+      notes: Apache's 2.0 migration guide maps PostHTTP to InvokeHTTP. The rewrite scaffolds the target processor type and core request properties, but FlowFile packaging, HTTPS handling, and header behavior still need review.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0
 
@@ -224,6 +434,15 @@ spec:
       selector:
         scope: processor
         componentType: org.apache.nifi.processors.standard.PutJMS
+      actions:
+        - type: replace-component-type
+          from: org.apache.nifi.processors.standard.PutJMS
+          to: org.apache.nifi.jms.processors.PublishJMS
+        - type: update-bundle-coordinate
+          group: org.apache.nifi
+          artifact: nifi-jms-processors-nar
+        - type: emit-parameter-scaffold
+          parameterName: JmsClientLibrariesPath
       notes: Apache's 2.0 migration guide requires moving to PublishJMS with a JMSConnectionFactoryProvider and external JMS client libraries.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0

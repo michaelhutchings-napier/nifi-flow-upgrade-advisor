@@ -1,0 +1,60 @@
+{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "Messaging Platform",
+    "controllerServices": [
+      {
+        "id": "jms-1",
+        "name": "LegacyJndiJms",
+        "type": "org.apache.nifi.jms.cf.JndiJmsConnectionFactoryProvider",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-jms-cf-service-nar",
+          "version": "1.21.0"
+        },
+        "properties": {
+          "Provider URL": "ldap://ldap.example.com:389/o=messaging"
+        }
+      }
+    ],
+    "processors": [
+      {
+        "id": "azure-1",
+        "name": "FetchQueueMessages",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-azure-nar",
+          "version": "1.21.0"
+        },
+        "properties": {}
+      },
+      {
+        "id": "cass-1",
+        "name": "WriteAuditTrail",
+        "type": "org.apache.nifi.processors.cassandra.PutCassandraQL",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-cassandra-processors-nar",
+          "version": "1.21.0"
+        },
+        "properties": {
+          "Compression Type": "LZ4"
+        }
+      },
+      {
+        "id": "script-1",
+        "name": "LegacyRubyScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-scripting-nar",
+          "version": "1.21.0"
+        },
+        "properties": {
+          "Script Engine": "ruby"
+        }
+      }
+    ]
+  }
+}

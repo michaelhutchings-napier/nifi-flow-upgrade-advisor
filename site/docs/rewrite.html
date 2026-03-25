@@ -6,17 +6,17 @@
     <title>Rewrite NiFi Flows Safely | nifi-flow-upgrade-advisor</title>
     <meta
       name="description"
-      content="Understand what the rewrite command does: apply only deterministic safe upgrades and produce a reviewed rewritten flow artifact."
+      content="Understand what the rewrite command does: apply deterministic safe upgrades, scaffold assisted rewrites, and produce a reviewed rewritten flow artifact."
     >
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rewrite.html">
     <meta property="og:title" content="Rewrite NiFi Flows Safely | nifi-flow-upgrade-advisor">
-    <meta property="og:description" content="Apply only safe deterministic NiFi flow rewrites and keep blocked or architecture-sensitive changes visible for review.">
+    <meta property="og:description" content="Apply deterministic safe NiFi rewrites, scaffold assisted changes, and keep blocked or architecture-sensitive work visible for review.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://michaelhutchings-napier.github.io/nifi-flow-upgrade-advisor/docs/rewrite.html">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Rewrite NiFi Flows Safely | nifi-flow-upgrade-advisor">
-    <meta name="twitter:description" content="Apply only safe deterministic NiFi flow rewrites and keep blocked or architecture-sensitive changes visible for review.">
+    <meta name="twitter:description" content="Apply deterministic safe NiFi rewrites, scaffold assisted changes, and keep blocked or architecture-sensitive work visible for review.">
     <link rel="stylesheet" href="../styles.css">
   </head>
   <body>
@@ -25,8 +25,9 @@
         <p class="eyebrow">Rewrite</p>
         <h1>Apply the safe part of the migration without guessing through the risky part.</h1>
         <p class="lede">
-          <code>rewrite</code> takes the analyzed findings and applies only the changes the rule pack
-          explicitly marks as deterministic and safe. It writes a new artifact and a rewrite report.
+          <code>rewrite</code> takes the analyzed findings and applies the changes the rule pack
+          explicitly marks as deterministic and safe, plus any assisted scaffolds the pack declares as
+          reviewable output. It writes a new artifact and a rewrite report.
         </p>
         <div class="actions">
           <a class="button primary" href="../index.html">Back to site</a>
@@ -43,6 +44,7 @@
             <ul>
               <li>rename a property when the mapping is explicit</li>
               <li>replace a component type when Apache guidance is direct and mechanically safe</li>
+              <li>scaffold target properties when a migration is reviewable but still not fully automatic</li>
               <li>keep untouched parts of the flow intact</li>
             </ul>
           </div>
@@ -68,8 +70,8 @@
             <h2>What to expect</h2>
             <p>
               Rewrite may apply zero operations and still be useful. That simply means the advisor
-              found migration work, but none of it was safe to automate. The original source is not
-              silently mutated; you get a reviewed output and a rewrite report.
+              found migration work, but none of it was safe or scaffoldable to automate. The original
+              source is not silently mutated; you get a reviewed output and a rewrite report.
             </p>
           </div>
         </div>

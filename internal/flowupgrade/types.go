@@ -374,13 +374,16 @@ type RewriteReport struct {
 }
 
 type RewriteSummary struct {
-	TotalOperations   int `json:"totalOperations"`
-	AppliedOperations int `json:"appliedOperations"`
-	SkippedOperations int `json:"skippedOperations"`
+	TotalOperations   int            `json:"totalOperations"`
+	AppliedOperations int            `json:"appliedOperations"`
+	SkippedOperations int            `json:"skippedOperations"`
+	ByClass           map[string]int `json:"byClass"`
+	AppliedByClass    map[string]int `json:"appliedByClass"`
 }
 
 type RewriteOperation struct {
 	RuleID     string            `json:"ruleId"`
+	Class      string            `json:"class"`
 	ActionType string            `json:"actionType"`
 	Status     string            `json:"status"`
 	Message    string            `json:"message,omitempty"`

@@ -6,7 +6,7 @@ This directory contains a thin Tauri desktop wrapper around the existing
 The desktop app is intentionally not a second migration engine. Its job is to:
 
 - scan a selected workspace or repository
-- suggest likely source flows, rule packs, and manifests
+- suggest likely source flows, built-in upgrade coverage, and optional target manifests
 - run `analyze`, `rewrite`, `validate`, and `run`
 - render the generated reports in a friendlier desktop workflow
 

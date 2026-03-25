@@ -2,7 +2,7 @@
 
 `nifi-flow-upgrade-advisor` is a desktop-first Apache NiFi flow upgrade tool with a CLI engine underneath for automation.
 
-It is intentionally separate from runtime platforms such as NiFi-Fabric. The job of this repo is to inspect a source flow artifact, compare it with a selected target NiFi version, explain what changed, apply only mechanically safe rewrites, and validate the result before publish.
+It is intentionally separate from runtime platforms. The job of this repo is to inspect a source flow artifact, compare it with a selected target NiFi version, explain what changed, apply only mechanically safe or assisted rewrites, and validate the result before publish.
 
 The desktop app is now the easiest way to use the product. It gives teams a guided workspace scan, one-click `analyze`, `rewrite`, `validate`, and `run`, and clearer result views without replacing the underlying automation surface. The CLI remains the stable engine for CI, GitOps, and scripted workflows.
 
@@ -33,6 +33,7 @@ Current source support:
 Current safety boundary:
 
 - safe deterministic rewrites only
+- assisted rewrites may scaffold target properties and component changes, but still require human review
 - no guessing through deprecated processors that require architecture decisions
 - no secret recovery
 - no in-cluster mutation
@@ -60,6 +61,7 @@ What `publish` covers now:
 - [`docs/release-process.md`](docs/release-process.md)
 - [`docs/secrets-and-parameters.md`](docs/secrets-and-parameters.md)
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
+- [`docs/custom-processors-and-services.md`](docs/custom-processors-and-services.md)
 - [`demo`](demo)
 - [`examples/rulepacks`](examples/rulepacks)
 - [`examples/manifests`](examples/manifests)
@@ -195,8 +197,8 @@ The featured customer-story demos are:
 
 The Asana demo produces a blocked `2.7.1 -> 2.8.0` result for removed components.
 The Base64 demo shows a real deterministic auto-fix and rewrite for `1.27.0 -> 2.0.0`.
-The GetHTTP demo shows the manual-change path where the tool explains the migration but does not guess through it.
-The demo catalog now includes 10+ runnable examples across blocked, bridge-required, manual-change, manual-inspection, info-only, auto-fix, and mixed-result customer stories.
+The GetHTTP demo shows the assisted-rewrite path where the tool scaffolds the target InvokeHTTP shape but still keeps human review visible.
+The demo catalog now includes 10+ runnable examples across blocked, bridge-required, manual-change, manual-inspection, assisted rewrite, auto-fix, and mixed-result customer stories.
 
 More realistic local fixtures for product testing live under [`demo/fixtures`](demo/fixtures), including:
 
@@ -215,6 +217,7 @@ Repo ownership:
 - design docs: [`docs/design.md`](docs/design.md), [`docs/cli.md`](docs/cli.md), [`docs/rule-pack-format.md`](docs/rule-pack-format.md)
 - release docs: [`docs/release-process.md`](docs/release-process.md), [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - secret handling: [`docs/secrets-and-parameters.md`](docs/secrets-and-parameters.md)
+- custom/private rules: [`docs/custom-processors-and-services.md`](docs/custom-processors-and-services.md)
 
 ## Notes
 
@@ -222,3 +225,4 @@ Repo ownership:
 - use Parameter Contexts, Parameter Providers, and environment-local secret sources for secret rehydration
 - rule packs should cite official Apache migration notes and release caveats
 - `auto-fix` in `analyze` means “safe deterministic rewrite candidate found”, not “the flow has already been changed”
+- `assisted-rewrite` means the tool can scaffold part of the migration in a separate output artifact, but a human still needs to review the result

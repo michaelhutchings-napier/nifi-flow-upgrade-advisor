@@ -422,6 +422,16 @@ h3 {
   color: var(--warning);
 }
 
+.assisted-pill {
+  background: rgba(199, 141, 45, 0.16);
+  color: #8a5a11;
+}
+
+.quiet-pill {
+  background: rgba(30, 43, 51, 0.08);
+  color: rgba(30, 43, 51, 0.78);
+}
+
 .section {
   padding: 2.4rem 0 3.4rem;
 }

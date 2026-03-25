@@ -9,7 +9,7 @@ The tool solves a narrow problem:
 - inspect a source flow artifact
 - compare it to a selected target NiFi version
 - report what changed
-- apply deterministic safe rewrites when possible
+- apply deterministic safe rewrites and assisted scaffolds when possible
 - validate the rewritten result
 - publish the upgraded flow explicitly
 
@@ -44,7 +44,7 @@ The intended user experience should stay simple:
 - desktop app first for most humans
 - CLI first for automation, CI, and GitOps
 - `analyze`: tell me whether this source version can move to this target version, what is deprecated or removed, and what must change
-- `rewrite`: apply only deterministic safe conversions and produce a rewritten artifact plus a rewrite report
+- `rewrite`: apply deterministic safe conversions plus assisted scaffolds and produce a rewritten artifact plus a rewrite report
 
 The polished default experience should be a desktop wrapper over the same engine, not a second migration engine.
 
@@ -110,6 +110,7 @@ The tool builds a migration plan by combining:
 The report should classify findings as:
 
 - `auto-fix`
+- `assisted-rewrite`
 - `manual-change`
 - `manual-inspection`
 - `blocked`
@@ -121,6 +122,7 @@ The tool may apply safe rewrites such as:
 
 - component type renames with compatible configuration mapping
 - property renames
+- assisted property scaffolding where the target shape is known but still needs review
 - removed property cleanup where the replacement is unambiguous
 - bundle coordinate updates
 - variable-to-parameter conversion scaffolding when deterministic

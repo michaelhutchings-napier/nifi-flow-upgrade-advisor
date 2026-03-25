@@ -8,16 +8,19 @@ This directory contains runnable examples for `nifi-flow-upgrade-advisor`.
 - `./demo/orders-platform-2.7-to-2.8.sh`: featured mixed-result story with blocked removals, a safe property rewrite, and manual review items
 - `./demo/integration-platform-1.22-to-1.23.sh`: featured policy-review story with broader affected-component coverage
 - `./demo/base64-1.27-to-2.0.sh`: safe auto-fix replacing `Base64EncodeContent` with `EncodeContent`
-- `./demo/get-http-1.27-to-2.0.sh`: manual-change path for `GetHTTP -> InvokeHTTP`
+- `./demo/get-http-1.27-to-2.0.sh`: assisted rewrite path for `GetHTTP -> InvokeHTTP`
 - `./demo/asana-2.7-to-2.8.sh`: blocked upgrade for removed Asana components
 - `./demo/bridge-upgrade-1.21-to-2.0.sh`: blocked bridge-upgrade requirement before `2.0.x`
 - `./demo/h2-dbcp-1.21-to-1.22.sh`: manual-change for H2 JDBC URLs on DBCP/Hikari
 - `./demo/jndi-jms-ldap-1.21-to-1.22.sh`: manual-change for LDAP Provider URLs on JNDI JMS
+- `./demo/messaging-platform-1.21-to-1.22.sh`: customer story showing assisted Cassandra and Azure cleanup plus guided JMS/script review
+- `./demo/convert-avro-1.25-to-1.26.sh`: assisted rewrite for `ConvertAvroToJSON -> ConvertRecord`
 - `./demo/invoke-http-url-encoding-1.23-to-1.24.sh`: manual-change for URL encoding review
-- `./demo/listen-http-2.3-to-2.4.sh`: manual-change for removed ListenHTTP rate limiting
+- `./demo/listen-http-2.3-to-2.4.sh`: assisted rewrite for removed ListenHTTP rate limiting
+- `./demo/edge-ingest-2.3-to-2.4.sh`: customer story showing assisted ListenHTTP rate-limit cleanup
 - `./demo/listen-syslog-2.6-to-2.7.sh`: safe auto-fix for `Port -> TCP Port`
 - `./demo/jolt-custom-class-2.7-to-2.8.sh`: manual-inspection for Jolt recompilation
-- `./demo/content-viewer-2.4-to-2.5.sh`: info-only example for content-viewer contract changes
+- `./demo/content-viewer-2.4-to-2.5.sh`: quiet-path example with no flow-specific findings
 - `./demo/reference-remote-resources-1.22-to-1.23.sh`: policy-review example for new restricted-resource access
 
 Run all demos:
@@ -41,17 +44,17 @@ This flow combines:
 - blocked `VARIABLE_REGISTRY` usage
 - safe `DistributedMapCacheClientService -> MapCacheClientService`
 - safe `Base64EncodeContent -> EncodeContent`
-- manual `GetHTTP -> InvokeHTTP`
+- assisted `GetHTTP -> InvokeHTTP`
 - manual `InvokeHTTP` proxy-service migration
 
 Observed summary:
 
-- total findings: `8`
+- total findings: `5`
 - auto-fix: `2`
-- manual-change: `2`
+- assisted-rewrite: `1`
+- manual-change: `1`
 - blocked: `1`
-- info: `3`
-- rewrite operations applied: `2`
+- rewrite operations applied: `6`
 
 ### Orders Platform 2.7 to 2.8
 
@@ -94,6 +97,43 @@ Observed summary:
 - manual-inspection: `4`
 - info: `2`
 
+### Messaging Platform 1.21 to 1.22
+
+```bash
+./demo/messaging-platform-1.21-to-1.22.sh
+```
+
+This flow shows a mixed bridge-upgrade story:
+
+- assisted removal of the deprecated Cassandra `Compression Type` property
+- assisted Azure Queue v12 processor replacement
+- guided LDAP-backed JMS review
+- guided scripted-component engine review
+
+### ConvertAvroToJSON 1.25 to 1.26
+
+```bash
+./demo/convert-avro-1.25-to-1.26.sh
+```
+
+This flow shows a focused assisted rewrite:
+
+- `ConvertAvroToJSON` is deprecated in favor of `ConvertRecord`
+- rewrite scaffolds the component-type replacement into a separate artifact
+- record-reader and record-writer service choices still stay visible for human review
+
+### Edge Ingest 2.3 to 2.4
+
+```bash
+./demo/edge-ingest-2.3-to-2.4.sh
+```
+
+This flow shows an assisted property cleanup:
+
+- `ListenHTTP` no longer supports `Max Data to Receive per Second`
+- rewrite removes the property into a separate reviewed artifact
+- the report reminds the user to decide whether a new external rate-limiting approach is needed
+
 ## Base64 Auto-Fix Demo
 
 This demo models a NiFi `1.27.0` flow containing:
@@ -114,13 +154,13 @@ Expected result:
 - `rewrite` applies the replacement
 - the rewritten artifact contains `org.apache.nifi.processors.standard.EncodeContent`
 
-## GetHTTP Manual-Change Demo
+## GetHTTP Assisted Rewrite Demo
 
 This demo models a NiFi `1.27.0` flow containing:
 
 - `org.apache.nifi.processors.standard.GetHTTP`
 
-The official `1.27 -> 2.0` rule pack treats this as a documented migration that still needs a human decision. Apache maps it to `InvokeHTTP`, but the tool does not silently replace it because timeout, SSL, and response-handling choices still matter.
+The official `1.27 -> 2.0` rule pack now treats this as an assisted rewrite. Apache maps it to `InvokeHTTP`, and the tool scaffolds the target processor type and key properties, but timeout, SSL, and response-handling choices still remain visible for human review.
 
 Run it:
 
@@ -130,9 +170,9 @@ Run it:
 
 Expected result:
 
-- `analyze` shows a `manual-change` finding
-- `rewrite` applies `0` operations
-- the rewritten artifact exists, but the tool does not guess through the processor replacement
+- `analyze` shows an `assisted-rewrite` finding
+- `rewrite` applies scaffold operations into a separate rewritten artifact
+- the rewritten artifact is reviewable, not a claim that the migration is fully finished
 
 ## Asana Removal Demo
 
@@ -194,8 +234,8 @@ For the Base64 demo, you should see the opposite pattern:
 - a non-zero `auto-fix` count during `analyze`
 - one applied rewrite operation during `rewrite`
 
-For the GetHTTP manual-change demo, the middle path should be clear:
+For the GetHTTP assisted rewrite demo, the middle path should be clear:
 
-- `manual-change` is non-zero during `analyze`
-- `rewrite` produces a reviewed copy but applies zero operations
-- the report stays explicit about what a human still needs to change
+- `assisted-rewrite` is non-zero during `analyze`
+- `rewrite` produces a reviewed copy and scaffolds the target InvokeHTTP shape
+- the report stays explicit about what a human still needs to review

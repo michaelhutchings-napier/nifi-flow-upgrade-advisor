@@ -1,0 +1,16 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.7-to-2.7.1-patch-caveats
+  title: NiFi 2.7.0 to 2.7.1 patch coverage
+  description: Built-in path coverage for the 2.7.0 to 2.7.1 patch step.
+spec:
+  sourceVersionRange: ">=2.7.0 <2.8.0"
+  targetVersionRange: ">=2.7.1 <2.7.2"
+  appliesToFormats:
+    - flow-xml-gz
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules: []

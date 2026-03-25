@@ -1,0 +1,21 @@
+{
+  "rootGroup": {
+    "id": "root-convert-avro",
+    "name": "root",
+    "processors": [
+      {
+        "id": "convert-avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-avro-nar",
+          "version": "1.25.0"
+        },
+        "properties": {
+          "Schema Access Strategy": "infer-schema"
+        }
+      }
+    ]
+  }
+}

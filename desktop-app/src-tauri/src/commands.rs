@@ -23,6 +23,7 @@ pub struct WorkspaceEntry {
     kind_label: String,
     source_format: Option<String>,
     detected_version: Option<String>,
+    detected_version_confidence: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,11 +50,18 @@ pub struct CliActionResult {
     duration_ms: u128,
     output_dir: String,
     report_paths: Vec<String>,
+    rewritten_artifact_path: Option<String>,
 }
 
 enum ExecTarget {
     Binary(String),
     GoRun(PathBuf),
+}
+
+#[derive(Debug, Clone)]
+struct VersionDetection {
+    version: String,
+    confidence: &'static str,
 }
 
 #[tauri::command]
@@ -69,6 +77,25 @@ pub fn scan_workspace(path: Option<String>) -> Result<BootstrapState, String> {
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| format!("read {}: {}", path, err))
+}
+
+#[tauri::command]
+pub fn open_path(path: String, create_dir_if_missing: bool) -> Result<(), String> {
+    let path = PathBuf::from(path.trim());
+    if create_dir_if_missing && !path.exists() {
+        fs::create_dir_all(&path).map_err(|err| format!("create {}: {}", path.display(), err))?;
+    }
+    if !path.exists() {
+        return Err(format!("path does not exist: {}", path.display()));
+    }
+
+    let mut command = open_command_for(&path)?;
+    command
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|err| format!("open {}: {}", path.display(), err))?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -121,12 +148,7 @@ pub fn run_cli_action(request: CliActionRequest) -> Result<CliActionResult, Stri
         }
         "validate" => {
             args.push("validate".into());
-            let rewritten = output_dir.join("rewritten-flow.json.gz");
-            let input = if rewritten.exists() {
-                rewritten
-            } else {
-                PathBuf::from(&prepared.path)
-            };
+            let input = preferred_validate_input(&output_dir, &prepared);
             args.push("--input".into());
             args.push(input.to_string_lossy().to_string());
             args.push("--input-format".into());
@@ -185,6 +207,11 @@ pub fn run_cli_action(request: CliActionRequest) -> Result<CliActionResult, Stri
         duration_ms,
         output_dir: report_base.clone(),
         report_paths: collect_report_paths(&output_dir),
+        rewritten_artifact_path: detect_rewritten_artifact_path(
+            validated.action.as_str(),
+            &output_dir,
+            prepared.cli_format.as_str(),
+        ),
     })
 }
 
@@ -339,6 +366,20 @@ struct PreparedSource {
     cli_format: String,
 }
 
+fn preferred_validate_input(output_dir: &Path, prepared: &PreparedSource) -> PathBuf {
+    let rewritten = match prepared.cli_format.as_str() {
+        "git-registry-dir" => output_dir.join("rewritten-flow"),
+        "flow-json-gz" => output_dir.join("rewritten-flow.json.gz"),
+        _ => output_dir.join("rewritten-flow.json"),
+    };
+
+    if rewritten.exists() {
+        rewritten
+    } else {
+        PathBuf::from(&prepared.path)
+    }
+}
+
 fn prepare_source(
     path: &str,
     source_format: &str,
@@ -412,6 +453,113 @@ fn collect_report_paths(output_dir: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| path.to_string_lossy().to_string())
         .collect()
+}
+
+fn detect_rewritten_artifact_path(
+    action: &str,
+    output_dir: &Path,
+    source_format: &str,
+) -> Option<String> {
+    match action {
+        "rewrite" => preferred_rewritten_artifact_path(output_dir, source_format),
+        "run" => rewritten_artifact_path_from_run_report(output_dir)
+            .or_else(|| preferred_rewritten_artifact_path(output_dir, source_format)),
+        _ => None,
+    }
+}
+
+fn preferred_rewritten_artifact_path(output_dir: &Path, source_format: &str) -> Option<String> {
+    let candidate = match source_format {
+        "git-registry-dir" => output_dir.join("rewritten-flow"),
+        "flow-json-gz" => output_dir.join("rewritten-flow.json.gz"),
+        _ => output_dir.join("rewritten-flow.json"),
+    };
+    candidate
+        .exists()
+        .then(|| candidate.to_string_lossy().to_string())
+}
+
+fn rewritten_artifact_path_from_run_report(output_dir: &Path) -> Option<String> {
+    let path = output_dir.join("run-report.json");
+    let body = fs::read_to_string(path).ok()?;
+    let report: DesktopRunReport = serde_json::from_str(&body).ok()?;
+    report
+        .steps
+        .into_iter()
+        .find(|step| {
+            step.name == "rewrite" && step.status == "completed" && !step.output_path.is_empty()
+        })
+        .map(|step| step.output_path)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRunReport {
+    steps: Vec<DesktopRunStep>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRunStep {
+    name: String,
+    status: String,
+    output_path: String,
+}
+
+fn open_command_for(path: &Path) -> Result<Command, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = Command::new("open");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("explorer");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if is_wsl() {
+            if let Some(windows_path) = wsl_windows_path(path) {
+                let mut command = Command::new("powershell.exe");
+                command.args([
+                    "-NoProfile",
+                    "-Command",
+                    "Start-Process",
+                    "-FilePath",
+                    windows_path.as_str(),
+                ]);
+                return Ok(command);
+            }
+        }
+
+        let mut command = Command::new("xdg-open");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[allow(unreachable_code)]
+    Err("opening paths is not supported on this platform".into())
+}
+
+fn is_wsl() -> bool {
+    std::env::var_os("WSL_DISTRO_NAME").is_some()
+        || fs::read_to_string("/proc/version")
+            .map(|body| body.to_ascii_lowercase().contains("microsoft"))
+            .unwrap_or(false)
+}
+
+fn wsl_windows_path(path: &Path) -> Option<String> {
+    let output = Command::new("wslpath").arg("-w").arg(path).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let rendered = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (!rendered.is_empty()).then_some(rendered)
 }
 
 fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String> {
@@ -580,15 +728,54 @@ fn looks_like_git_registry_dir(path: &Path) -> bool {
     if !path.is_dir() {
         return false;
     }
+    looks_like_git_registry_dir_inner(path, 0)
+}
+
+fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
+    if depth > 3 {
+        return false;
+    }
+
     let Ok(entries) = fs::read_dir(path) else {
         return false;
     };
+
     for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() && path.extension() == Some(OsStr::new("json")) {
+        let candidate = entry.path();
+        if candidate.is_dir() {
+            if looks_like_git_registry_dir_inner(&candidate, depth + 1) {
+                return true;
+            }
+            continue;
+        }
+        if candidate.extension() != Some(OsStr::new("json")) {
+            continue;
+        }
+        let name = candidate
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if matches!(
+            name,
+            "migration-report.json"
+                | "rewrite-report.json"
+                | "validation-report.json"
+                | "run-report.json"
+        ) {
+            continue;
+        }
+
+        let Ok(body) = fs::read_to_string(&candidate) else {
+            continue;
+        };
+        if body.contains("\"flowContents\"")
+            || body.contains("\"externalControllerServices\"")
+            || body.contains("\"parameterContexts\"")
+        {
             return true;
         }
     }
+
     false
 }
 
@@ -597,7 +784,7 @@ fn new_entry(
     path: &Path,
     kind_label: &str,
     source_format: Option<&str>,
-    detected_version: Option<String>,
+    detected_version: Option<VersionDetection>,
 ) -> WorkspaceEntry {
     let display_path = path
         .strip_prefix(root)
@@ -609,11 +796,14 @@ fn new_entry(
         display_path,
         kind_label: kind_label.into(),
         source_format: source_format.map(str::to_string),
-        detected_version,
+        detected_version: detected_version.as_ref().map(|value| value.version.clone()),
+        detected_version_confidence: detected_version
+            .as_ref()
+            .map(|value| value.confidence.to_string()),
     }
 }
 
-fn detect_source_version(path: &Path) -> Option<String> {
+fn detect_source_version(path: &Path) -> Option<VersionDetection> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     if name.ends_with(".json.gz") {
         let content = fs::read(path).ok()?;
@@ -636,7 +826,7 @@ fn detect_source_version(path: &Path) -> Option<String> {
     None
 }
 
-fn detect_version_from_text(body: &str) -> Option<String> {
+fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     let patterns = [
         "\"nifiVersion\"",
         "\"niFiVersion\"",
@@ -660,10 +850,16 @@ fn detect_version_from_text(body: &str) -> Option<String> {
     if trimmed.starts_with('{') {
         if let Ok(payload) = serde_json::from_str::<serde_json::Value>(trimmed) {
             if let Some(version) = find_version_in_json(&payload) {
-                return Some(version);
+                return Some(VersionDetection {
+                    version,
+                    confidence: "detected",
+                });
             }
             if let Some(version) = find_consistent_bundle_version_in_json(&payload) {
-                return Some(version);
+                return Some(VersionDetection {
+                    version,
+                    confidence: "inferred",
+                });
             }
         }
     }
@@ -682,13 +878,19 @@ fn detect_version_from_text(body: &str) -> Option<String> {
         ] {
             if let Some(version) = extract_xml_tag_value(body, tag) {
                 if looks_like_version(&version) {
-                    return Some(version);
+                    return Some(VersionDetection {
+                        version,
+                        confidence: "detected",
+                    });
                 }
             }
         }
     }
 
-    extract_semver_like(body)
+    extract_semver_like(body).map(|version| VersionDetection {
+        version,
+        confidence: "inferred",
+    })
 }
 
 fn find_version_in_json(value: &serde_json::Value) -> Option<String> {

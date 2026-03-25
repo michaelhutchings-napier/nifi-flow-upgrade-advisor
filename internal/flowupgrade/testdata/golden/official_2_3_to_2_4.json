@@ -1,0 +1,43 @@
+{
+  "rulePacks": [
+    "nifi-2.3-to-2.4-official"
+  ],
+  "sourceVersion": "2.3.0",
+  "targetVersion": "2.4.0",
+  "summary": {
+    "totalFindings": 1,
+    "byClass": {
+      "assisted-rewrite": 1,
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 0,
+      "manual-change": 0,
+      "manual-inspection": 0
+    }
+  },
+  "findings": [
+    {
+      "ruleId": "core.listen-http.rate-limit.removed",
+      "class": "assisted-rewrite",
+      "severity": "warning",
+      "message": "ListenHTTP no longer supports Max Data to Receive per Second in NiFi 2.4.x.",
+      "component": {
+        "id": "listen-http-1",
+        "name": "ReceiveWebhook",
+        "type": "org.apache.nifi.processors.standard.ListenHTTP",
+        "scope": "processor",
+        "path": "rootGroup/processors/ReceiveWebhook"
+      },
+      "evidence": [
+        {
+          "type": "property-exists",
+          "field": "Max Data to Receive per Second",
+          "actualValue": "10 MB"
+        }
+      ],
+      "suggestedActions": [
+        "remove-property"
+      ]
+    }
+  ]
+}

@@ -54,7 +54,30 @@ This is intentional:
 - `rewrite` only executes `auto-fix` actions
 - `manual-change` findings stay visible for a person to handle
 
-Use the manual-change demo for a concrete example:
+Use a manual-change demo for a concrete example:
+
+```bash
+./demo/h2-dbcp-1.21-to-1.22.sh
+```
+
+## Assisted-Rewrite Findings
+
+Symptom:
+
+- `analyze` reports `assisted-rewrite > 0`
+- `rewrite` applies scaffold operations into a separate output artifact
+
+What it means:
+
+- the tool knows enough to scaffold the target shape
+- but a human still needs to review the result before import
+
+This is intentional:
+
+- `assisted-rewrite` is the middle tier between `auto-fix` and `manual-change`
+- the rewritten flow is reviewable output, not a claim that the migration is fully finished
+
+Use the assisted rewrite demo for a concrete example:
 
 ```bash
 ./demo/get-http-1.27-to-2.0.sh
@@ -120,4 +143,3 @@ What to do:
 
 - export a JSON-based artifact if you need rewrite support
 - or use the analyzer report as a migration checklist before import into a newer JSON-based flow workflow
-

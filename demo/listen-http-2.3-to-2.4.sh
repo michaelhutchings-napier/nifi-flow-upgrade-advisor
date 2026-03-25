@@ -14,7 +14,7 @@ rm -rf "${OUT_DIR}"
 ensure_demo_binary
 gzip_fixture "${FIXTURE_JSON}" "${SOURCE_GZ}"
 
-echo "Running ListenHTTP 2.3.0 -> 2.4.0 manual-change demo"
+echo "Running ListenHTTP 2.3.0 -> 2.4.0 assisted rewrite demo"
 if run_demo_analyze "${SOURCE_GZ}" "2.3.0" "2.4.0" "${RULE_PACK}" "${OUT_DIR}"; then
   ANALYZE_EXIT=0
 else
@@ -26,8 +26,8 @@ run_demo_rewrite "${OUT_DIR}/migration-report.json" "${OUT_DIR}"
 echo
 echo "Expected outcome:"
 echo "  - analyze exits 0"
-echo "  - removed rate-limit property is flagged for review"
-echo "  - rewrite applies 0 operations because the rule remains manual-change"
+echo "  - removed rate-limit property is flagged as an assisted rewrite"
+echo "  - rewrite removes Max Data to Receive per Second in a separate reviewed artifact"
 print_demo_footer "${OUT_DIR}" \
   "${OUT_DIR}/migration-report.json" \
   "${OUT_DIR}/migration-report.md" \

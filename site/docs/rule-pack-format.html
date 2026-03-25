@@ -26,7 +26,7 @@
         <h1>Explicit migration logic, not hidden magic.</h1>
         <p class="lede">
           Rule packs are version-pair aware YAML files that describe what the tool should flag,
-          what it may rewrite safely, and which Apache guidance or caveats back those decisions.
+          what it may rewrite safely, what it may scaffold for review, and which Apache guidance or caveats back those decisions.
         </p>
         <div class="actions">
           <a class="button primary" href="../index.html">Back to site</a>
@@ -43,8 +43,8 @@
             <ul>
               <li>source and target version ranges</li>
               <li>matchers for processors, controller services, and root-level flow features</li>
-              <li>finding types such as <code>blocked</code>, <code>manual-change</code>, and <code>auto-fix</code></li>
-              <li>optional deterministic actions like property rename, property removal, or component type replacement</li>
+              <li>finding types such as <code>blocked</code>, <code>manual-change</code>, <code>assisted-rewrite</code>, and <code>auto-fix</code></li>
+              <li>optional actions like property rename, property copy, scaffolded property creation, or component type replacement</li>
               <li>references back to official Apache migration notes where possible</li>
             </ul>
           </div>
@@ -66,8 +66,9 @@ spec:
             <h2>Safety boundary</h2>
             <p>
               Rule packs should only declare rewrites when the change is mechanically safe and
-              explainable. Removed processors, custom JAR migrations, and architecture-sensitive
-              replacements should stay as findings for human review.
+              explainable. The middle tier is <code>assisted-rewrite</code>: the tool can scaffold the
+              target shape in a separate output artifact while still leaving the final review decision
+              visible to a human.
             </p>
           </div>
           <div class="card">

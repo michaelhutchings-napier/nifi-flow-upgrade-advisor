@@ -6,7 +6,10 @@ const state = {
   rulePacks: [],
   manifests: [],
   reports: [],
+  reportIndex: {},
   latestReport: null,
+  latestResult: null,
+  rewrittenArtifactPath: null,
   selectedAction: "run",
   runningAction: null,
   nextAction: null,
@@ -28,6 +31,10 @@ function baseName(path) {
   return String(path || "").split("/").pop() || path;
 }
 
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function compactPath(path) {
   const parts = String(path || "").split("/");
   if (parts.length <= 3) {
@@ -36,8 +43,173 @@ function compactPath(path) {
   return `.../${parts.slice(-2).join("/")}`;
 }
 
+function manualSourceStorageKey(path) {
+  return `nifi-flow-upgrade-advisor:source-version:${path}`;
+}
+
+function loadRememberedSourceVersion(flow) {
+  if (!flow?.path) {
+    return "";
+  }
+  try {
+    return localStorage.getItem(manualSourceStorageKey(flow.path)) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function saveRememberedSourceVersion(flowPath, version) {
+  if (!flowPath) {
+    return;
+  }
+  try {
+    if (String(version || "").trim()) {
+      localStorage.setItem(manualSourceStorageKey(flowPath), String(version).trim());
+    } else {
+      localStorage.removeItem(manualSourceStorageKey(flowPath));
+    }
+  } catch (error) {
+    // Ignore storage issues and keep the UI functional.
+  }
+}
+
+function filenameVersionHint(flow) {
+  const candidate = [flow?.displayPath, flow?.path].filter(Boolean).join(" ");
+  const match = candidate.match(/(?:^|[^0-9])(\d+\.\d+(?:\.\d+)?)(?:[^0-9]|$)/);
+  return match ? match[1] : "";
+}
+
+function sourceFormatLabel(format) {
+  switch (format) {
+    case "flow-json-gz":
+      return "flow.json.gz";
+    case "flow-xml-gz":
+      return "flow.xml.gz";
+    case "flow-json-fixture":
+      return "Flow fixture JSON";
+    case "versioned-flow-snapshot":
+      return "Versioned flow snapshot";
+    case "git-registry-dir":
+      return "Git registry directory";
+    default:
+      return format || "Unknown format";
+  }
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderMarkdownToHtml(markdown) {
+  const lines = String(markdown || "").split("\n");
+  const parts = [];
+  let inList = false;
+  let inCode = false;
+  let codeLines = [];
+
+  function closeList() {
+    if (inList) {
+      parts.push("</ul>");
+      inList = false;
+    }
+  }
+
+  function closeCode() {
+    if (inCode) {
+      parts.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+      inCode = false;
+      codeLines = [];
+    }
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      closeList();
+      if (inCode) {
+        closeCode();
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!line.trim()) {
+      closeList();
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+    if (headingMatch) {
+      closeList();
+      const level = headingMatch[1].length;
+      parts.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    const listMatch = line.match(/^- (.*)$/);
+    if (listMatch) {
+      if (!inList) {
+        parts.push("<ul>");
+        inList = true;
+      }
+      parts.push(`<li>${renderInlineMarkdown(listMatch[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+    parts.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  }
+
+  closeCode();
+  closeList();
+  return parts.join("");
+}
+
+function setReportViewContent(path, content) {
+  const view = byId("reportView");
+  if (!view) {
+    return;
+  }
+  if (String(path || "").endsWith(".md")) {
+    view.classList.remove("empty");
+    view.innerHTML = renderMarkdownToHtml(content);
+    return;
+  }
+  const pretty = (() => {
+    try {
+      return JSON.stringify(JSON.parse(content), null, 2);
+    } catch (error) {
+      return content;
+    }
+  })();
+  view.classList.remove("empty");
+  view.innerHTML = `<pre><code>${escapeHtml(pretty)}</code></pre>`;
+}
+
 function reportLabel(path) {
   const name = String(path || "").split("/").pop() || "";
+  const base = name.replace(/\.(md|json)$/, "");
+  const prefixMap = {
+    "migration-report": "Analyze",
+    "rewrite-report": "Rewrite",
+    "validation-report": "Validate",
+    "run-report": "Run",
+  };
+  const prefix = prefixMap[base];
+  if (prefix) {
+    return name.endsWith(".md") ? `${prefix} report` : `${prefix} JSON`;
+  }
   if (name.endsWith(".md")) {
     return "Human report";
   }
@@ -45,6 +217,53 @@ function reportLabel(path) {
     return "Structured report";
   }
   return name || "Report";
+}
+
+function preferredJsonReportPath(paths) {
+  const ordered = [
+    "run-report.json",
+    "validation-report.json",
+    "rewrite-report.json",
+    "migration-report.json",
+  ];
+  for (const suffix of ordered) {
+    const match = paths.find((path) => path.endsWith(suffix));
+    if (match) {
+      return match;
+    }
+  }
+  return paths.find((path) => path.endsWith(".json")) || null;
+}
+
+function reportGroupName(path) {
+  const name = String(path || "").split("/").pop() || "";
+  const base = name.replace(/\.(md|json)$/, "");
+  const labelMap = {
+    "migration-report": "Analyze",
+    "rewrite-report": "Rewrite",
+    "validation-report": "Validate",
+    "run-report": "Run",
+  };
+  return labelMap[base] || baseName(base || name || "Report");
+}
+
+function groupReportPaths(paths) {
+  const groups = new Map();
+  for (const reportPath of paths) {
+    const key = reportGroupName(reportPath);
+    if (!groups.has(key)) {
+      groups.set(key, { label: key, md: null, json: null });
+    }
+    const group = groups.get(key);
+    if (reportPath.endsWith(".md")) {
+      group.md = reportPath;
+    } else if (reportPath.endsWith(".json")) {
+      group.json = reportPath;
+    }
+  }
+  return ["Analyze", "Rewrite", "Validate", "Run"]
+    .map((label) => groups.get(label))
+    .filter(Boolean);
 }
 
 function displaySourceLabel(report) {
@@ -147,13 +366,16 @@ function renderActionSelection() {
   const selected = state.selectedAction || "run";
   const running = state.runningAction;
   const guide = actionGuide(selected);
-  const rewriteButton = document.querySelector('[data-action="rewrite"]');
   const latestReport = state.latestReport;
   const rewriteSafeFixes =
     latestReport && latestReport.kind === "MigrationReport"
       ? Number(latestReport.summary?.byClass?.["auto-fix"] || 0)
       : null;
-  const hasNoSafeRewrites = rewriteSafeFixes === 0;
+  const rewriteAssisted =
+    latestReport && latestReport.kind === "MigrationReport"
+      ? Number(latestReport.summary?.byClass?.["assisted-rewrite"] || 0)
+      : null;
+  const hasNoRewrites = rewriteSafeFixes === 0 && rewriteAssisted === 0;
 
   document.querySelectorAll("[data-action]").forEach((button) => {
     const action = button.dataset.action;
@@ -161,18 +383,28 @@ function renderActionSelection() {
     button.classList.toggle("is-running", action === running);
     button.disabled =
       (running !== null && action !== running) ||
-      (action === "rewrite" && running === null && hasNoSafeRewrites);
+      (action === "rewrite" && running === null && hasNoRewrites);
     button.setAttribute("aria-pressed", String(action === selected));
   });
 
-  if (rewriteSafeFixes === null) {
+  if (rewriteSafeFixes === null || rewriteAssisted === null) {
     setText("rewriteAvailabilityNote", "");
-  } else if (hasNoSafeRewrites) {
+  } else if (hasNoRewrites) {
     setText("rewriteAvailabilityNote", "No safe rewrites are available for this flow.");
-  } else {
+  } else if (rewriteSafeFixes > 0 && rewriteAssisted > 0) {
+    setText(
+      "rewriteAvailabilityNote",
+      `${rewriteSafeFixes} safe rewrite${rewriteSafeFixes === 1 ? "" : "s"} and ${rewriteAssisted} assisted rewrite${rewriteAssisted === 1 ? "" : "s"} available for this flow.`
+    );
+  } else if (rewriteSafeFixes > 0) {
     setText(
       "rewriteAvailabilityNote",
       `${rewriteSafeFixes} safe rewrite${rewriteSafeFixes === 1 ? "" : "s"} available for this flow.`
+    );
+  } else {
+    setText(
+      "rewriteAvailabilityNote",
+      `${rewriteAssisted} assisted rewrite${rewriteAssisted === 1 ? "" : "s"} available for this flow.`
     );
   }
 
@@ -185,6 +417,7 @@ function renderActionSelection() {
   setText("actionGuideEyebrow", titleAction(selected));
   setText("actionGuideTitle", guide.title);
   setText("actionGuideBody", guide.body);
+  renderValidateAffordance();
   const checklist = byId("actionGuideChecklist");
   checklist.innerHTML = "";
   guide.checklist.forEach((item) => {
@@ -275,6 +508,21 @@ function compareMinorKeys(leftKey, rightKey) {
   return left.minor - right.minor;
 }
 
+function compareVersions(leftVersion, rightVersion) {
+  const left = parseVersion(leftVersion);
+  const right = parseVersion(rightVersion);
+  if (!left || !right) {
+    return 0;
+  }
+  if (left.major !== right.major) {
+    return left.major - right.major;
+  }
+  if (left.minor !== right.minor) {
+    return left.minor - right.minor;
+  }
+  return (left.patch ?? 0) - (right.patch ?? 0);
+}
+
 function isMinorKeyInRange(value, start, end) {
   return compareMinorKeys(value, start) >= 0 && compareMinorKeys(value, end) <= 0;
 }
@@ -335,8 +583,7 @@ function bestRulePackSelection(sourceVersion, targetVersion) {
       continue;
     }
     if (
-      target.major === parseVersion(pack.blockTarget)?.major &&
-      compareMinorKeys(target.minorKey, pack.blockTarget) >= 0 &&
+      compareVersions(target.full, `${pack.blockTarget}.0`) >= 0 &&
       isMinorKeyInRange(source.minorKey, pack.blockSourceStart, pack.blockSourceEnd)
     ) {
       include(pack);
@@ -362,6 +609,19 @@ function bestRulePackSelection(sourceVersion, targetVersion) {
   return selected;
 }
 
+function describeRulePackSelection(selectedPaths) {
+  const parsed = selectedPaths
+    .map((path) => state.rulePacks.find((candidate) => candidate.path === path))
+    .map(parseRulePack)
+    .filter(Boolean);
+
+  const bridgeBlocks = parsed.filter((pack) => pack.isBlockedBridge).length;
+  const patchCaveats = parsed.filter((pack) => pack.isPatchCaveat).length;
+  const versionSteps = parsed.filter((pack) => !pack.isBlockedBridge && !pack.isPatchCaveat).length;
+
+  return { bridgeBlocks, patchCaveats, versionSteps };
+}
+
 function noRulePackRequired(sourceVersion, targetVersion) {
   const source = parseVersion(sourceVersion);
   const target = parseVersion(targetVersion);
@@ -378,17 +638,30 @@ function autoSelectRulePacks() {
   const select = byId("rulePackSelect");
   const sourceVersion = byId("sourceVersion").value;
   const targetVersion = byId("targetVersion").value;
-  const selected = new Set(bestRulePackSelection(byId("sourceVersion").value, byId("targetVersion").value));
+  const selectedPaths = bestRulePackSelection(byId("sourceVersion").value, byId("targetVersion").value);
+  const selected = new Set(selectedPaths);
 
   for (const opt of select.options) {
     opt.selected = selected.has(opt.value);
   }
 
   const hasPair = parseVersion(sourceVersion) && parseVersion(targetVersion);
+  const summary = describeRulePackSelection(selectedPaths);
   setText(
     "rulePackNote",
     selected.size > 0
-      ? `Built-in upgrade coverage found for ${sourceVersion} -> ${targetVersion}.`
+      ? [
+          `Built-in upgrade coverage ready for ${sourceVersion} -> ${targetVersion}.`,
+          summary.versionSteps > 0
+            ? `${summary.versionSteps} version step${summary.versionSteps === 1 ? "" : "s"} selected.`
+            : null,
+          summary.patchCaveats > 0
+            ? `${summary.patchCaveats} patch caveat${summary.patchCaveats === 1 ? "" : "s"} included.`
+            : null,
+          summary.bridgeBlocks > 0 ? "Bridge guidance included for this path." : null,
+        ]
+          .filter(Boolean)
+          .join(" ")
       : noRulePackRequired(sourceVersion, targetVersion)
         ? "No upgrade packs are needed for this version step."
       : hasPair
@@ -406,17 +679,96 @@ function selectedManifestLabel() {
   return picked ? `Checking against installed components: ${picked.displayPath}` : "Checking against installed components.";
 }
 
+function currentSourceVersionState() {
+  const flow = selectedFlowCandidate();
+  const sourceInput = sourceVersionInput();
+  const value = sourceInput.value.trim();
+  const mode = sourceInput.dataset.mode || "";
+  const detectedVersion = flow?.detectedVersion || "";
+  const detectedConfidence = flow?.detectedVersionConfidence || "";
+  const rememberedVersion = loadRememberedSourceVersion(flow);
+  const filenameHint = filenameVersionHint(flow);
+
+  if (value) {
+    if (mode === "auto" && detectedVersion) {
+      return {
+        value,
+        sourceLabel:
+          detectedConfidence === "inferred" ? "inferred from embedded metadata" : "detected from embedded metadata",
+        note:
+          detectedConfidence === "inferred"
+            ? `Source version inferred from embedded flow metadata: ${value}`
+            : `Source version detected from embedded metadata: ${value}`,
+      };
+    }
+    if (mode === "remembered" && rememberedVersion) {
+      return {
+        value,
+        sourceLabel: "remembered from your last manual choice",
+        note: `Using remembered source version: ${value}`,
+      };
+    }
+    return {
+      value,
+      sourceLabel: "entered manually",
+      note: `Using manually entered source version: ${value}`,
+    };
+  }
+
+  if (filenameHint) {
+    return {
+      value: "",
+      sourceLabel: "not set",
+      note: `No embedded source version found. Filename suggests ${filenameHint}; confirm it before you run.`,
+    };
+  }
+
+  return {
+    value: "",
+    sourceLabel: "not set",
+    note: "No embedded source version found. Enter the source NiFi version manually to continue.",
+  };
+}
+
+function renderFlowDetails() {
+  const flow = selectedFlowCandidate();
+  const target = byId("targetVersion").value.trim();
+  if (!flow) {
+    setText("flowDetails", "Choose a flow to see format, source version, and target details.");
+    return;
+  }
+
+  const sourceState = currentSourceVersionState();
+  const detectedSource = sourceState.value || "enter manually";
+  const targetLabel = target || "choose a target";
+  setText(
+    "flowDetails",
+    `Format: ${sourceFormatLabel(flow.sourceFormat)} • Source: ${detectedSource} (${sourceState.sourceLabel}) • Target: ${targetLabel}`
+  );
+}
+
+function renderValidateAffordance() {
+  const details = byId("validateDetails");
+  const summary = byId("validateSummary");
+  const note = byId("validateNote");
+  const manifestSelected = Boolean(byId("manifestSelect").value);
+  const validateSelected = state.selectedAction === "validate";
+
+  details.classList.toggle("is-ready", manifestSelected);
+  details.open = manifestSelected || validateSelected;
+  summary.textContent = manifestSelected ? "Advanced check ready" : "Advanced check";
+  note.textContent = manifestSelected
+    ? "Validate can compare the flow against the installed components list you selected."
+    : "Use Validate for an extra target-readiness pass after rewrite. Add an installed-components list if you want stricter target inventory checks.";
+}
+
 function renderSourceVersionNote() {
   const flow = selectedFlowCandidate();
   if (!flow) {
     setText("sourceVersionNote", "Choose a flow to detect embedded version metadata or enter the source version manually.");
     return;
   }
-  if (flow?.detectedVersion) {
-    setText("sourceVersionNote", `Source version auto-detected: ${flow.detectedVersion}`);
-    return;
-  }
-  setText("sourceVersionNote", "No embedded source version found in this flow. Enter the source NiFi version manually to continue.");
+  setText("sourceVersionNote", currentSourceVersionState().note);
 }
 
 function autoSelectManifest() {
@@ -447,6 +799,7 @@ function applyFlowDefaults() {
   const sourceInput = sourceVersionInput();
   if (!flow) {
     renderSourceVersionNote();
+    renderFlowDetails();
     return;
   }
   if (flow.detectedVersion) {
@@ -456,11 +809,18 @@ function applyFlowDefaults() {
       sourceInput.value = flow.detectedVersion;
       sourceInput.dataset.mode = "auto";
     }
-  } else if ((sourceInput.dataset.mode || "") === "auto") {
-    sourceInput.value = "";
-    sourceInput.dataset.mode = "";
+  } else {
+    const remembered = loadRememberedSourceVersion(flow);
+    if (remembered) {
+      sourceInput.value = remembered;
+      sourceInput.dataset.mode = "remembered";
+    } else if ((sourceInput.dataset.mode || "") === "auto" || (sourceInput.dataset.mode || "") === "remembered") {
+      sourceInput.value = "";
+      sourceInput.dataset.mode = "";
+    }
   }
   renderSourceVersionNote();
+  renderFlowDetails();
   autoSelectRulePacks();
 }
 
@@ -488,7 +848,11 @@ function renderWorkspace(data) {
     flowSelect.appendChild(option("No flow detected", ""));
   } else {
     state.flowCandidates.forEach((candidate, index) => {
-      const versionHint = candidate.detectedVersion ? ` · ${candidate.detectedVersion}` : "";
+      const versionHint = candidate.detectedVersion
+        ? candidate.detectedVersionConfidence === "inferred"
+          ? ` · ${candidate.detectedVersion} (inferred)`
+          : ` · ${candidate.detectedVersion}`
+        : "";
       const label = `${candidate.kindLabel} — ${candidate.displayPath}${versionHint}`;
       flowSelect.appendChild(option(label, candidate.path, index === 0));
     });
@@ -519,6 +883,8 @@ function renderWorkspace(data) {
   autoSelectManifest();
   setText("manifestNote", selectedManifestLabel());
   renderSourceVersionNote();
+  renderFlowDetails();
+  renderValidateAffordance();
 }
 
 function selectedRulePacks() {
@@ -542,10 +908,12 @@ function renderBadges(result) {
 
   const badges = [exitBadge];
 
-  (result.reportPaths || []).forEach((path) => {
-    const name = path.split("/").pop();
-    badges.push({ label: name, className: "success" });
-  });
+  if ((result.reportPaths || []).length > 0) {
+    badges.push({
+      label: `${result.reportPaths.length} export${result.reportPaths.length === 1 ? "" : "s"}`,
+      className: "success",
+    });
+  }
 
   badges.forEach((badge) => {
     const el = document.createElement("span");
@@ -588,7 +956,7 @@ function focusReportView() {
 }
 
 function focusRelevantFindings() {
-  const priorities = ["blocked", "review", "auto-fix", "info"];
+  const priorities = ["blocked", "assisted-rewrite", "review", "auto-fix", "info"];
   for (const kind of priorities) {
     const section = document.querySelector(`.finding-section.section-${kind}`);
     if (section) {
@@ -619,6 +987,249 @@ function metricCard(label, value) {
   return card;
 }
 
+function setResultBanner(config) {
+  const card = byId("resultBanner");
+  const title = byId("resultBannerTitle");
+  const body = byId("resultBannerBody");
+  card.className = "result-banner";
+  if (!config) {
+    card.hidden = true;
+    title.textContent = "Ready";
+    body.textContent = "Run a command to see a compact upgrade summary.";
+    return;
+  }
+  card.hidden = false;
+  card.classList.add(`variant-${config.variant || "warning"}`);
+  title.textContent = config.title;
+  body.textContent = config.body;
+}
+
+function topBlockedFinding(report) {
+  if (!report || !Array.isArray(report.findings)) {
+    return null;
+  }
+  return report.findings.find((finding) => finding.class === "blocked") || null;
+}
+
+function renderPriorityCallout(report, reportIndex) {
+  const card = byId("priorityCallout");
+  const title = byId("priorityCalloutTitle");
+  const body = byId("priorityCalloutBody");
+  const meta = byId("priorityCalloutMeta");
+
+  let blockedReport = null;
+  if (report?.kind === "MigrationReport" || report?.kind === "ValidationReport") {
+    blockedReport = report;
+  } else if (report?.kind === "RunReport") {
+    blockedReport = report.summary?.analyzeThresholdExceeded
+      ? reportIndex.MigrationReport
+      : report.summary?.validationBlocked
+        ? reportIndex.ValidationReport
+        : null;
+  }
+
+  const finding = topBlockedFinding(blockedReport);
+  if (!finding) {
+    card.hidden = true;
+    title.textContent = "Top blocker";
+    body.textContent = "";
+    meta.textContent = "";
+    return;
+  }
+
+  card.hidden = false;
+  title.textContent = "Top blocker";
+  body.textContent = finding.message;
+  meta.textContent = [findingDetailText(finding), finding.notes].filter(Boolean).join(" • ");
+}
+
+function summarizeRewriteChanges(rewriteReport) {
+  if (!rewriteReport || rewriteReport.kind !== "RewriteReport" || !Array.isArray(rewriteReport.operations)) {
+    return [];
+  }
+
+  const counts = new Map();
+  const add = (label, amount = 1) => counts.set(label, (counts.get(label) || 0) + amount);
+
+  rewriteReport.operations
+    .filter((operation) => operation.status === "applied")
+    .forEach((operation) => {
+      switch (operation.actionType) {
+        case "replace-component-type":
+          if (operation.component?.scope === "processor") {
+            add("processor replaced", 1);
+          } else if (operation.component?.scope === "controller-service") {
+            add("controller service replaced", 1);
+          } else {
+            add("component replaced", 1);
+          }
+          break;
+        case "rename-property":
+          add("property renamed", 1);
+          break;
+        case "remove-property":
+          add("property removed", 1);
+          break;
+        case "set-property":
+        case "set-property-if-absent":
+          add("property set", 1);
+          break;
+        case "copy-property":
+          add("property copied", 1);
+          break;
+        case "update-bundle-coordinate":
+          add("bundle update", 1);
+          break;
+        case "emit-parameter-scaffold":
+          add("parameter scaffold added", 1);
+          break;
+        default:
+          add("rewrite applied", 1);
+          break;
+      }
+    });
+
+  return Array.from(counts.entries()).map(([label, count]) => pluralize(count, label));
+}
+
+function renderRewriteSummary(rewriteReport) {
+  const card = byId("rewriteSummaryCard");
+  const list = byId("rewriteSummaryList");
+  card.hidden = true;
+  list.innerHTML = "";
+
+  const lines = summarizeRewriteChanges(rewriteReport);
+  if (lines.length === 0) {
+    return;
+  }
+
+  lines.forEach((line) => {
+    const row = document.createElement("div");
+    row.className = "selection-list-item";
+    row.textContent = line;
+    list.appendChild(row);
+  });
+
+  card.hidden = false;
+}
+
+function setUtilityActions(actions) {
+  const root = byId("resultUtilityActions");
+  root.innerHTML = "";
+  (actions || []).forEach((action) => {
+    const button = document.createElement("button");
+    button.className = action.primary ? "button primary" : "button secondary";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    root.appendChild(button);
+  });
+}
+
+async function openPath(path, createDirIfMissing = false) {
+  if (!path) {
+    return;
+  }
+  await invoke("open_path", { path, createDirIfMissing });
+}
+
+function renderResultUtilities(result) {
+  const actions = [];
+  if (state.rewrittenArtifactPath) {
+    actions.push({
+      label: "Open rewritten artifact",
+      onClick: () => openPath(state.rewrittenArtifactPath, false),
+    });
+  }
+  if (result?.outputDir) {
+    actions.push({
+      label: "Open output folder",
+      onClick: () => openPath(result.outputDir, true),
+    });
+  }
+  setUtilityActions(actions);
+}
+
+function renderResultBanner(report, result, reportIndex) {
+  if (!report || typeof report !== "object") {
+    setResultBanner(
+      result?.exitCode === 0
+        ? { variant: "success", title: "Command completed", body: "Structured results are ready below." }
+        : { variant: "warning", title: "Command finished", body: "Review the command output and reports below." }
+    );
+    return;
+  }
+
+  if (report.kind === "MigrationReport") {
+    const byClass = report.summary?.byClass || {};
+    const blocked = Number(byClass["blocked"] || 0);
+    const autoFix = Number(byClass["auto-fix"] || 0);
+    const assisted = Number(byClass["assisted-rewrite"] || 0);
+    const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+    if (blocked > 0) {
+      setResultBanner({ variant: "danger", title: "Blocked upgrade", body: topBlockedFinding(report)?.message || "Resolve the blocker before rewrite or run." });
+    } else if (autoFix > 0 || assisted > 0) {
+      setResultBanner({
+        variant: "success",
+        title: "Ready for rewrite",
+        body:
+          autoFix > 0
+            ? `Rewrite can apply ${pluralize(autoFix, "safe fix", "safe fixes")}${assisted > 0 ? ` and scaffold ${pluralize(assisted, "assisted rewrite", "assisted rewrites")}.` : "."}`
+            : `Rewrite can scaffold ${pluralize(assisted, "assisted rewrite", "assisted rewrites")}.`,
+      });
+    } else if (review > 0) {
+      setResultBanner({ variant: "warning", title: "Review needed", body: `This flow can move forward after ${pluralize(review, "review item", "review items")} are checked.` });
+    } else {
+      setResultBanner({ variant: "success", title: "Upgrade check complete", body: "No flow-specific issues were found in the built-in coverage for this path." });
+    }
+    return;
+  }
+
+  if (report.kind === "RewriteReport") {
+    const applied = Number(report.summary?.appliedOperations || 0);
+    if (state.rewrittenArtifactPath) {
+      setResultBanner({
+        variant: "success",
+        title: "Rewrite created a reviewed copy",
+        body:
+          applied > 0
+            ? `A separate rewritten artifact was exported with ${pluralize(applied, "applied change", "applied changes")}.`
+            : "A separate rewritten artifact was exported with no applied rewrite changes.",
+      });
+    } else {
+      setResultBanner({ variant: "warning", title: "Rewrite finished", body: "Review the rewrite report for details." });
+    }
+    return;
+  }
+
+  if (report.kind === "ValidationReport") {
+    const byClass = report.summary?.byClass || {};
+    const blocked = Number(byClass["blocked"] || 0);
+    const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+    if (blocked > 0) {
+      setResultBanner({ variant: "danger", title: "Validation blocked", body: topBlockedFinding(report)?.message || "Target checks failed for this artifact." });
+    } else if (review > 0) {
+      setResultBanner({ variant: "warning", title: "Validation needs review", body: `Target checks surfaced ${pluralize(review, "review item", "review items")}.` });
+    } else {
+      setResultBanner({ variant: "success", title: "Validation passed", body: "The selected artifact passed the current target readiness checks." });
+    }
+    return;
+  }
+
+  if (report.kind === "RunReport") {
+    if (report.summary?.analyzeThresholdExceeded || report.summary?.validationBlocked) {
+      renderPriorityCallout(report, reportIndex);
+      setResultBanner({ variant: "danger", title: "Blocked upgrade", body: "Run stopped safely before this flow could be pushed further." });
+    } else if (state.rewrittenArtifactPath) {
+      setResultBanner({ variant: "success", title: "Run created a reviewed copy", body: "Analyze, rewrite, and validate completed with a separate reviewed artifact exported for you." });
+    } else {
+      setResultBanner({ variant: "success", title: "Run completed", body: "The guided workflow completed for this flow." });
+    }
+    return;
+  }
+
+  setResultBanner({ variant: "success", title: "Report loaded", body: "Structured results are ready below." });
+}
+
 function renderResultOverview(report, result) {
   const headline = byId("resultHeadline");
   const subhead = byId("resultSubhead");
@@ -642,19 +1253,23 @@ function renderResultOverview(report, result) {
     const byClass = report.summary?.byClass || {};
     const blocked = byClass["blocked"] || 0;
     const autoFix = byClass["auto-fix"] || 0;
+    const assisted = byClass["assisted-rewrite"] || 0;
     const manual = (byClass["manual-change"] || 0) + (byClass["manual-inspection"] || 0);
     const info = byClass["info"] || 0;
     const topFinding = Array.isArray(report.findings) && report.findings.length > 0 ? report.findings[0] : null;
     const isBridgeUpgradeBlock = topFinding?.ruleId === "core.bridge-upgrade.requires-1.27";
+    const isPre121BaselineBlock = topFinding?.ruleId === "core.pre-1.21.support-baseline-required";
 
-    if (isBridgeUpgradeBlock) {
+    if (isPre121BaselineBlock) {
+      headline.textContent = "Upgrade path blocked: re-export this flow from NiFi 1.21.x or newer first";
+    } else if (isBridgeUpgradeBlock) {
       headline.textContent = "Upgrade path blocked: move this flow to 1.27.x before targeting NiFi 2.x";
     } else if (blocked > 0) {
       headline.textContent = `Blocked upgrade: ${blocked} required change${blocked === 1 ? "" : "s"}`;
+    } else if (autoFix > 0 || assisted > 0) {
+      headline.textContent = `Rewrite available: ${autoFix} safe, ${assisted} assisted`;
     } else if (manual > 0) {
       headline.textContent = `Review needed: ${manual} change${manual === 1 ? "" : "s"}`;
-    } else if (autoFix > 0) {
-      headline.textContent = `Ready to rewrite: ${autoFix} safe fix${autoFix === 1 ? "" : "es"} available`;
     } else {
       headline.textContent = "No flow-specific upgrade issues found.";
     }
@@ -662,12 +1277,15 @@ function renderResultOverview(report, result) {
     subhead.textContent =
       report.kind === "ValidationReport"
         ? topFinding?.message || `Validated ${sourceVersion} -> ${targetVersion} against the chosen target checks.`
-        : isBridgeUpgradeBlock
+        : isPre121BaselineBlock
+          ? "Built-in version-to-version coverage starts at NiFi 1.21.x."
+          : isBridgeUpgradeBlock
           ? "Apache NiFi requires a bridge upgrade to 1.27.x before entering the 2.x line."
           : topFinding?.message || `Analyzed ${sourceVersion} -> ${targetVersion} using the built-in upgrade coverage.`;
 
     metrics.appendChild(metricCard("Blocked", blocked));
     metrics.appendChild(metricCard("Safe fixes", autoFix));
+    metrics.appendChild(metricCard("Assisted", assisted));
     metrics.appendChild(metricCard("Review items", manual));
     metrics.appendChild(metricCard("Info", info));
     meta.textContent = `Flow ${sourceLabel} • Target ${targetVersion}`;
@@ -678,9 +1296,15 @@ function renderResultOverview(report, result) {
       }
     } else if (blocked > 0) {
       setResultNextAction({ label: "Review blockers", onClick: () => focusFindingSection("blocked") });
-    } else if (autoFix > 0) {
+    } else if (autoFix > 0 || assisted > 0) {
       setResultNextAction({ label: "Run Rewrite", onClick: () => runAction("rewrite") });
-      subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"}.`;
+      if (autoFix > 0 && assisted > 0) {
+        subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"} and scaffold ${assisted} reviewable change${assisted === 1 ? "" : "s"}.`;
+      } else if (autoFix > 0) {
+        subhead.textContent = `This flow can move forward. Rewrite can apply ${autoFix} safe fix${autoFix === 1 ? "" : "es"}.`;
+      } else {
+        subhead.textContent = `This flow can move forward. Rewrite can scaffold ${assisted} reviewable change${assisted === 1 ? "" : "s"}.`;
+      }
     } else if (manual > 0) {
       setResultNextAction({ label: "Review findings", onClick: () => focusFindingSection("review") });
     } else {
@@ -694,10 +1318,14 @@ function renderResultOverview(report, result) {
     const applied = report.summary?.appliedOperations || 0;
     const skipped = report.summary?.skippedOperations || 0;
     const total = report.summary?.totalOperations || 0;
+    const appliedSafe = report.summary?.appliedByClass?.["auto-fix"] || 0;
+    const appliedAssisted = report.summary?.appliedByClass?.["assisted-rewrite"] || 0;
     headline.textContent =
-      applied > 0 ? `Rewrite applied: ${applied} safe change${applied === 1 ? "" : "s"}` : "No safe rewrites applied.";
-    subhead.textContent = `Rewrote ${sourceVersion} -> ${targetVersion} using deterministic migration actions only.`;
+      applied > 0 ? `Rewrite applied: ${applied} change${applied === 1 ? "" : "s"}` : "No rewrites applied.";
+    subhead.textContent = `Rewrote ${sourceVersion} -> ${targetVersion} using safe and assisted migration actions only.`;
     metrics.appendChild(metricCard("Applied", applied));
+    metrics.appendChild(metricCard("Safe", appliedSafe));
+    metrics.appendChild(metricCard("Assisted", appliedAssisted));
     metrics.appendChild(metricCard("Skipped", skipped));
     metrics.appendChild(metricCard("Total ops", total));
     meta.textContent = `Flow ${sourceLabel} • Target ${targetVersion}`;
@@ -707,6 +1335,9 @@ function renderResultOverview(report, result) {
 
   if (report.kind === "RunReport") {
     const summary = report.summary || {};
+    const rewriteStep = Array.isArray(report.steps)
+      ? report.steps.find((step) => step.name === "rewrite")
+      : null;
     if (summary.analyzeThresholdExceeded) {
       headline.textContent = "Run stopped after analyze.";
     } else if (summary.validationBlocked) {
@@ -716,7 +1347,13 @@ function renderResultOverview(report, result) {
     } else {
       headline.textContent = `Run status: ${summary.status || "unknown"}`;
     }
-    subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow.`;
+    if (rewriteStep?.outputPath) {
+      subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow and wrote a reviewed artifact to ${compactPath(rewriteStep.outputPath)}.`;
+    } else if (summary.analyzeThresholdExceeded) {
+      subhead.textContent = "Analyze stopped the workflow before a rewritten artifact was created.";
+    } else {
+      subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow.`;
+    }
     metrics.appendChild(metricCard("Steps done", summary.completedSteps || 0));
     metrics.appendChild(metricCard("Publish", summary.publishEnabled ? "On" : "Off"));
     metrics.appendChild(metricCard("Status", summary.status || "unknown"));
@@ -738,8 +1375,67 @@ function resetResultOverview() {
   byId("resultMetrics").innerHTML = "";
   byId("resultMeta").textContent = "No report summary yet.";
   setResultNextAction(null);
+  setUtilityActions([]);
+  setResultBanner(null);
+  renderPriorityCallout(null, {});
+  renderRewriteSummary(null);
   state.latestReport = null;
+  state.latestResult = null;
+  state.rewrittenArtifactPath = null;
+  state.reportIndex = {};
+  renderRunSteps(null);
   renderActionSelection();
+}
+
+function renderRunSteps(report) {
+  const card = byId("runStepsCard");
+  const list = byId("runStepsList");
+  if (!card || !list) {
+    return;
+  }
+  list.innerHTML = "";
+  card.hidden = true;
+
+  if (!report || report.kind !== "RunReport" || !Array.isArray(report.steps) || report.steps.length === 0) {
+    return;
+  }
+
+  report.steps.forEach((step) => {
+    const row = document.createElement("div");
+    row.className = "selection-list-item step-item";
+
+    const copy = document.createElement("div");
+    copy.className = "step-copy";
+
+    const name = document.createElement("div");
+    name.className = "step-name";
+    name.textContent = step.name || "step";
+    copy.appendChild(name);
+
+    if (step.message) {
+      const message = document.createElement("div");
+      message.className = "step-message";
+      message.textContent = step.message;
+      copy.appendChild(message);
+    }
+
+    if (step.outputPath) {
+      const output = document.createElement("div");
+      output.className = "step-path";
+      output.textContent = step.outputPath;
+      copy.appendChild(output);
+    }
+
+    const status = document.createElement("span");
+    status.className = `step-status ${step.status === "completed" ? "completed" : step.status === "skipped" ? "skipped" : "other"}`;
+    status.textContent = step.status || "unknown";
+
+    row.appendChild(copy);
+    row.appendChild(status);
+    list.appendChild(row);
+  });
+
+  card.hidden = false;
 }
 
 function findingSectionTitle(kind) {
@@ -748,6 +1444,8 @@ function findingSectionTitle(kind) {
       return "Blocked";
     case "review":
       return "Review";
+    case "assisted-rewrite":
+      return "Assisted rewrites";
     case "auto-fix":
       return "Safe fixes";
     case "info":
@@ -763,6 +1461,8 @@ function findingSectionIcon(kind) {
       return "!";
     case "review":
       return "?";
+    case "assisted-rewrite":
+      return "~";
     case "auto-fix":
       return "✓";
     case "info":
@@ -779,6 +1479,8 @@ function summarizeSection(kind, count) {
         return "No blockers found.";
       case "review":
         return "No review items found.";
+      case "assisted-rewrite":
+        return "No assisted rewrites available.";
       case "auto-fix":
         return "No safe fixes available.";
       case "info":
@@ -792,6 +1494,8 @@ function summarizeSection(kind, count) {
       return `${count} blocker${count === 1 ? "" : "s"} need attention.`;
     case "review":
       return `${count} review item${count === 1 ? "" : "s"} to check.`;
+    case "assisted-rewrite":
+      return `${count} assisted rewrite${count === 1 ? "" : "s"} can be scaffolded.`;
     case "auto-fix":
       return `${count} safe fix${count === 1 ? "" : "es"} can be applied.`;
     case "info":
@@ -824,6 +1528,7 @@ function renderFindingSections(report) {
 
   const grouped = {
     blocked: report.findings.filter((finding) => finding.class === "blocked"),
+    "assisted-rewrite": report.findings.filter((finding) => finding.class === "assisted-rewrite"),
     review: report.findings.filter((finding) => finding.class === "manual-change" || finding.class === "manual-inspection"),
     "auto-fix": report.findings.filter((finding) => finding.class === "auto-fix"),
     info: report.findings.filter((finding) => finding.class === "info"),
@@ -885,6 +1590,13 @@ function renderFindingSections(report) {
           item.appendChild(notes);
         }
 
+        if (Array.isArray(finding.suggestedActions) && finding.suggestedActions.length > 0) {
+          const suggestions = document.createElement("div");
+          suggestions.className = "finding-item-meta";
+          suggestions.textContent = `Suggested next steps: ${finding.suggestedActions.map(formatActionPreview).join(" ")}`;
+          item.appendChild(suggestions);
+        }
+
         body.appendChild(item);
       });
     }
@@ -904,9 +1616,15 @@ function formatActionPreview(action) {
     case "replace-component-type":
       return `Replace component type ${baseName(params.from || "old")} with ${baseName(params.to || "new")}.`;
     case "set-property":
-      return `Set property ${params.name || "unknown"} to ${params.value || "value"}.`;
+      return `Set property ${params.property || "unknown"} to ${params.value || "value"}.`;
+    case "set-property-if-absent":
+      return `Create property ${params.property || "unknown"} with ${params.value || "value"} if it is missing.`;
+    case "copy-property":
+      return `Copy property ${params.from || "unknown"} into ${params.to || "unknown"}.`;
     case "update-bundle-coordinate":
       return "Update bundle coordinates to the target component bundle.";
+    case "emit-parameter-scaffold":
+      return `Create a parameter placeholder named ${params.parameterName || "parameter"} for the reviewed migration.`;
     default:
       return action.type;
   }
@@ -932,8 +1650,18 @@ function previewDiffFromAction(action) {
       };
     case "set-property":
       return {
-        before: `Property: ${params.name || "unknown"}`,
+        before: `Property: ${params.property || "unknown"}`,
         after: `Set to ${params.value || "value"}`,
+      };
+    case "set-property-if-absent":
+      return {
+        before: `Property: ${params.property || "unknown"}`,
+        after: `Create ${params.value || "value"}`,
+      };
+    case "copy-property":
+      return {
+        before: `Property: ${params.from || "unknown"}`,
+        after: `Copy to ${params.to || "unknown"}`,
       };
     default:
       return null;
@@ -950,12 +1678,14 @@ function renderRewritePreview(report) {
     return;
   }
 
-  const autoFixFindings = report.findings.filter((finding) => finding.class === "auto-fix");
-  if (autoFixFindings.length === 0) {
+  const rewriteableFindings = report.findings.filter(
+    (finding) => finding.class === "auto-fix" || finding.class === "assisted-rewrite"
+  );
+  if (rewriteableFindings.length === 0) {
     return;
   }
 
-  autoFixFindings.forEach((finding) => {
+  rewriteableFindings.forEach((finding) => {
     const item = document.createElement("div");
     item.className = "preview-item";
 
@@ -968,7 +1698,7 @@ function renderRewritePreview(report) {
     if (detail) {
       const meta = document.createElement("div");
       meta.className = "preview-meta";
-      meta.textContent = detail;
+      meta.textContent = `${finding.class === "assisted-rewrite" ? "Assisted rewrite" : "Safe fix"} • ${detail}`;
       item.appendChild(meta);
     }
 
@@ -1008,51 +1738,140 @@ async function renderReports(result) {
   const list = byId("reportLinks");
   const view = byId("reportView");
   list.innerHTML = "";
+  view.classList.remove("empty");
   state.reports = result.reportPaths || [];
+  state.latestResult = result;
+  state.rewrittenArtifactPath = result.rewrittenArtifactPath || null;
 
   if (state.reports.length === 0) {
     list.textContent = "No reports generated.";
     resetResultOverview();
     byId("findingSections").innerHTML = "";
     byId("rewritePreview").hidden = true;
+    view.classList.add("empty");
+    view.textContent = "Run a command to load a report here.";
     return;
   }
 
-  let jsonReport = null;
-  const jsonPath = state.reports.find((path) => path.endsWith(".json"));
-  if (jsonPath) {
+  const structuredByPath = {};
+  const structuredByKind = {};
+  for (const path of state.reports.filter((candidate) => candidate.endsWith(".json"))) {
     try {
-      jsonReport = JSON.parse(await invoke("read_text_file", { path: jsonPath }));
+      const parsed = JSON.parse(await invoke("read_text_file", { path }));
+      structuredByPath[path] = parsed;
+      if (parsed?.kind && !structuredByKind[parsed.kind]) {
+        structuredByKind[parsed.kind] = parsed;
+      }
     } catch (error) {
-      jsonReport = null;
+      // Ignore non-parseable exports and keep the readable report flow working.
     }
   }
+
+  const jsonPath = preferredJsonReportPath(state.reports);
+  const jsonReport = jsonPath ? structuredByPath[jsonPath] || null : null;
   state.latestReport = jsonReport;
+  state.reportIndex = structuredByKind;
+  renderResultBanner(jsonReport, result, structuredByKind);
   renderResultOverview(jsonReport, result);
+  renderPriorityCallout(jsonReport, structuredByKind);
+  renderRunSteps(jsonReport);
   renderFindingSections(jsonReport);
-  renderRewritePreview(jsonReport);
+  renderRewriteSummary(structuredByKind.RewriteReport || null);
+  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.MigrationReport || null);
+  renderResultUtilities(result);
   renderActionSelection();
 
-  for (const reportPath of state.reports) {
-    const button = document.createElement("button");
-    button.className = "button secondary";
-    button.textContent = reportLabel(reportPath);
-    button.title = reportPath.split("/").pop();
-    button.addEventListener("click", async () => {
-      const content = await invoke("read_text_file", { path: reportPath });
-      view.textContent = content;
-    });
-    list.appendChild(button);
+  const groups = groupReportPaths(state.reports);
+  for (const group of groups) {
+    const card = document.createElement("div");
+    card.className = "report-card";
+
+    const head = document.createElement("div");
+    head.className = "report-card-head";
+
+    const title = document.createElement("div");
+    title.className = "report-card-title";
+    title.textContent = group.label;
+    head.appendChild(title);
+
+    const meta = document.createElement("div");
+    meta.className = "report-card-meta";
+    meta.textContent = group.md ? "Readable report available" : "Structured export only";
+    head.appendChild(meta);
+    card.appendChild(head);
+
+    const actions = document.createElement("div");
+    actions.className = "report-card-actions";
+    const primaryPath = group.md || group.json;
+    if (primaryPath) {
+      const button = document.createElement("button");
+      button.className = "button secondary";
+      button.textContent = group.md ? `View ${group.label} report` : `View ${group.label} export`;
+      button.addEventListener("click", async () => {
+        const content = await invoke("read_text_file", { path: primaryPath });
+        setReportViewContent(primaryPath, content);
+      });
+      actions.appendChild(button);
+    }
+    card.appendChild(actions);
+
+    if (group.json) {
+      const advanced = document.createElement("details");
+      advanced.className = "report-advanced";
+      const summary = document.createElement("summary");
+      summary.textContent = "Automation details";
+      advanced.appendChild(summary);
+
+      const advancedActions = document.createElement("div");
+      advancedActions.className = "report-advanced-actions";
+      const jsonButton = document.createElement("button");
+      jsonButton.className = "button secondary";
+      jsonButton.textContent = `View ${group.label} JSON`;
+      jsonButton.addEventListener("click", async () => {
+        const content = await invoke("read_text_file", { path: group.json });
+        setReportViewContent(group.json, content);
+      });
+      advancedActions.appendChild(jsonButton);
+      advanced.appendChild(advancedActions);
+      card.appendChild(advanced);
+    }
+
+    list.appendChild(card);
   }
 
-  const defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
+  let defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
+  if (jsonReport?.kind === "RunReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("run-report.md")) ||
+      state.reports.find((path) => path.endsWith("run-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "RewriteReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("rewrite-report.md")) ||
+      state.reports.find((path) => path.endsWith("rewrite-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "ValidationReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("validation-report.md")) ||
+      state.reports.find((path) => path.endsWith("validation-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "MigrationReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("migration-report.md")) ||
+      state.reports.find((path) => path.endsWith("migration-report.json")) ||
+      defaultReport;
+  }
   const content = await invoke("read_text_file", { path: defaultReport });
-  view.textContent = content;
+  setReportViewContent(defaultReport, content);
 }
 
 async function runAction(action) {
   state.selectedAction = action;
   state.runningAction = action;
+  state.rewrittenArtifactPath = null;
+  state.reportIndex = {};
+  state.latestReport = null;
+  state.latestResult = null;
   renderActionSelection();
 
   const flow = selectedFlowCandidate();
@@ -1081,6 +1900,16 @@ async function runAction(action) {
   byId("reportView").textContent = "Waiting for report output...";
   byId("reportLinks").textContent = "Generating reports...";
   byId("summaryBadges").innerHTML = "";
+  byId("findingSections").innerHTML = "";
+  byId("rewritePreview").hidden = true;
+  setUtilityActions([]);
+  setResultBanner({
+    variant: "warning",
+    title: `Running ${titleAction(action)}`,
+    body: "Preparing a structured summary from the generated report.",
+  });
+  renderPriorityCallout(null, {});
+  renderRewriteSummary(null);
   byId("resultHeadline").textContent = `Running ${titleAction(action)}...`;
   byId("resultSubhead").textContent = "Preparing a structured summary from the generated report.";
   byId("resultMetrics").innerHTML = "";
@@ -1095,10 +1924,45 @@ async function runAction(action) {
   } catch (error) {
     byId("stdoutView").textContent = String(error);
     setText("lastAction", `${titleAction(action)} failed.`);
+    setResultBanner({
+      variant: "danger",
+      title: `${titleAction(action)} failed`,
+      body: "Review the command output below for the exact error.",
+    });
   } finally {
     state.runningAction = null;
     renderActionSelection();
   }
+}
+
+function prepareFreshOutputDir() {
+  const workspacePath = byId("workspacePath").value.trim();
+  if (!workspacePath) {
+    return;
+  }
+  byId("outputDir").value = defaultOutputDir(workspacePath);
+  state.reports = [];
+  state.reportIndex = {};
+  state.latestReport = null;
+  state.latestResult = null;
+  state.rewrittenArtifactPath = null;
+  byId("reportLinks").textContent = "Start a fresh run to generate new reports here.";
+  byId("reportView").classList.add("empty");
+  byId("reportView").textContent = "Start a fresh run to load a report here.";
+  byId("stdoutView").textContent = "Waiting for a command...";
+  byId("summaryBadges").innerHTML = "";
+  byId("findingSections").innerHTML = "";
+  byId("rewritePreview").hidden = true;
+  setText("lastAction", "Fresh output folder ready.");
+  resetResultOverview();
+}
+
+async function openOutputFolder() {
+  const path = byId("outputDir").value.trim();
+  if (!path) {
+    return;
+  }
+  await openPath(path, true);
 }
 
 async function scanWorkspace() {
@@ -1113,6 +1977,13 @@ async function bootstrap() {
 }
 
 document.getElementById("scanButton").addEventListener("click", scanWorkspace);
+byId("openOutputButton").addEventListener("click", () => {
+  openOutputFolder().catch((error) => {
+    byId("stdoutView").textContent = String(error);
+    setText("lastAction", "Could not open output folder.");
+  });
+});
+byId("freshOutputButton").addEventListener("click", prepareFreshOutputDir);
 document.querySelectorAll("[data-action]").forEach((button) => {
   button.addEventListener("click", () => {
     state.selectedAction = button.dataset.action;
@@ -1125,6 +1996,7 @@ byId("flowSelect").addEventListener("change", () => {
 });
 byId("manifestSelect").addEventListener("change", () => {
   setText("manifestNote", selectedManifestLabel());
+  renderValidateAffordance();
 });
 byId("rulePackSelect").addEventListener("change", () => {
   const count = selectedRulePacks().length;
@@ -1137,12 +2009,18 @@ byId("rulePackSelect").addEventListener("change", () => {
 });
 byId("sourceVersion").addEventListener("input", () => {
   sourceVersionInput().dataset.mode = "manual";
+  const flow = selectedFlowCandidate();
+  saveRememberedSourceVersion(flow?.path, byId("sourceVersion").value.trim());
   autoSelectRulePacks();
+  renderSourceVersionNote();
+  renderFlowDetails();
 });
 byId("targetVersion").addEventListener("input", () => {
   autoSelectRulePacks();
   autoSelectManifest();
   setText("manifestNote", selectedManifestLabel());
+  renderFlowDetails();
+  renderValidateAffordance();
 });
 
 bootstrap().catch((error) => {

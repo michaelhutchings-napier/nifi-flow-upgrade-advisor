@@ -25,9 +25,9 @@
         <p class="eyebrow">Examples</p>
         <h1>Ten-plus examples users can actually run.</h1>
         <p class="lede">
-          The examples cover blocked upgrades, bridge requirements, manual-change paths,
-          manual-inspection findings, info-only guidance, and safe auto-fixes across both
-          `1.x` and `2.x` migration lines.
+          The examples cover blocked upgrades, bridge requirements, assisted rewrites,
+          manual-change paths, assisted rewrites, manual-inspection findings, and safe auto-fixes
+          across both `1.x` and `2.x` migration lines.
         </p>
         <div class="actions">
           <a class="button primary" href="../index.html">Back to site</a>
@@ -43,26 +43,27 @@
           <h2>Three richer examples that feel closer to a real migration review.</h2>
           <p>
             These featured stories use fuller fixtures and show the mixed-result cases real teams care
-            about: blocked findings, safe rewrites, manual-change guidance, and policy review in the
-            same flow.
+            about: blocked findings, safe rewrites, assisted rewrites, manual-change guidance, and
+            policy review in the same flow.
           </p>
         </div>
         <div class="wrap story-grid">
           <article class="story-card">
             <div class="story-head">
-              <div class="demo-status blocked-pill">Blocked + Auto-fix + Manual</div>
+              <div class="demo-status blocked-pill">Blocked + Safe + Assisted + Manual</div>
               <h3>Orders Platform 1.27 to 2.0</h3>
               <p>
                 A fuller upgrade story with variable-registry blocking, cache-service renames,
-                Base64 replacement, and manual HTTP migration guidance in one run.
+                Base64 replacement, and assisted HTTP migration guidance in one run.
               </p>
             </div>
             <div class="story-stats">
-              <span>Total `8`</span>
+              <span>Total `5`</span>
               <span>Auto-fix `2`</span>
-              <span>Manual-change `2`</span>
+              <span>Assisted `1`</span>
+              <span>Manual-change `1`</span>
               <span>Blocked `1`</span>
-              <span>Rewrite `2 applied`</span>
+              <span>Rewrite `6 applied`</span>
             </div>
             <pre class="report-snippet"><code>## blocked
 - core.variable-registry.removed: Variable Registry expressions require explicit migration planning before NiFi 2.0.x.
@@ -71,8 +72,10 @@
 - core.distributed-map-cache-client.renamed
 - core.base64-encode-content.replace
 
-## manual-change
+## assisted-rewrite
 - core.get-http.replace
+
+## manual-change
 - core.invoke-http.proxy-properties.replace</code></pre>
             <div class="demo-actions">
               <a class="button secondary" href="https://github.com/michaelhutchings-napier/nifi-flow-upgrade-advisor/blob/main/demo/orders-platform-1.27-to-2.0.sh">View script</a>
@@ -160,9 +163,9 @@
             <pre><code>./demo/asana-2.7-to-2.8.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status manual-pill">Manual-change</div>
+            <div class="demo-status assisted-pill">Assisted rewrite</div>
             <h2>GetHTTP to InvokeHTTP</h2>
-            <p>The advisor explains the documented migration but applies zero rewrite operations.</p>
+            <p>The advisor scaffolds the target InvokeHTTP shape while keeping timeout, SSL, and response handling review visible.</p>
             <pre><code>./demo/get-http-1.27-to-2.0.sh</code></pre>
           </article>
           <article class="demo-card">
@@ -190,15 +193,21 @@
             <pre><code>./demo/jndi-jms-ldap-1.21-to-1.22.sh</code></pre>
           </article>
           <article class="demo-card">
+            <div class="demo-status assisted-pill">Assisted rewrite</div>
+            <h2>ConvertAvroToJSON to ConvertRecord</h2>
+            <p>Shows a guided `1.25 -> 1.26` scaffold where the processor type changes but record-service choices still remain visible for review.</p>
+            <pre><code>./demo/convert-avro-1.25-to-1.26.sh</code></pre>
+          </article>
+          <article class="demo-card">
             <div class="demo-status manual-pill">Manual-change</div>
             <h2>InvokeHTTP URL encoding</h2>
             <p>Shows how URL encoding review is surfaced for `1.23 -> 1.24`.</p>
             <pre><code>./demo/invoke-http-url-encoding-1.23-to-1.24.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status manual-pill">Manual-change</div>
+            <div class="demo-status assisted-pill">Assisted rewrite</div>
             <h2>ListenHTTP rate limit removed</h2>
-            <p>Shows removed rate-limit behavior for `2.3 -> 2.4` without pretending the review is automatic.</p>
+            <p>Shows removed rate-limit behavior for `2.3 -> 2.4` with a reviewed assisted cleanup.</p>
             <pre><code>./demo/listen-http-2.3-to-2.4.sh</code></pre>
           </article>
           <article class="demo-card">
@@ -214,9 +223,9 @@
             <pre><code>./demo/jolt-custom-class-2.7-to-2.8.sh</code></pre>
           </article>
           <article class="demo-card">
-            <div class="demo-status success-pill">Info-only</div>
-            <h2>Content viewer contract note</h2>
-            <p>Shows a low-drama info example for the `2.4 -> 2.5` content-viewer contract change.</p>
+            <div class="demo-status quiet-pill">Quiet path</div>
+            <h2>Content viewer clean path</h2>
+            <p>Shows a low-drama clean-path example where the built-in coverage finds no flow-specific issues.</p>
             <pre><code>./demo/content-viewer-2.4-to-2.5.sh</code></pre>
           </article>
           <article class="demo-card">

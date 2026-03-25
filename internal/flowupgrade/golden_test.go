@@ -10,11 +10,11 @@ import (
 )
 
 type goldenSnapshot struct {
-	RulePacks     []string          `json:"rulePacks"`
-	SourceVersion string            `json:"sourceVersion"`
-	TargetVersion string            `json:"targetVersion"`
-	Summary       ReportSummary     `json:"summary"`
-	Findings      []goldenFinding   `json:"findings"`
+	RulePacks     []string        `json:"rulePacks"`
+	SourceVersion string          `json:"sourceVersion"`
+	TargetVersion string          `json:"targetVersion"`
+	Summary       ReportSummary   `json:"summary"`
+	Findings      []goldenFinding `json:"findings"`
 }
 
 type goldenFinding struct {
@@ -162,6 +162,31 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
 			goldenFile: "official_1_23_to_1_24.json",
 		},
 		{
+			name:          "official_2_3_to_2_4",
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "listen-http-1",
+        "name": "ReceiveWebhook",
+        "type": "org.apache.nifi.processors.standard.ListenHTTP",
+        "properties": {
+          "Listening Port": "8443",
+          "Max Data to Receive per Second": "10 MB"
+        }
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_2_3_to_2_4.json",
+		},
+		{
 			name:          "official_1_24_to_1_25",
 			sourceVersion: "1.24.0",
 			targetVersion: "1.25.0",
@@ -292,6 +317,26 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         }
       },
       {
+        "id": "azure-1",
+        "name": "LegacyQueue",
+        "type": "org.apache.nifi.processors.azure.storage.queue.GetAzureQueueStorage",
+        "properties": {}
+      },
+      {
+        "id": "script-1",
+        "name": "LegacyJythonScript",
+        "type": "org.apache.nifi.processors.script.ExecuteScript",
+        "properties": {
+          "Script Engine": "Jython"
+        }
+      },
+      {
+        "id": "ignite-1",
+        "name": "IgniteCache",
+        "type": "org.apache.nifi.processors.ignite.cache.GetIgniteCache",
+        "properties": {}
+      },
+      {
         "id": "get-http-1",
         "name": "FetchHTTP",
         "type": "org.apache.nifi.processors.standard.GetHTTP",
@@ -307,6 +352,30 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         "properties": {
           "Proxy Host": "proxy.example.com"
         }
+      },
+      {
+        "id": "rethink-1",
+        "name": "LookupOrders",
+        "type": "org.apache.nifi.processors.rethinkdb.GetRethinkDB",
+        "properties": {}
+      },
+      {
+        "id": "encrypt-1",
+        "name": "EncryptOrders",
+        "type": "org.apache.nifi.processors.standard.EncryptContent",
+        "properties": {}
+      },
+      {
+        "id": "avro-1",
+        "name": "ConvertOrders",
+        "type": "org.apache.nifi.processors.avro.ConvertAvroToJSON",
+        "properties": {}
+      },
+      {
+        "id": "solr-1",
+        "name": "FetchFromSolr",
+        "type": "org.apache.nifi.processors.solr.GetSolr",
+        "properties": {}
       }
     ],
     "controllerServices": [
@@ -314,6 +383,12 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
         "id": "cache-1",
         "name": "MapCache",
         "type": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService",
+        "properties": {}
+      },
+      {
+        "id": "cass-1",
+        "name": "OrdersCassandra",
+        "type": "org.apache.nifi.service.CassandraSessionProvider",
         "properties": {}
       }
     ]
@@ -467,6 +542,36 @@ func TestRealisticFixturesAnalyze(t *testing.T) {
 				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml"),
 			},
 			minFindings: 3,
+		},
+		{
+			name:          "messaging_platform_1_21_to_1_22",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "messaging-platform-1.21-flow.json"),
+			sourceVersion: "1.21.0",
+			targetVersion: "1.22.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.21-to-1.22.official.yaml"),
+			},
+			minFindings: 4,
+		},
+		{
+			name:          "edge_ingest_2_3_to_2_4",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "edge-ingest-2.3-flow.json"),
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			},
+			minFindings: 1,
+		},
+		{
+			name:          "convert_avro_1_25_to_1_26",
+			fixture:       filepath.Join("..", "..", "demo", "fixtures", "convert-avro-1.25-flow.json"),
+			sourceVersion: "1.25.0",
+			targetVersion: "1.26.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.25-to-1.26.official.yaml"),
+			},
+			minFindings: 1,
 		},
 	}
 

@@ -83,7 +83,7 @@ func RunRewrite(cfg RewriteConfig) (*RewriteResult, error) {
 		targets := collectRewriteTargets(payload)
 		for _, pack := range matchingPacks {
 			for _, rule := range pack.Spec.Rules {
-				if rule.Class != "auto-fix" {
+				if !rewriteClassExecutable(rule.Class) {
 					continue
 				}
 				for i := range targets {
@@ -176,7 +176,7 @@ func rewriteGitRegistryDirectory(path string, packs []RulePack) ([]gitRegistryRe
 
 		for _, pack := range packs {
 			for _, rule := range pack.Spec.Rules {
-				if rule.Class != "auto-fix" {
+				if !rewriteClassExecutable(rule.Class) {
 					continue
 				}
 				for i := range targets {
@@ -296,6 +296,7 @@ func collectRewriteTargetsRecursive(node any, path []string, targets *[]rewriteT
 func applyRewriteAction(rule Rule, action RuleAction, target rewriteTarget, evidence []FindingEvidence) RewriteOperation {
 	op := RewriteOperation{
 		RuleID:     rule.ID,
+		Class:      rule.Class,
 		ActionType: action.Type,
 		Status:     "skipped",
 		Message:    rule.Message,
@@ -321,6 +322,10 @@ func applyRewriteAction(rule Rule, action RuleAction, target rewriteTarget, evid
 		applied, reason = rewriteRenameProperty(target.MutationNode, action.From, action.To)
 	case "set-property":
 		applied, reason = rewriteSetProperty(target.MutationNode, action.Property, action.Value)
+	case "set-property-if-absent":
+		applied, reason = rewriteSetPropertyIfAbsent(target.MutationNode, action.Property, action.Value)
+	case "copy-property":
+		applied, reason = rewriteCopyProperty(target.MutationNode, action.From, action.To)
 	case "remove-property":
 		applied, reason = rewriteRemoveProperty(target.MutationNode, action.Name)
 	case "update-bundle-coordinate":
@@ -340,6 +345,10 @@ func applyRewriteAction(rule Rule, action RuleAction, target rewriteTarget, evid
 		op.Reason = reason
 	}
 	return op
+}
+
+func rewriteClassExecutable(class string) bool {
+	return class == "auto-fix" || class == "assisted-rewrite"
 }
 
 func rewriteRenameProperty(node map[string]any, from, to string) (bool, string) {
@@ -406,6 +415,76 @@ func rewriteSetProperty(node map[string]any, property, value string) (bool, stri
 		}
 	}
 	return false, fmt.Sprintf("property %q not found", property)
+}
+
+func rewriteSetPropertyIfAbsent(node map[string]any, property, value string) (bool, string) {
+	if props := directPropertiesMap(node); props != nil {
+		if current, ok := props[property]; ok {
+			if firstAnyString(current) == value {
+				return false, fmt.Sprintf("property %q already set to %q", property, value)
+			}
+			return false, fmt.Sprintf("property %q already exists", property)
+		}
+		props[property] = value
+		return true, ""
+	}
+	if props := configPropertiesMap(node); props != nil {
+		if current, ok := props[property]; ok {
+			if firstAnyString(current) == value {
+				return false, fmt.Sprintf("property %q already set to %q", property, value)
+			}
+			return false, fmt.Sprintf("property %q already exists", property)
+		}
+		props[property] = value
+		return true, ""
+	}
+	if params := parameterList(node); len(params) > 0 {
+		for _, parameter := range params {
+			if firstMapString(parameter, "name") == property {
+				if firstMapString(parameter, "value") == value {
+					return false, fmt.Sprintf("property %q already set to %q", property, value)
+				}
+				return false, fmt.Sprintf("property %q already exists", property)
+			}
+		}
+	}
+	return false, fmt.Sprintf("property %q not found", property)
+}
+
+func rewriteCopyProperty(node map[string]any, from, to string) (bool, string) {
+	if props := directPropertiesMap(node); props != nil {
+		if _, exists := props[to]; exists {
+			return false, fmt.Sprintf("target property %q already exists", to)
+		}
+		if value, ok := props[from]; ok {
+			props[to] = value
+			return true, ""
+		}
+	}
+	if props := configPropertiesMap(node); props != nil {
+		if _, exists := props[to]; exists {
+			return false, fmt.Sprintf("target property %q already exists", to)
+		}
+		if value, ok := props[from]; ok {
+			props[to] = value
+			return true, ""
+		}
+	}
+	if params := parameterList(node); len(params) > 0 {
+		var value string
+		for _, parameter := range params {
+			if firstMapString(parameter, "name") == to {
+				return false, fmt.Sprintf("target property %q already exists", to)
+			}
+			if firstMapString(parameter, "name") == from {
+				value = firstMapString(parameter, "value")
+			}
+		}
+		if value != "" {
+			return false, fmt.Sprintf("copy-property does not support parameter-list append for %q", to)
+		}
+	}
+	return false, fmt.Sprintf("property %q not found", from)
 }
 
 func rewriteRemoveProperty(node map[string]any, name string) (bool, string) {
@@ -544,10 +623,26 @@ func firstAnyString(value any) string {
 }
 
 func summarizeRewriteOperations(operations []RewriteOperation) RewriteSummary {
-	summary := RewriteSummary{TotalOperations: len(operations)}
+	summary := RewriteSummary{
+		TotalOperations: len(operations),
+		ByClass: map[string]int{
+			"auto-fix":         0,
+			"assisted-rewrite": 0,
+		},
+		AppliedByClass: map[string]int{
+			"auto-fix":         0,
+			"assisted-rewrite": 0,
+		},
+	}
 	for _, operation := range operations {
+		if _, ok := summary.ByClass[operation.Class]; ok {
+			summary.ByClass[operation.Class]++
+		}
 		if operation.Status == "applied" {
 			summary.AppliedOperations++
+			if _, ok := summary.AppliedByClass[operation.Class]; ok {
+				summary.AppliedByClass[operation.Class]++
+			}
 		} else {
 			summary.SkippedOperations++
 		}
@@ -677,14 +772,16 @@ func renderRewriteMarkdownReport(report RewriteReport) string {
 	builder.WriteString("## Summary\n\n")
 	builder.WriteString(fmt.Sprintf("- Total operations: `%d`\n", report.Summary.TotalOperations))
 	builder.WriteString(fmt.Sprintf("- Applied: `%d`\n", report.Summary.AppliedOperations))
-	builder.WriteString(fmt.Sprintf("- Skipped: `%d`\n\n", report.Summary.SkippedOperations))
+	builder.WriteString(fmt.Sprintf("- Skipped: `%d`\n", report.Summary.SkippedOperations))
+	builder.WriteString(fmt.Sprintf("- Applied auto-fix: `%d`\n", report.Summary.AppliedByClass["auto-fix"]))
+	builder.WriteString(fmt.Sprintf("- Applied assisted-rewrite: `%d`\n\n", report.Summary.AppliedByClass["assisted-rewrite"]))
 	builder.WriteString("## Operations\n\n")
 	if len(report.Operations) == 0 {
 		builder.WriteString("- none\n")
 		return builder.String()
 	}
 	for _, op := range report.Operations {
-		builder.WriteString(fmt.Sprintf("- `%s` `%s` `%s`\n", op.RuleID, op.ActionType, op.Status))
+		builder.WriteString(fmt.Sprintf("- `%s` `%s` `%s` `%s`\n", op.RuleID, op.Class, op.ActionType, op.Status))
 		if op.Message != "" {
 			builder.WriteString(fmt.Sprintf("  Message: %s\n", op.Message))
 		}
