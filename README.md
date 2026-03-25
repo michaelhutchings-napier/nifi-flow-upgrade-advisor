@@ -70,7 +70,17 @@ What `publish` covers now:
 
 ### Desktop app first
 
-Build and launch the desktop app:
+Install the desktop prerequisites first:
+
+- Rust via `rustup`
+- the normal Tauri desktop dependencies for your OS
+- WebView2 on Windows if it is not already installed
+
+Full copy-and-paste install commands live in:
+
+- [`docs/desktop-guide.md`](docs/desktop-guide.md)
+
+Then build and launch the desktop app:
 
 ```bash
 cargo run --manifest-path desktop-app/src-tauri/Cargo.toml
