@@ -1070,20 +1070,10 @@ fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     let patterns = [
         "\"nifiVersion\"",
         "\"niFiVersion\"",
-        "\"flowEncodingVersion\"",
-        "\"registryVersion\"",
-        "\"version\"",
         "nifiVersion:",
         "niFiVersion:",
-        "flowEncodingVersion:",
-        "registryVersion:",
-        "\"versionedFlowSnapshot\"",
         "<nifiVersion>",
         "<niFiVersion>",
-        "<version>",
-        "<registryVersion>",
-        "<flowEncodingVersion>",
-        "<maxTimerDrivenThreadCount>",
     ];
 
     let trimmed = body.trim();
@@ -1109,13 +1099,7 @@ fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     }
 
     if body.contains('<') && body.contains('>') {
-        for tag in [
-            "nifiVersion",
-            "niFiVersion",
-            "version",
-            "registryVersion",
-            "flowEncodingVersion",
-        ] {
+        for tag in ["nifiVersion", "niFiVersion"] {
             if let Some(version) = extract_xml_tag_value(body, tag) {
                 if looks_like_version(&version) {
                     return Some(VersionDetection {
@@ -1127,22 +1111,24 @@ fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
         }
     }
 
-    extract_semver_like(body).map(|version| VersionDetection {
-        version,
-        confidence: "inferred",
-    })
+    for key in ["nifiVersion", "niFiVersion"] {
+        if let Some(version) = extract_yaml_key_value(body, key) {
+            if looks_like_version(&version) {
+                return Some(VersionDetection {
+                    version,
+                    confidence: "detected",
+                });
+            }
+        }
+    }
+
+    None
 }
 
 fn find_version_in_json(value: &serde_json::Value) -> Option<String> {
     match value {
         serde_json::Value::Object(map) => {
-            for key in [
-                "nifiVersion",
-                "niFiVersion",
-                "registryVersion",
-                "flowEncodingVersion",
-                "version",
-            ] {
+            for key in ["nifiVersion", "niFiVersion"] {
                 if let Some(version) = map.get(key).and_then(|v| v.as_str()) {
                     if looks_like_version(version) {
                         return Some(version.to_string());
@@ -1175,6 +1161,24 @@ fn extract_xml_tag_value(body: &str, tag: &str) -> Option<String> {
     let rest = &body[start + open.len()..];
     let end = rest.find(&close)?;
     Some(rest[..end].trim().to_string())
+}
+
+fn extract_yaml_key_value(body: &str, key: &str) -> Option<String> {
+    for line in body.lines() {
+        let trimmed = line.trim();
+        let prefix = format!("{key}:");
+        if !trimmed.starts_with(&prefix) {
+            continue;
+        }
+        let value = trimmed[prefix.len()..]
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'');
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
 }
 
 fn find_consistent_bundle_version_in_json(value: &serde_json::Value) -> Option<String> {
@@ -1214,15 +1218,6 @@ fn collect_bundle_versions(value: &serde_json::Value, versions: &mut Vec<String>
         }
         _ => {}
     }
-}
-
-fn extract_semver_like(body: &str) -> Option<String> {
-    for token in body.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '-')) {
-        if looks_like_version(token) {
-            return Some(token.to_string());
-        }
-    }
-    None
 }
 
 fn looks_like_version(value: &str) -> bool {
@@ -1382,5 +1377,53 @@ mod tests {
         match target {
             ExecTarget::Binary(_) | ExecTarget::GoRun(_) => {}
         }
+    }
+
+    #[test]
+    fn generic_schema_version_is_not_treated_as_nifi_version() {
+        let detected = detect_version_from_text(
+            r#"{
+              "version": "1.0",
+              "flowEncodingVersion": "1.0",
+              "registryVersion": "1.0",
+              "rootGroup": {"identifier": "root"}
+            }"#,
+        );
+
+        assert!(
+            detected.is_none(),
+            "schema version fields should not be treated as NiFi runtime versions"
+        );
+    }
+
+    #[test]
+    fn explicit_nifi_version_is_detected() {
+        let detected = detect_version_from_text(
+            r#"{
+              "nifiVersion": "1.27.0",
+              "rootGroup": {"identifier": "root"}
+            }"#,
+        )
+        .expect("detect explicit nifi version");
+
+        assert_eq!(detected.version, "1.27.0");
+        assert_eq!(detected.confidence, "detected");
+    }
+
+    #[test]
+    fn consistent_bundle_version_is_inferred() {
+        let detected = detect_version_from_text(
+            r#"{
+              "rootGroup": {"identifier": "root"},
+              "processors": [
+                {"bundle": {"version": "2.7.1"}},
+                {"bundle": {"version": "2.7.1"}}
+              ]
+            }"#,
+        )
+        .expect("infer bundle version");
+
+        assert_eq!(detected.version, "2.7.1");
+        assert_eq!(detected.confidence, "inferred");
     }
 }
