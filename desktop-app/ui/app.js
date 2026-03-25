@@ -58,6 +58,22 @@ function reportLabel(path) {
   return name || "Report";
 }
 
+function preferredJsonReportPath(paths) {
+  const ordered = [
+    "run-report.json",
+    "validation-report.json",
+    "rewrite-report.json",
+    "migration-report.json",
+  ];
+  for (const suffix of ordered) {
+    const match = paths.find((path) => path.endsWith(suffix));
+    if (match) {
+      return match;
+    }
+  }
+  return paths.find((path) => path.endsWith(".json")) || null;
+}
+
 function displaySourceLabel(report) {
   const flow = selectedFlowCandidate();
   if (flow?.displayPath) {
@@ -1198,7 +1214,7 @@ async function renderReports(result) {
   }
 
   let jsonReport = null;
-  const jsonPath = state.reports.find((path) => path.endsWith(".json"));
+  const jsonPath = preferredJsonReportPath(state.reports);
   if (jsonPath) {
     try {
       jsonReport = JSON.parse(await invoke("read_text_file", { path: jsonPath }));

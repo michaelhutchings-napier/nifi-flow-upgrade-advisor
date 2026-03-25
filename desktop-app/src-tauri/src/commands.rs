@@ -121,12 +121,7 @@ pub fn run_cli_action(request: CliActionRequest) -> Result<CliActionResult, Stri
         }
         "validate" => {
             args.push("validate".into());
-            let rewritten = output_dir.join("rewritten-flow.json.gz");
-            let input = if rewritten.exists() {
-                rewritten
-            } else {
-                PathBuf::from(&prepared.path)
-            };
+            let input = preferred_validate_input(&output_dir, &prepared);
             args.push("--input".into());
             args.push(input.to_string_lossy().to_string());
             args.push("--input-format".into());
@@ -337,6 +332,20 @@ fn flat_rule_pack_args(paths: &[String]) -> Vec<String> {
 struct PreparedSource {
     path: String,
     cli_format: String,
+}
+
+fn preferred_validate_input(output_dir: &Path, prepared: &PreparedSource) -> PathBuf {
+    let rewritten = match prepared.cli_format.as_str() {
+        "git-registry-dir" => output_dir.join("rewritten-flow"),
+        "flow-json-gz" => output_dir.join("rewritten-flow.json.gz"),
+        _ => output_dir.join("rewritten-flow.json"),
+    };
+
+    if rewritten.exists() {
+        rewritten
+    } else {
+        PathBuf::from(&prepared.path)
+    }
 }
 
 fn prepare_source(
