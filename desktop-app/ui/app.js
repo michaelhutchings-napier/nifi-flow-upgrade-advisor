@@ -43,6 +43,42 @@ function compactPath(path) {
   return `.../${parts.slice(-2).join("/")}`;
 }
 
+function manualSourceStorageKey(path) {
+  return `nifi-flow-upgrade-advisor:source-version:${path}`;
+}
+
+function loadRememberedSourceVersion(flow) {
+  if (!flow?.path) {
+    return "";
+  }
+  try {
+    return localStorage.getItem(manualSourceStorageKey(flow.path)) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function saveRememberedSourceVersion(flowPath, version) {
+  if (!flowPath) {
+    return;
+  }
+  try {
+    if (String(version || "").trim()) {
+      localStorage.setItem(manualSourceStorageKey(flowPath), String(version).trim());
+    } else {
+      localStorage.removeItem(manualSourceStorageKey(flowPath));
+    }
+  } catch (error) {
+    // Ignore storage issues and keep the UI functional.
+  }
+}
+
+function filenameVersionHint(flow) {
+  const candidate = [flow?.displayPath, flow?.path].filter(Boolean).join(" ");
+  const match = candidate.match(/(?:^|[^0-9])(\d+\.\d+(?:\.\d+)?)(?:[^0-9]|$)/);
+  return match ? match[1] : "";
+}
+
 function sourceFormatLabel(format) {
   switch (format) {
     case "flow-json-gz":
@@ -643,6 +679,57 @@ function selectedManifestLabel() {
   return picked ? `Checking against installed components: ${picked.displayPath}` : "Checking against installed components.";
 }
 
+function currentSourceVersionState() {
+  const flow = selectedFlowCandidate();
+  const sourceInput = sourceVersionInput();
+  const value = sourceInput.value.trim();
+  const mode = sourceInput.dataset.mode || "";
+  const detectedVersion = flow?.detectedVersion || "";
+  const detectedConfidence = flow?.detectedVersionConfidence || "";
+  const rememberedVersion = loadRememberedSourceVersion(flow);
+  const filenameHint = filenameVersionHint(flow);
+
+  if (value) {
+    if (mode === "auto" && detectedVersion) {
+      return {
+        value,
+        sourceLabel:
+          detectedConfidence === "inferred" ? "inferred from embedded metadata" : "detected from embedded metadata",
+        note:
+          detectedConfidence === "inferred"
+            ? `Source version inferred from embedded flow metadata: ${value}`
+            : `Source version detected from embedded metadata: ${value}`,
+      };
+    }
+    if (mode === "remembered" && rememberedVersion) {
+      return {
+        value,
+        sourceLabel: "remembered from your last manual choice",
+        note: `Using remembered source version: ${value}`,
+      };
+    }
+    return {
+      value,
+      sourceLabel: "entered manually",
+      note: `Using manually entered source version: ${value}`,
+    };
+  }
+
+  if (filenameHint) {
+    return {
+      value: "",
+      sourceLabel: "not set",
+      note: `No embedded source version found. Filename suggests ${filenameHint}; confirm it before you run.`,
+    };
+  }
+
+  return {
+    value: "",
+    sourceLabel: "not set",
+    note: "No embedded source version found. Enter the source NiFi version manually to continue.",
+  };
+}
+
 function renderFlowDetails() {
   const flow = selectedFlowCandidate();
   const target = byId("targetVersion").value.trim();
@@ -651,11 +738,12 @@ function renderFlowDetails() {
     return;
   }
 
-  const detectedSource = flow.detectedVersion || byId("sourceVersion").value.trim() || "enter manually";
+  const sourceState = currentSourceVersionState();
+  const detectedSource = sourceState.value || "enter manually";
   const targetLabel = target || "choose a target";
   setText(
     "flowDetails",
-    `Format: ${sourceFormatLabel(flow.sourceFormat)} • Source: ${detectedSource} • Target: ${targetLabel}`
+    `Format: ${sourceFormatLabel(flow.sourceFormat)} • Source: ${detectedSource} (${sourceState.sourceLabel}) • Target: ${targetLabel}`
   );
 }
 
@@ -680,11 +768,7 @@ function renderSourceVersionNote() {
     setText("sourceVersionNote", "Choose a flow to detect embedded version metadata or enter the source version manually.");
     return;
   }
-  if (flow?.detectedVersion) {
-    setText("sourceVersionNote", `Source version auto-detected: ${flow.detectedVersion}`);
-    return;
-  }
-  setText("sourceVersionNote", "No embedded source version found in this flow. Enter the source NiFi version manually to continue.");
+  setText("sourceVersionNote", currentSourceVersionState().note);
 }
 
 function autoSelectManifest() {
@@ -725,9 +809,15 @@ function applyFlowDefaults() {
       sourceInput.value = flow.detectedVersion;
       sourceInput.dataset.mode = "auto";
     }
-  } else if ((sourceInput.dataset.mode || "") === "auto") {
-    sourceInput.value = "";
-    sourceInput.dataset.mode = "";
+  } else {
+    const remembered = loadRememberedSourceVersion(flow);
+    if (remembered) {
+      sourceInput.value = remembered;
+      sourceInput.dataset.mode = "remembered";
+    } else if ((sourceInput.dataset.mode || "") === "auto" || (sourceInput.dataset.mode || "") === "remembered") {
+      sourceInput.value = "";
+      sourceInput.dataset.mode = "";
+    }
   }
   renderSourceVersionNote();
   renderFlowDetails();
@@ -758,7 +848,11 @@ function renderWorkspace(data) {
     flowSelect.appendChild(option("No flow detected", ""));
   } else {
     state.flowCandidates.forEach((candidate, index) => {
-      const versionHint = candidate.detectedVersion ? ` · ${candidate.detectedVersion}` : "";
+      const versionHint = candidate.detectedVersion
+        ? candidate.detectedVersionConfidence === "inferred"
+          ? ` · ${candidate.detectedVersion} (inferred)`
+          : ` · ${candidate.detectedVersion}`
+        : "";
       const label = `${candidate.kindLabel} — ${candidate.displayPath}${versionHint}`;
       flowSelect.appendChild(option(label, candidate.path, index === 0));
     });
@@ -1915,7 +2009,10 @@ byId("rulePackSelect").addEventListener("change", () => {
 });
 byId("sourceVersion").addEventListener("input", () => {
   sourceVersionInput().dataset.mode = "manual";
+  const flow = selectedFlowCandidate();
+  saveRememberedSourceVersion(flow?.path, byId("sourceVersion").value.trim());
   autoSelectRulePacks();
+  renderSourceVersionNote();
   renderFlowDetails();
 });
 byId("targetVersion").addEventListener("input", () => {

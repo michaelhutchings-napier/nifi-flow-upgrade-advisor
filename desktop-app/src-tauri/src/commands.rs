@@ -23,6 +23,7 @@ pub struct WorkspaceEntry {
     kind_label: String,
     source_format: Option<String>,
     detected_version: Option<String>,
+    detected_version_confidence: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,6 +56,12 @@ pub struct CliActionResult {
 enum ExecTarget {
     Binary(String),
     GoRun(PathBuf),
+}
+
+#[derive(Debug, Clone)]
+struct VersionDetection {
+    version: String,
+    confidence: &'static str,
 }
 
 #[tauri::command]
@@ -777,7 +784,7 @@ fn new_entry(
     path: &Path,
     kind_label: &str,
     source_format: Option<&str>,
-    detected_version: Option<String>,
+    detected_version: Option<VersionDetection>,
 ) -> WorkspaceEntry {
     let display_path = path
         .strip_prefix(root)
@@ -789,11 +796,14 @@ fn new_entry(
         display_path,
         kind_label: kind_label.into(),
         source_format: source_format.map(str::to_string),
-        detected_version,
+        detected_version: detected_version.as_ref().map(|value| value.version.clone()),
+        detected_version_confidence: detected_version
+            .as_ref()
+            .map(|value| value.confidence.to_string()),
     }
 }
 
-fn detect_source_version(path: &Path) -> Option<String> {
+fn detect_source_version(path: &Path) -> Option<VersionDetection> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     if name.ends_with(".json.gz") {
         let content = fs::read(path).ok()?;
@@ -816,7 +826,7 @@ fn detect_source_version(path: &Path) -> Option<String> {
     None
 }
 
-fn detect_version_from_text(body: &str) -> Option<String> {
+fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     let patterns = [
         "\"nifiVersion\"",
         "\"niFiVersion\"",
@@ -840,10 +850,16 @@ fn detect_version_from_text(body: &str) -> Option<String> {
     if trimmed.starts_with('{') {
         if let Ok(payload) = serde_json::from_str::<serde_json::Value>(trimmed) {
             if let Some(version) = find_version_in_json(&payload) {
-                return Some(version);
+                return Some(VersionDetection {
+                    version,
+                    confidence: "detected",
+                });
             }
             if let Some(version) = find_consistent_bundle_version_in_json(&payload) {
-                return Some(version);
+                return Some(VersionDetection {
+                    version,
+                    confidence: "inferred",
+                });
             }
         }
     }
@@ -862,13 +878,19 @@ fn detect_version_from_text(body: &str) -> Option<String> {
         ] {
             if let Some(version) = extract_xml_tag_value(body, tag) {
                 if looks_like_version(&version) {
-                    return Some(version);
+                    return Some(VersionDetection {
+                        version,
+                        confidence: "detected",
+                    });
                 }
             }
         }
     }
 
-    extract_semver_like(body)
+    extract_semver_like(body).map(|version| VersionDetection {
+        version,
+        confidence: "inferred",
+    })
 }
 
 fn find_version_in_json(value: &serde_json::Value) -> Option<String> {
