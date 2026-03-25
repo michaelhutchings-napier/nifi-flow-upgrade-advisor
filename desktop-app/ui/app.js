@@ -10,6 +10,8 @@ const state = {
   latestReport: null,
   latestResult: null,
   rewrittenArtifactPath: null,
+  reportGroups: [],
+  inlineViewLimitBytes: 0,
   selectedAction: "run",
   runningAction: null,
   nextAction: null,
@@ -197,6 +199,15 @@ function setReportViewContent(path, content) {
   view.innerHTML = `<pre><code>${escapeHtml(pretty)}</code></pre>`;
 }
 
+function setReportViewMessage(title, body) {
+  const view = byId("reportView");
+  if (!view) {
+    return;
+  }
+  view.classList.remove("empty");
+  view.innerHTML = `<div class="report-empty"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p></div>`;
+}
+
 function reportLabel(path) {
   const name = String(path || "").split("/").pop() || "";
   const base = name.replace(/\.(md|json)$/, "");
@@ -235,35 +246,17 @@ function preferredJsonReportPath(paths) {
   return paths.find((path) => path.endsWith(".json")) || null;
 }
 
-function reportGroupName(path) {
-  const name = String(path || "").split("/").pop() || "";
-  const base = name.replace(/\.(md|json)$/, "");
-  const labelMap = {
-    "migration-report": "Analyze",
-    "rewrite-report": "Rewrite",
-    "validation-report": "Validate",
-    "run-report": "Run",
-  };
-  return labelMap[base] || baseName(base || name || "Report");
-}
-
-function groupReportPaths(paths) {
-  const groups = new Map();
-  for (const reportPath of paths) {
-    const key = reportGroupName(reportPath);
-    if (!groups.has(key)) {
-      groups.set(key, { label: key, md: null, json: null });
-    }
-    const group = groups.get(key);
-    if (reportPath.endsWith(".md")) {
-      group.md = reportPath;
-    } else if (reportPath.endsWith(".json")) {
-      group.json = reportPath;
-    }
+function reportFileSizeLabel(bytes) {
+  if (!bytes) {
+    return "";
   }
-  return ["Analyze", "Rewrite", "Validate", "Run"]
-    .map((label) => groups.get(label))
-    .filter(Boolean);
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function displaySourceLabel(report) {
@@ -1022,9 +1015,9 @@ function renderPriorityCallout(report, reportIndex) {
     blockedReport = report;
   } else if (report?.kind === "RunReport") {
     blockedReport = report.summary?.analyzeThresholdExceeded
-      ? reportIndex.MigrationReport
+      ? reportIndex.migrationReport
       : report.summary?.validationBlocked
-        ? reportIndex.ValidationReport
+        ? reportIndex.validationReport
         : null;
   }
 
@@ -1560,6 +1553,23 @@ function renderFindingSections(report) {
     const body = document.createElement("div");
     body.className = "finding-section-body";
 
+    const shownCount = Number(report.preview?.shownByClass?.[kind] || findings.length);
+    const summaryCount =
+      kind === "review"
+        ? Number(report.summary?.byClass?.["manual-change"] || 0) + Number(report.summary?.byClass?.["manual-inspection"] || 0)
+        : Number(
+            report.summary?.byClass?.[
+              kind === "assisted-rewrite" ? "assisted-rewrite" : kind
+            ] || 0
+          );
+
+    if (report.preview?.truncated && summaryCount > shownCount) {
+      const previewLimit = document.createElement("div");
+      previewLimit.className = "finding-item-meta";
+      previewLimit.textContent = `Showing ${shownCount} of ${summaryCount} ${findingSectionTitle(kind).toLowerCase()} items in the desktop preview. Use the exported reports for the full list.`;
+      body.appendChild(previewLimit);
+    }
+
     if (findings.length === 0) {
       const empty = document.createElement("div");
       empty.className = "finding-item-meta";
@@ -1731,6 +1741,13 @@ function renderRewritePreview(report) {
     list.appendChild(item);
   });
 
+  if (report.preview?.truncated) {
+    const meta = document.createElement("div");
+    meta.className = "preview-meta";
+    meta.textContent = "Showing a desktop preview only. Use the exported reports for the full rewriteable set.";
+    list.appendChild(meta);
+  }
+
   card.hidden = false;
 }
 
@@ -1753,22 +1770,11 @@ async function renderReports(result) {
     return;
   }
 
-  const structuredByPath = {};
-  const structuredByKind = {};
-  for (const path of state.reports.filter((candidate) => candidate.endsWith(".json"))) {
-    try {
-      const parsed = JSON.parse(await invoke("read_text_file", { path }));
-      structuredByPath[path] = parsed;
-      if (parsed?.kind && !structuredByKind[parsed.kind]) {
-        structuredByKind[parsed.kind] = parsed;
-      }
-    } catch (error) {
-      // Ignore non-parseable exports and keep the readable report flow working.
-    }
-  }
-
-  const jsonPath = preferredJsonReportPath(state.reports);
-  const jsonReport = jsonPath ? structuredByPath[jsonPath] || null : null;
+  const bundle = await invoke("load_report_bundle", { reportPaths: state.reports });
+  const structuredByKind = bundle.reportIndex || {};
+  const jsonReport = bundle.primaryReport || null;
+  state.reportGroups = bundle.groups || [];
+  state.inlineViewLimitBytes = Number(bundle.inlineViewLimitBytes || 0);
   state.latestReport = jsonReport;
   state.reportIndex = structuredByKind;
   renderResultBanner(jsonReport, result, structuredByKind);
@@ -1776,13 +1782,12 @@ async function renderReports(result) {
   renderPriorityCallout(jsonReport, structuredByKind);
   renderRunSteps(jsonReport);
   renderFindingSections(jsonReport);
-  renderRewriteSummary(structuredByKind.RewriteReport || null);
-  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.MigrationReport || null);
+  renderRewriteSummary(structuredByKind.rewriteReport || null);
+  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.migrationReport || null);
   renderResultUtilities(result);
   renderActionSelection();
 
-  const groups = groupReportPaths(state.reports);
-  for (const group of groups) {
+  for (const group of state.reportGroups) {
     const card = document.createElement("div");
     card.className = "report-card";
 
@@ -1796,18 +1801,28 @@ async function renderReports(result) {
 
     const meta = document.createElement("div");
     meta.className = "report-card-meta";
-    meta.textContent = group.md ? "Readable report available" : "Structured export only";
+    meta.textContent = group.md
+      ? `Readable report available${group.mdSizeBytes ? ` • ${reportFileSizeLabel(group.mdSizeBytes)}` : ""}`
+      : `Structured export only${group.jsonSizeBytes ? ` • ${reportFileSizeLabel(group.jsonSizeBytes)}` : ""}`;
     head.appendChild(meta);
     card.appendChild(head);
 
     const actions = document.createElement("div");
     actions.className = "report-card-actions";
-    const primaryPath = group.md || group.json;
+    const primaryPath = group.mdPath || group.jsonPath;
+    const primaryInlineSafe = group.mdPath ? group.mdInlineSafe : group.jsonInlineSafe;
     if (primaryPath) {
       const button = document.createElement("button");
       button.className = "button secondary";
-      button.textContent = group.md ? `View ${group.label} report` : `View ${group.label} export`;
+      button.textContent = group.mdPath ? `View ${group.label} report` : `View ${group.label} export`;
       button.addEventListener("click", async () => {
+        if (!primaryInlineSafe) {
+          setReportViewMessage(
+            `${group.label} report is large`,
+            `This export is larger than the in-app preview limit. Use Open output folder if you want the full file on disk.`
+          );
+          return;
+        }
         const content = await invoke("read_text_file", { path: primaryPath });
         setReportViewContent(primaryPath, content);
       });
@@ -1815,7 +1830,7 @@ async function renderReports(result) {
     }
     card.appendChild(actions);
 
-    if (group.json) {
+    if (group.jsonPath) {
       const advanced = document.createElement("details");
       advanced.className = "report-advanced";
       const summary = document.createElement("summary");
@@ -1828,8 +1843,15 @@ async function renderReports(result) {
       jsonButton.className = "button secondary";
       jsonButton.textContent = `View ${group.label} JSON`;
       jsonButton.addEventListener("click", async () => {
-        const content = await invoke("read_text_file", { path: group.json });
-        setReportViewContent(group.json, content);
+        if (!group.jsonInlineSafe) {
+          setReportViewMessage(
+            `${group.label} JSON is large`,
+            `This export is larger than the in-app preview limit. Use Open output folder if you want the full JSON on disk.`
+          );
+          return;
+        }
+        const content = await invoke("read_text_file", { path: group.jsonPath });
+        setReportViewContent(group.jsonPath, content);
       });
       advancedActions.appendChild(jsonButton);
       advanced.appendChild(advancedActions);
@@ -1839,30 +1861,10 @@ async function renderReports(result) {
     list.appendChild(card);
   }
 
-  let defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
-  if (jsonReport?.kind === "RunReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("run-report.md")) ||
-      state.reports.find((path) => path.endsWith("run-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "RewriteReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("rewrite-report.md")) ||
-      state.reports.find((path) => path.endsWith("rewrite-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "ValidationReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("validation-report.md")) ||
-      state.reports.find((path) => path.endsWith("validation-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "MigrationReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("migration-report.md")) ||
-      state.reports.find((path) => path.endsWith("migration-report.json")) ||
-      defaultReport;
-  }
-  const content = await invoke("read_text_file", { path: defaultReport });
-  setReportViewContent(defaultReport, content);
+  setReportViewMessage(
+    "Choose a report to view",
+    "Large runs stay in summary mode by default so the desktop app remains responsive."
+  );
 }
 
 async function runAction(action) {

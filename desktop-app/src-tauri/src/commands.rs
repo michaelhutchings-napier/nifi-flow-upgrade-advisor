@@ -1,9 +1,15 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
+
+const MAX_PREVIEW_FINDINGS_PER_CLASS: usize = 25;
+const MAX_PREVIEW_OPERATIONS: usize = 50;
+const MAX_INLINE_VIEW_BYTES: u64 = 512 * 1024;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +59,37 @@ pub struct CliActionResult {
     rewritten_artifact_path: Option<String>,
 }
 
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportIndexPreview {
+    migration_report: Option<serde_json::Value>,
+    rewrite_report: Option<serde_json::Value>,
+    validation_report: Option<serde_json::Value>,
+    run_report: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportGroupPreview {
+    label: String,
+    md_path: Option<String>,
+    json_path: Option<String>,
+    md_size_bytes: Option<u64>,
+    json_size_bytes: Option<u64>,
+    md_inline_safe: bool,
+    json_inline_safe: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportBundlePreview {
+    primary_report: Option<serde_json::Value>,
+    report_index: ReportIndexPreview,
+    groups: Vec<ReportGroupPreview>,
+    default_view_path: Option<String>,
+    inline_view_limit_bytes: u64,
+}
+
 enum ExecTarget {
     Binary(String),
     GoRun(PathBuf),
@@ -77,6 +114,50 @@ pub fn scan_workspace(path: Option<String>) -> Result<BootstrapState, String> {
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| format!("read {}: {}", path, err))
+}
+
+#[tauri::command]
+pub fn load_report_bundle(report_paths: Vec<String>) -> Result<ReportBundlePreview, String> {
+    let groups = build_report_groups(&report_paths);
+    let mut previews_by_path = BTreeMap::new();
+    let mut report_index = ReportIndexPreview::default();
+
+    for path in report_paths.iter().filter(|path| path.ends_with(".json")) {
+        let preview = load_report_preview(path)?;
+        match preview
+            .get("kind")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+        {
+            "MigrationReport" if report_index.migration_report.is_none() => {
+                report_index.migration_report = Some(preview.clone());
+            }
+            "RewriteReport" if report_index.rewrite_report.is_none() => {
+                report_index.rewrite_report = Some(preview.clone());
+            }
+            "ValidationReport" if report_index.validation_report.is_none() => {
+                report_index.validation_report = Some(preview.clone());
+            }
+            "RunReport" if report_index.run_report.is_none() => {
+                report_index.run_report = Some(preview.clone());
+            }
+            _ => {}
+        }
+        previews_by_path.insert(path.clone(), preview);
+    }
+
+    let preferred_json = preferred_json_report_path(&report_paths);
+    let primary_report = preferred_json
+        .as_ref()
+        .and_then(|path| previews_by_path.get(path).cloned());
+
+    Ok(ReportBundlePreview {
+        primary_report,
+        report_index,
+        groups,
+        default_view_path: None,
+        inline_view_limit_bytes: MAX_INLINE_VIEW_BYTES,
+    })
 }
 
 #[tauri::command]
@@ -453,6 +534,165 @@ fn collect_report_paths(output_dir: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| path.to_string_lossy().to_string())
         .collect()
+}
+
+fn preferred_json_report_path(paths: &[String]) -> Option<String> {
+    for suffix in [
+        "run-report.json",
+        "validation-report.json",
+        "rewrite-report.json",
+        "migration-report.json",
+    ] {
+        if let Some(path) = paths.iter().find(|path| path.ends_with(suffix)) {
+            return Some(path.clone());
+        }
+    }
+    paths.iter().find(|path| path.ends_with(".json")).cloned()
+}
+
+fn build_report_groups(paths: &[String]) -> Vec<ReportGroupPreview> {
+    let mut groups = BTreeMap::<String, ReportGroupPreview>::new();
+
+    for path in paths {
+        let label = report_group_name(path);
+        let entry = groups
+            .entry(label.clone())
+            .or_insert_with(|| ReportGroupPreview {
+                label,
+                md_path: None,
+                json_path: None,
+                md_size_bytes: None,
+                json_size_bytes: None,
+                md_inline_safe: false,
+                json_inline_safe: false,
+            });
+
+        let size_bytes = fs::metadata(path).map(|meta| meta.len()).ok();
+        let inline_safe = size_bytes
+            .map(|size| size <= MAX_INLINE_VIEW_BYTES)
+            .unwrap_or(false);
+        if path.ends_with(".md") {
+            entry.md_path = Some(path.clone());
+            entry.md_size_bytes = size_bytes;
+            entry.md_inline_safe = inline_safe;
+        } else if path.ends_with(".json") {
+            entry.json_path = Some(path.clone());
+            entry.json_size_bytes = size_bytes;
+            entry.json_inline_safe = inline_safe;
+        }
+    }
+
+    ["Analyze", "Rewrite", "Validate", "Run"]
+        .iter()
+        .filter_map(|label| groups.remove(*label))
+        .collect()
+}
+
+fn report_group_name(path: &str) -> String {
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .trim_end_matches(".json")
+        .trim_end_matches(".md")
+        .to_string();
+
+    match name.as_str() {
+        "migration-report" => "Analyze".into(),
+        "rewrite-report" => "Rewrite".into(),
+        "validation-report" => "Validate".into(),
+        "run-report" => "Run".into(),
+        _ => name,
+    }
+}
+
+fn load_report_preview(path: &str) -> Result<serde_json::Value, String> {
+    let body = fs::read_to_string(path).map_err(|err| format!("read {}: {}", path, err))?;
+    let mut value: serde_json::Value =
+        serde_json::from_str(&body).map_err(|err| format!("parse {}: {}", path, err))?;
+    let kind = value
+        .get("kind")
+        .and_then(|candidate| candidate.as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    match kind.as_str() {
+        "MigrationReport" | "ValidationReport" => {
+            let preview = limit_findings_preview(&mut value);
+            value["preview"] = preview;
+        }
+        "RewriteReport" => {
+            let preview = limit_operations_preview(&mut value);
+            value["preview"] = preview;
+        }
+        "RunReport" => {
+            value["preview"] = json!({
+                "truncated": false,
+                "totalItems": value.get("steps").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+                "shownItems": value.get("steps").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+                "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+            });
+        }
+        _ => {}
+    }
+
+    Ok(value)
+}
+
+fn limit_findings_preview(value: &mut serde_json::Value) -> serde_json::Value {
+    let findings = value
+        .get("findings")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut shown_by_class = BTreeMap::<String, usize>::new();
+    let mut limited = Vec::new();
+    for finding in findings.iter() {
+        let class = finding
+            .get("class")
+            .and_then(|candidate| candidate.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let count = shown_by_class.entry(class).or_insert(0);
+        if *count >= MAX_PREVIEW_FINDINGS_PER_CLASS {
+            continue;
+        }
+        *count += 1;
+        limited.push(finding.clone());
+    }
+
+    let truncated = limited.len() < findings.len();
+    value["findings"] = serde_json::Value::Array(limited);
+    json!({
+        "truncated": truncated,
+        "totalItems": findings.len(),
+        "shownItems": value.get("findings").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+        "shownByClass": shown_by_class,
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
+fn limit_operations_preview(value: &mut serde_json::Value) -> serde_json::Value {
+    let operations = value
+        .get("operations")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let limited: Vec<serde_json::Value> = operations
+        .iter()
+        .take(MAX_PREVIEW_OPERATIONS)
+        .cloned()
+        .collect();
+    let truncated = limited.len() < operations.len();
+    value["operations"] = serde_json::Value::Array(limited);
+    json!({
+        "truncated": truncated,
+        "totalItems": operations.len(),
+        "shownItems": value.get("operations").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
 }
 
 fn detect_rewritten_artifact_path(
