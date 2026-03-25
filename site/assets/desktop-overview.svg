@@ -3,55 +3,80 @@
   <rect x="32" y="32" width="1216" height="756" rx="28" fill="#fffaf4" stroke="#d9c9b5"/>
   <rect x="56" y="56" width="1168" height="72" rx="20" fill="#21303c"/>
   <text x="86" y="101" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">NiFi Flow Upgrade Advisor</text>
-  <text x="922" y="101" fill="#c8d5db" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22">Desktop preview</text>
-  <rect x="56" y="152" width="450" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
+  <text x="924" y="101" fill="#c8d5db" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22">Desktop preview</text>
+
+  <rect x="56" y="152" width="428" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
   <text x="84" y="196" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="28" font-weight="700">Workspace</text>
-  <text x="84" y="238" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="21">Workspace ready: 22 flows detected.</text>
-  <rect x="84" y="266" width="394" height="58" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
-  <text x="104" y="302" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">integration-platform-1.22-flow.json</text>
-  <text x="84" y="358" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">Source version auto-detected: 1.22.0</text>
-  <rect x="84" y="386" width="180" height="56" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
-  <rect x="298" y="386" width="180" height="56" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
-  <text x="104" y="421" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">Source</text>
-  <text x="104" y="443" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">1.22.0</text>
-  <text x="318" y="421" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">Target</text>
-  <text x="318" y="443" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">1.27.0</text>
-  <text x="84" y="490" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="19">Built-in upgrade coverage found for 1.22.0 -&gt; 1.27.0.</text>
-  <rect x="84" y="532" width="92" height="44" rx="22" fill="#0f6b78"/>
-  <rect x="188" y="532" width="92" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
-  <rect x="292" y="532" width="92" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
-  <rect x="396" y="532" width="82" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
-  <text x="101" y="560" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Analyze</text>
-  <text x="208" y="560" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Rewrite</text>
-  <text x="309" y="560" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Validate</text>
-  <text x="420" y="560" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Run</text>
-  <rect x="84" y="610" width="394" height="126" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="104" y="648" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700">Compatibility check</text>
-  <text x="104" y="684" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">Checks the selected flow against the target version and shows</text>
-  <text x="104" y="709" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">blocked items, review items, and safe fixes.</text>
-  <rect x="530" y="152" width="694" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
-  <text x="558" y="196" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="28" font-weight="700">Results</text>
-  <text x="558" y="238" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="34" font-weight="700">Review needed: 5 changes</text>
-  <text x="558" y="272" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">This flow can move forward, but review these findings before rewrite or validate.</text>
-  <rect x="558" y="302" width="156" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="730" y="302" width="156" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="902" y="302" width="156" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="1074" y="302" width="122" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="582" y="334" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Blocked</text>
-  <text x="582" y="370" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
-  <text x="754" y="334" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Safe fixes</text>
-  <text x="754" y="370" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
-  <text x="926" y="334" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Review</text>
-  <text x="926" y="370" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">5</text>
-  <text x="1098" y="334" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Info</text>
-  <text x="1098" y="370" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">7</text>
-  <rect x="558" y="420" width="260" height="52" rx="26" fill="#dd6a2a"/>
-  <text x="617" y="453" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Review findings</text>
-  <rect x="558" y="500" width="638" height="110" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="582" y="536" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700">Review</text>
-  <text x="582" y="570" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="19">Reference Remote Resources policy may affect JMSProvider and related components.</text>
-  <text x="582" y="599" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">JMSProvider • controller-service</text>
-  <rect x="558" y="628" width="638" height="92" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="582" y="664" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700">Safe fixes</text>
-  <text x="582" y="697" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="19">No safe fixes available for this flow.</text>
+  <text x="84" y="236" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="21">Workspace ready: 23 flows detected.</text>
+
+  <rect x="84" y="264" width="372" height="58" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
+  <text x="104" y="300" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">nifi-flow.json</text>
+
+  <rect x="84" y="348" width="176" height="56" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
+  <rect x="280" y="348" width="176" height="56" rx="16" fill="#ffffff" stroke="#d6c7b5"/>
+  <text x="104" y="382" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">Source</text>
+  <text x="104" y="404" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">2.7.0</text>
+  <text x="300" y="382" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">Target</text>
+  <text x="300" y="404" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">2.8.0</text>
+
+  <text x="84" y="448" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="19">Built-in upgrade coverage found for 2.7.0 -&gt; 2.8.0.</text>
+
+  <rect x="84" y="476" width="372" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="104" y="510" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Advanced check</text>
+  <text x="104" y="538" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">No target manifest selected.</text>
+  <text x="104" y="560" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Bundled demo manifests are labeled (sample) and stay manual.</text>
+
+  <rect x="84" y="592" width="92" height="44" rx="22" fill="#0f6b78"/>
+  <rect x="188" y="592" width="92" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
+  <rect x="292" y="592" width="92" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
+  <rect x="396" y="592" width="60" height="44" rx="22" fill="#ffffff" stroke="#d6c7b5"/>
+  <text x="101" y="620" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Analyze</text>
+  <text x="208" y="620" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Rewrite</text>
+  <text x="309" y="620" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Validate</text>
+  <text x="413" y="620" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Run</text>
+
+  <rect x="84" y="660" width="372" height="76" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="104" y="694" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Analyze finished in 2834 ms.</text>
+  <text x="104" y="719" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">No blockers were found. Review items are advisory checks to confirm before upgrade.</text>
+
+  <rect x="508" y="152" width="716" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
+  <text x="536" y="196" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="28" font-weight="700">Results</text>
+  <text x="536" y="236" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="34" font-weight="700">Upgrade can proceed with review</text>
+  <text x="536" y="268" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">No blockers were found. 18 review groups are shown in the desktop summary</text>
+  <text x="536" y="293" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">(41 total occurrences remain in the export).</text>
+
+  <rect x="536" y="320" width="124" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="676" y="320" width="124" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="816" y="320" width="124" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="956" y="320" width="124" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <rect x="1096" y="320" width="100" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="560" y="352" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Blocked</text>
+  <text x="560" y="388" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <text x="700" y="352" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Safe fixes</text>
+  <text x="700" y="388" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <text x="840" y="352" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Assisted</text>
+  <text x="840" y="388" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
+  <text x="980" y="352" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Review groups</text>
+  <text x="980" y="388" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">18</text>
+  <text x="1120" y="352" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Occur.</text>
+  <text x="1120" y="388" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">41</text>
+
+  <rect x="536" y="430" width="250" height="52" rx="26" fill="#dd6a2a"/>
+  <text x="598" y="463" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Review findings</text>
+
+  <rect x="536" y="506" width="660" height="54" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="560" y="540" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">The desktop summary groups repeated review findings while the exported report keeps every occurrence.</text>
+
+  <rect x="536" y="580" width="660" height="84" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="560" y="612" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">StandardRestrictedSSLContextService is deprecated for removal.</text>
+  <text x="560" y="639" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Backend Services Certificate Store • controller-service</text>
+  <rect x="1012" y="595" width="74" height="24" rx="12" fill="#e4edf3"/>
+  <rect x="1092" y="595" width="114" height="24" rx="12" fill="#efe7d6"/>
+  <text x="1031" y="612" fill="#2c5367" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="700">Advisory</text>
+  <text x="1113" y="612" fill="#7a5d1f" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="700">Future cleanup</text>
+  <text x="560" y="658" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Grouped from 6 distinct components and 17 total occurrences in this export.</text>
+
+  <rect x="536" y="680" width="660" height="56" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="560" y="712" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Review insights</text>
+  <text x="708" y="712" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">9 actively used reviewed services • 4 unreferenced cleanup candidates</text>
 </svg>

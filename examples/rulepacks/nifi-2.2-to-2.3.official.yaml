@@ -3,9 +3,10 @@ kind: RulePack
 metadata:
   name: nifi-2.2-to-2.3-official
   title: NiFi 2.2 to 2.3 migration guidance
-  description: Official compatibility coverage pack for the NiFi 2.2.x to 2.3.x upgrade step. Apache Migration Guidance does not list a dedicated caveat for this minor hop.
+  description: Official compatibility coverage pack for the NiFi 2.2.x to 2.3.x upgrade step. Audited against Apache Migration Guidance and Apache NiFi 2.3.0 release notes; no flow-detectable official caveats were identified for this minor hop.
   references:
     - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+    - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
 spec:
   sourceVersionRange: ">=2.2.0 <2.3.0"
   targetVersionRange: ">=2.3.0 <2.4.0"

@@ -91,12 +91,28 @@ func extensionsManifestFindings(document FlowDocument, packs []RulePack, manifes
 	for i := range document.Components {
 		component := document.Components[i]
 		targetComponent := plannedTargetComponent(component, document, packs)
+		if !manifestValidationApplies(targetComponent) {
+			continue
+		}
 		if manifest.HasComponent(targetComponent) {
 			continue
 		}
 		findings = append(findings, buildExtensionsManifestFinding(component, targetComponent, manifest))
 	}
 	return findings
+}
+
+func manifestValidationApplies(component FlowComponent) bool {
+	if strings.TrimSpace(component.Type) == "" {
+		return false
+	}
+
+	switch component.Scope {
+	case "processor", "controller-service", "reporting-task":
+		return true
+	default:
+		return false
+	}
 }
 
 func plannedTargetComponent(component FlowComponent, document FlowDocument, packs []RulePack) FlowComponent {

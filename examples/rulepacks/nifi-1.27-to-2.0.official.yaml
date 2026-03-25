@@ -399,7 +399,9 @@ spec:
         scope: processor
         componentType: org.apache.nifi.processors.standard.InvokeHTTP
       match:
-        propertyExists: Proxy Host
+        propertyValueRegex:
+          property: Proxy Host
+          regex: '(?s).*\S.*'
       notes: Apache's 2.0 migration guide requires creating a StandardProxyConfigurationService and moving deprecated proxy properties off the processor.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migrating+Deprecated+Components+and+Features+for+2.0.0

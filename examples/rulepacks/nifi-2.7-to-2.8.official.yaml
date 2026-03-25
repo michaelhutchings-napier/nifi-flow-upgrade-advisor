@@ -125,7 +125,9 @@ spec:
           - org.apache.nifi.processors.jolt.JoltTransformRecord
           - org.apache.nifi.processors.jolt.record.JoltTransformRecord
       match:
-        propertyExists: Custom Transformation Class Name
+        propertyValueRegex:
+          property: Custom Transformation Class Name
+          regex: '(?s).*\S.*'
       notes: Apache NiFi 2.8.0 migrated Jolt processors to a maintained Jolt library. Custom transformation classes provided through external JARs must be recompiled against the current library.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
@@ -144,10 +146,11 @@ spec:
           - org.apache.nifi.processors.jolt.JoltTransformRecord
           - org.apache.nifi.processors.jolt.record.JoltTransformRecord
       match:
-        propertyExists: Custom Module Directory
+        propertyValueRegex:
+          property: Custom Module Directory
+          regex: '(?s).*\S.*'
       notes: Apache NiFi 2.8.0 migrated Jolt processors to a maintained Jolt library. Custom modules in external JARs should be recompiled and retested.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
         - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformJSON/
         - https://nifi.apache.org/components/org.apache.nifi.processors.jolt.JoltTransformRecord/
-

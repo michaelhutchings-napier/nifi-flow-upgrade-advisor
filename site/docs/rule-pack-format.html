@@ -77,6 +77,9 @@ spec:
               The CLI validates duplicate IDs, duplicate pack names, bad version ranges, and
               malformed actions before a pack is used in analysis or rewrite.
             </p>
+            <p>
+              It also warns on fragile patterns such as <code>match.propertyExists</code>, because exported NiFi JSON can preserve a property key with a <code>null</code> value. Prefer value-based matchers when you need proof of a real configured value.
+            </p>
           </div>
         </div>
       </section>

@@ -82,7 +82,9 @@ spec:
         scope: processor
         componentType: com.acme.nifi.CustomerApiFetcher
       match:
-        propertyExists: Legacy URL
+        propertyValueRegex:
+          property: Legacy URL
+          regex: '.+'
       actions:
         - type: replace-component-type
           from: com.acme.nifi.CustomerApiFetcher
@@ -123,6 +125,7 @@ spec:
 - keep private packs in your own repo
 - pin them in CI
 - test them with `rule-pack lint`
+- prefer value-based matchers over `propertyExists` for properties that may exist as `null` in exported flow JSON
 - prefer `assisted-rewrite` before `auto-fix` when you are still learning the migration
 - promote a rule to `auto-fix` only after repeated real-flow validation
 

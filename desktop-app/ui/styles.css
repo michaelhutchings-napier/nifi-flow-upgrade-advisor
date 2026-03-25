@@ -518,6 +518,146 @@ select[multiple] {
   margin-bottom: 16px;
 }
 
+.insight-card {
+  margin-bottom: 16px;
+}
+
+.insight-item {
+  display: grid;
+  gap: 4px;
+}
+
+.insight-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.insight-item-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.finding-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+.finding-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.finding-toolbar-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.finding-toolbar-buttons,
+.finding-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.finding-toolbar-button,
+.finding-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 244, 0.9);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.finding-toolbar-button {
+  cursor: pointer;
+}
+
+.finding-toolbar-button.active {
+  border-color: rgba(15, 107, 120, 0.24);
+  background: rgba(232, 247, 248, 0.84);
+  color: var(--primary-strong);
+}
+
+.finding-item-head,
+.inline-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.finding-badge.tone-advisory {
+  background: rgba(171, 101, 29, 0.12);
+  border-color: rgba(171, 101, 29, 0.18);
+  color: var(--warning);
+}
+
+.finding-badge.tone-success {
+  background: rgba(31, 127, 94, 0.12);
+  border-color: rgba(31, 127, 94, 0.18);
+  color: var(--success);
+}
+
+.finding-badge.tone-muted,
+.finding-badge.tone-neutral {
+  background: rgba(15, 107, 120, 0.08);
+  border-color: rgba(15, 107, 120, 0.14);
+  color: var(--primary-strong);
+}
+
+.finding-inline-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.finding-inline-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.inline-detail-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.inline-detail-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px 12px;
+}
+
+.inline-detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.inline-detail-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .preview-item {
   display: grid;
   gap: 8px;

@@ -10,6 +10,8 @@ pub fn run() {
             commands::scan_workspace,
             commands::run_cli_action,
             commands::read_text_file,
+            commands::load_report_bundle,
+            commands::inspect_flow_usage,
             commands::open_path
         ])
         .run(tauri::generate_context!())

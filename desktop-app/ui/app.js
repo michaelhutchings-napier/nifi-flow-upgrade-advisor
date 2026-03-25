@@ -10,9 +10,16 @@ const state = {
   latestReport: null,
   latestResult: null,
   rewrittenArtifactPath: null,
+  reportGroups: [],
+  inlineViewLimitBytes: 0,
   selectedAction: "run",
   runningAction: null,
   nextAction: null,
+  reviewDisplayMode: "grouped",
+  reviewSortMode: "impact",
+  flowUsageSummary: null,
+  flowUsageStatus: "idle",
+  flowUsageRequestKey: null,
 };
 
 function byId(id) {
@@ -31,6 +38,15 @@ function baseName(path) {
   return String(path || "").split("/").pop() || path;
 }
 
+function componentFamilyName(type) {
+  const trimmed = String(type || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  const slashBase = trimmed.split("/").pop() || trimmed;
+  return slashBase.split(".").pop() || slashBase;
+}
+
 function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -41,6 +57,24 @@ function compactPath(path) {
     return parts.join("/");
   }
   return `.../${parts.slice(-2).join("/")}`;
+}
+
+function reportKey(report) {
+  if (!report || typeof report !== "object") {
+    return "";
+  }
+  return [
+    report.kind || "",
+    report.metadata?.generatedAt || "",
+    report.source?.path || "",
+    report.target?.nifiVersion || "",
+  ].join("|");
+}
+
+function resetFlowUsageState() {
+  state.flowUsageSummary = null;
+  state.flowUsageStatus = "idle";
+  state.flowUsageRequestKey = null;
 }
 
 function manualSourceStorageKey(path) {
@@ -197,6 +231,15 @@ function setReportViewContent(path, content) {
   view.innerHTML = `<pre><code>${escapeHtml(pretty)}</code></pre>`;
 }
 
+function setReportViewMessage(title, body) {
+  const view = byId("reportView");
+  if (!view) {
+    return;
+  }
+  view.classList.remove("empty");
+  view.innerHTML = `<div class="report-empty"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p></div>`;
+}
+
 function reportLabel(path) {
   const name = String(path || "").split("/").pop() || "";
   const base = name.replace(/\.(md|json)$/, "");
@@ -235,35 +278,17 @@ function preferredJsonReportPath(paths) {
   return paths.find((path) => path.endsWith(".json")) || null;
 }
 
-function reportGroupName(path) {
-  const name = String(path || "").split("/").pop() || "";
-  const base = name.replace(/\.(md|json)$/, "");
-  const labelMap = {
-    "migration-report": "Analyze",
-    "rewrite-report": "Rewrite",
-    "validation-report": "Validate",
-    "run-report": "Run",
-  };
-  return labelMap[base] || baseName(base || name || "Report");
-}
-
-function groupReportPaths(paths) {
-  const groups = new Map();
-  for (const reportPath of paths) {
-    const key = reportGroupName(reportPath);
-    if (!groups.has(key)) {
-      groups.set(key, { label: key, md: null, json: null });
-    }
-    const group = groups.get(key);
-    if (reportPath.endsWith(".md")) {
-      group.md = reportPath;
-    } else if (reportPath.endsWith(".json")) {
-      group.json = reportPath;
-    }
+function reportFileSizeLabel(bytes) {
+  if (!bytes) {
+    return "";
   }
-  return ["Analyze", "Rewrite", "Validate", "Run"]
-    .map((label) => groups.get(label))
-    .filter(Boolean);
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function displaySourceLabel(report) {
@@ -360,6 +385,19 @@ function actionDescription(action) {
     default:
       return "Action selected.";
   }
+}
+
+function validateActionRequest(action, request) {
+  if (!request.targetVersion) {
+    return "Please select a target version first.";
+  }
+  if (action !== "validate" && !request.sourceVersion) {
+    return "Please enter or confirm a source version first.";
+  }
+  if (action !== "validate" && request.rulePackPaths.length === 0) {
+    return "No built-in upgrade path is available for this version pair yet.";
+  }
+  return "";
 }
 
 function renderActionSelection() {
@@ -772,26 +810,11 @@ function renderSourceVersionNote() {
 }
 
 function autoSelectManifest() {
-  const targetMinor = versionMinor(byId("targetVersion").value);
   const select = byId("manifestSelect");
   if (!select) {
     return;
   }
-
-  let matched = false;
-  for (const opt of select.options) {
-    if (!opt.value) {
-      opt.selected = !targetMinor;
-      continue;
-    }
-    const isMatch = targetMinor && opt.value.includes(`nifi-${targetMinor}`);
-    opt.selected = Boolean(isMatch);
-    matched = matched || Boolean(isMatch);
-  }
-
-  if (!matched) {
-    select.value = "";
-  }
+  select.value = "";
 }
 
 function applyFlowDefaults() {
@@ -862,7 +885,8 @@ function renderWorkspace(data) {
   manifestSelect.innerHTML = "";
   manifestSelect.appendChild(option("None", "", true));
   state.manifests.forEach((candidate) => {
-    manifestSelect.appendChild(option(candidate.displayPath, candidate.path));
+    const isSample = candidate.path.includes("/examples/manifests/") || candidate.path.includes(".sample.");
+    manifestSelect.appendChild(option(isSample ? `${candidate.displayPath} (sample)` : candidate.displayPath, candidate.path));
   });
 
   const rulePackSelect = byId("rulePackSelect");
@@ -1011,6 +1035,228 @@ function topBlockedFinding(report) {
   return report.findings.find((finding) => finding.class === "blocked") || null;
 }
 
+function isReviewFinding(finding) {
+  return finding?.class === "manual-change" || finding?.class === "manual-inspection";
+}
+
+function reviewFindings(report) {
+  if (!report || !Array.isArray(report.findings)) {
+    return [];
+  }
+  return report.findings.filter(isReviewFinding);
+}
+
+function reviewFindingGroupKey(finding) {
+  const component = finding.component || {};
+  return [
+    finding.ruleId || "",
+    finding.class || "",
+    finding.message || "",
+    finding.notes || "",
+    JSON.stringify(finding.suggestedActions || []),
+    component.name || "",
+    component.type || "",
+    component.scope || "",
+  ].join("|");
+}
+
+function reviewFindingComponentKey(finding) {
+  const component = finding.component || {};
+  return component.id || component.path || [component.name || "", component.type || "", component.scope || ""].join("|");
+}
+
+function reviewFindingComponentSummary(finding) {
+  const component = finding.component || {};
+  return {
+    id: component.id || "",
+    name: component.name || componentFamilyName(component.type || "component"),
+    type: component.type || "",
+    scope: component.scope || "",
+    path: component.path || "",
+    occurrences: 1,
+  };
+}
+
+function singleFindingDisplayEntry(finding) {
+  const componentSummary = reviewFindingComponentSummary(finding);
+  return {
+    finding,
+    occurrences: 1,
+    distinctComponents: componentSummary.id || componentSummary.path || componentSummary.name ? 1 : 0,
+    paths: componentSummary.path ? [componentSummary.path] : [],
+    components: componentSummary.id || componentSummary.path || componentSummary.name ? [componentSummary] : [],
+  };
+}
+
+function groupReviewFindingsForDisplay(findings) {
+  const groups = new Map();
+  (findings || []).forEach((finding) => {
+    const key = reviewFindingGroupKey(finding);
+    const componentKey = reviewFindingComponentKey(finding);
+    const componentSummary = reviewFindingComponentSummary(finding);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.occurrences += 1;
+      if (componentKey) {
+        existing.componentKeys.add(componentKey);
+        const existingComponent = existing.components.get(componentKey);
+        if (existingComponent) {
+          existingComponent.occurrences += 1;
+        } else {
+          existing.components.set(componentKey, componentSummary);
+        }
+      }
+      if (finding.component?.path && !existing.paths.includes(finding.component.path)) {
+        existing.paths.push(finding.component.path);
+      }
+      return;
+    }
+    const componentMap = new Map();
+    if (componentKey) {
+      componentMap.set(componentKey, componentSummary);
+    }
+    groups.set(key, {
+      finding,
+      occurrences: 1,
+      componentKeys: componentKey ? new Set([componentKey]) : new Set(),
+      paths: finding.component?.path ? [finding.component.path] : [],
+      components: componentMap,
+    });
+  });
+  return Array.from(groups.values()).map((group) => ({
+    finding: group.finding,
+    occurrences: group.occurrences,
+    distinctComponents: group.componentKeys.size,
+    paths: group.paths,
+    components: Array.from(group.components.values()).sort((left, right) => {
+      const leftLabel = [left.name || "", left.path || "", left.id || ""].join("|");
+      const rightLabel = [right.name || "", right.path || "", right.id || ""].join("|");
+      return leftLabel.localeCompare(rightLabel);
+    }),
+  }));
+}
+
+function reviewGroupSizeMap(findings) {
+  const counts = new Map();
+  (findings || []).forEach((finding) => {
+    const key = reviewFindingGroupKey(finding);
+    counts.set(key, Number(counts.get(key) || 0) + 1);
+  });
+  return counts;
+}
+
+function reviewEntrySortLabel(entry) {
+  return `${findingDetailText(entry.finding)}|${entry.finding?.message || ""}|${entry.finding?.component?.path || ""}`;
+}
+
+function sortReviewEntries(entries, allFindings) {
+  const byGroupSize = reviewGroupSizeMap(allFindings);
+  return [...(entries || [])].sort((left, right) => {
+    if (state.reviewSortMode === "az") {
+      return reviewEntrySortLabel(left).localeCompare(reviewEntrySortLabel(right));
+    }
+    const leftWeight = Number(byGroupSize.get(reviewFindingGroupKey(left.finding)) || left.occurrences || 1);
+    const rightWeight = Number(byGroupSize.get(reviewFindingGroupKey(right.finding)) || right.occurrences || 1);
+    if (rightWeight !== leftWeight) {
+      return rightWeight - leftWeight;
+    }
+    if (right.occurrences !== left.occurrences) {
+      return right.occurrences - left.occurrences;
+    }
+    if (right.distinctComponents !== left.distinctComponents) {
+      return right.distinctComponents - left.distinctComponents;
+    }
+    return reviewEntrySortLabel(left).localeCompare(reviewEntrySortLabel(right));
+  });
+}
+
+function controllerServiceUsageMap() {
+  const services = Array.isArray(state.flowUsageSummary?.controllerServices) ? state.flowUsageSummary.controllerServices : [];
+  return new Map(services.map((service) => [service.id, service]));
+}
+
+function reviewEntryUsageStats(entry) {
+  const usageById = controllerServiceUsageMap();
+  const tracked = [];
+  const referrerIds = new Set();
+  (entry.components || []).forEach((component) => {
+    if (!component.id || !usageById.has(component.id)) {
+      return;
+    }
+    const usage = usageById.get(component.id);
+    tracked.push({ component, usage });
+    (usage.referencedBy || []).forEach((reference) => {
+      if (reference.componentId) {
+        referrerIds.add(reference.componentId);
+      }
+    });
+  });
+  const activeComponents = tracked.filter(({ usage }) => Number(usage.activeReferenceCount || 0) > 0).length;
+  const unreferencedComponents = tracked.filter(({ usage }) => Number(usage.activeReferenceCount || 0) === 0).length;
+  return {
+    tracked,
+    trackedComponents: tracked.length,
+    activeComponents,
+    unreferencedComponents,
+    totalReferences: tracked.reduce((sum, { usage }) => sum + Number(usage.activeReferenceCount || 0), 0),
+    distinctReferrers: referrerIds.size,
+  };
+}
+
+function isFutureCleanupFinding(finding) {
+  const text = `${finding?.message || ""} ${finding?.notes || ""}`.toLowerCase();
+  return (
+    text.includes("later major upgrade") ||
+    text.includes("future major") ||
+    text.includes("future cleanup") ||
+    (text.includes("deprecated") && text.includes("removal"))
+  );
+}
+
+function isReviewOnlyReport(report) {
+  if (!report || (report.kind !== "MigrationReport" && report.kind !== "ValidationReport")) {
+    return false;
+  }
+  const byClass = report.summary?.byClass || {};
+  const blocked = Number(byClass["blocked"] || 0);
+  const autoFix = Number(byClass["auto-fix"] || 0);
+  const assisted = Number(byClass["assisted-rewrite"] || 0);
+  const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+  return blocked === 0 && autoFix === 0 && assisted === 0 && review > 0;
+}
+
+function reviewOccurrenceStats(report) {
+  const loaded = reviewFindings(report).length;
+  const total = Number(report?.summary?.byClass?.["manual-change"] || 0) + Number(report?.summary?.byClass?.["manual-inspection"] || 0);
+  return {
+    loaded,
+    total,
+    truncated: Boolean(report?.preview?.truncated && total > loaded),
+  };
+}
+
+function reviewPreviewNotice(report) {
+  const stats = reviewOccurrenceStats(report);
+  if (!stats.truncated) {
+    return null;
+  }
+  return `These desktop insights are based on ${stats.loaded} loaded review occurrence${stats.loaded === 1 ? "" : "s"} out of ${stats.total} in the export. Open the output folder if you need the full raw review set.`;
+}
+
+function reviewSectionSummaryText(report, reviewContext) {
+  const stats = reviewOccurrenceStats(report);
+  if (reviewContext?.useGroupedView && reviewContext?.canGroup) {
+    if (stats.truncated) {
+      return `${reviewContext.entries.length} review group${reviewContext.entries.length === 1 ? "" : "s"} shown from ${stats.loaded} loaded occurrence${stats.loaded === 1 ? "" : "s"}. ${stats.total} total occurrence${stats.total === 1 ? "" : "s"} in the export.`;
+    }
+    return `${reviewContext.entries.length} review group${reviewContext.entries.length === 1 ? "" : "s"} to check. ${stats.total} total occurrence${stats.total === 1 ? "" : "s"} in the export.`;
+  }
+  if (stats.truncated) {
+    return `${stats.loaded} review occurrence${stats.loaded === 1 ? "" : "s"} loaded in the desktop preview. ${stats.total} total occurrence${stats.total === 1 ? "" : "s"} in the export.`;
+  }
+  return `${stats.total} review item${stats.total === 1 ? "" : "s"} to check.`;
+}
+
 function renderPriorityCallout(report, reportIndex) {
   const card = byId("priorityCallout");
   const title = byId("priorityCalloutTitle");
@@ -1022,9 +1268,9 @@ function renderPriorityCallout(report, reportIndex) {
     blockedReport = report;
   } else if (report?.kind === "RunReport") {
     blockedReport = report.summary?.analyzeThresholdExceeded
-      ? reportIndex.MigrationReport
+      ? reportIndex.migrationReport
       : report.summary?.validationBlocked
-        ? reportIndex.ValidationReport
+        ? reportIndex.validationReport
         : null;
   }
 
@@ -1165,6 +1411,8 @@ function renderResultBanner(report, result, reportIndex) {
     const autoFix = Number(byClass["auto-fix"] || 0);
     const assisted = Number(byClass["assisted-rewrite"] || 0);
     const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+    const groupedReview = groupReviewFindingsForDisplay(reviewFindings(report));
+    const groupedReviewCount = groupedReview.length;
     if (blocked > 0) {
       setResultBanner({ variant: "danger", title: "Blocked upgrade", body: topBlockedFinding(report)?.message || "Resolve the blocker before rewrite or run." });
     } else if (autoFix > 0 || assisted > 0) {
@@ -1177,7 +1425,15 @@ function renderResultBanner(report, result, reportIndex) {
             : `Rewrite can scaffold ${pluralize(assisted, "assisted rewrite", "assisted rewrites")}.`,
       });
     } else if (review > 0) {
-      setResultBanner({ variant: "warning", title: "Review needed", body: `This flow can move forward after ${pluralize(review, "review item", "review items")} are checked.` });
+      const reviewLabel =
+        groupedReviewCount > 0 && groupedReviewCount !== review
+          ? `${pluralize(groupedReviewCount, "review group", "review groups")} are shown in the desktop summary (${review} total occurrences remain in the export).`
+          : `${pluralize(review, "review item", "review items")} are ready for review.`;
+      setResultBanner({
+        variant: "warning",
+        title: "Upgrade can proceed with review",
+        body: `No blockers were found. ${reviewLabel}`,
+      });
     } else {
       setResultBanner({ variant: "success", title: "Upgrade check complete", body: "No flow-specific issues were found in the built-in coverage for this path." });
     }
@@ -1245,8 +1501,8 @@ function renderResultOverview(report, result) {
     return;
   }
 
-  const sourceVersion = report.source?.nifiVersion || "unknown";
-  const targetVersion = report.target?.nifiVersion || "unknown";
+  const sourceVersion = report.source?.nifiVersion || byId("sourceVersion").value.trim() || "unknown";
+  const targetVersion = report.target?.nifiVersion || byId("targetVersion").value.trim() || "unknown";
   const sourceLabel = displaySourceLabel(report);
 
   if (report.kind === "MigrationReport" || report.kind === "ValidationReport") {
@@ -1255,6 +1511,8 @@ function renderResultOverview(report, result) {
     const autoFix = byClass["auto-fix"] || 0;
     const assisted = byClass["assisted-rewrite"] || 0;
     const manual = (byClass["manual-change"] || 0) + (byClass["manual-inspection"] || 0);
+    const groupedManual = groupReviewFindingsForDisplay(reviewFindings(report));
+    const groupedManualCount = groupedManual.length;
     const info = byClass["info"] || 0;
     const topFinding = Array.isArray(report.findings) && report.findings.length > 0 ? report.findings[0] : null;
     const isBridgeUpgradeBlock = topFinding?.ruleId === "core.bridge-upgrade.requires-1.27";
@@ -1269,7 +1527,10 @@ function renderResultOverview(report, result) {
     } else if (autoFix > 0 || assisted > 0) {
       headline.textContent = `Rewrite available: ${autoFix} safe, ${assisted} assisted`;
     } else if (manual > 0) {
-      headline.textContent = `Review needed: ${manual} change${manual === 1 ? "" : "s"}`;
+      headline.textContent =
+        groupedManualCount > 0 && groupedManualCount !== manual
+          ? `Review guidance: ${groupedManualCount} group${groupedManualCount === 1 ? "" : "s"}`
+          : `Review guidance: ${manual} item${manual === 1 ? "" : "s"}`;
     } else {
       headline.textContent = "No flow-specific upgrade issues found.";
     }
@@ -1286,7 +1547,10 @@ function renderResultOverview(report, result) {
     metrics.appendChild(metricCard("Blocked", blocked));
     metrics.appendChild(metricCard("Safe fixes", autoFix));
     metrics.appendChild(metricCard("Assisted", assisted));
-    metrics.appendChild(metricCard("Review items", manual));
+    metrics.appendChild(metricCard(groupedManualCount > 0 && groupedManualCount !== manual ? "Review groups" : "Review items", groupedManualCount > 0 && groupedManualCount !== manual ? groupedManualCount : manual));
+    if (groupedManualCount > 0 && groupedManualCount !== manual) {
+      metrics.appendChild(metricCard("Occurrences", manual));
+    }
     metrics.appendChild(metricCard("Info", info));
     meta.textContent = `Flow ${sourceLabel} • Target ${targetVersion}`;
 
@@ -1307,6 +1571,11 @@ function renderResultOverview(report, result) {
       }
     } else if (manual > 0) {
       setResultNextAction({ label: "Review findings", onClick: () => focusFindingSection("review") });
+      if (groupedManualCount > 0 && groupedManualCount !== manual) {
+        subhead.textContent = `No blockers were found. The desktop summary groups repeated review entries into ${groupedManualCount} review group${groupedManualCount === 1 ? "" : "s"} while the export keeps all ${manual} occurrences.`;
+      } else {
+        subhead.textContent = "No blockers were found. Review items are advisory checks to confirm before upgrade.";
+      }
     } else {
       setResultNextAction({ label: "Run Validate", onClick: () => runAction("validate") });
       subhead.textContent = "This flow can move forward with no flow-specific issues in the built-in coverage.";
@@ -1383,8 +1652,11 @@ function resetResultOverview() {
   state.latestResult = null;
   state.rewrittenArtifactPath = null;
   state.reportIndex = {};
+  resetFlowUsageState();
   renderRunSteps(null);
   renderActionSelection();
+  renderReviewInsights(null);
+  renderUpgradeTestChecklist(null);
 }
 
 function renderRunSteps(report) {
@@ -1511,12 +1783,248 @@ function findingDetailText(finding) {
   if (component?.name) {
     parts.push(component.name);
   } else if (component?.type) {
-    parts.push(baseName(component.type));
+    parts.push(componentFamilyName(component.type));
   }
   if (component?.scope) {
     parts.push(component.scope);
   }
   return parts.join(" • ");
+}
+
+function reviewSectionDisplayContext(findings) {
+  const groupedEntries = groupReviewFindingsForDisplay(findings);
+  const canGroup = groupedEntries.length > 0 && groupedEntries.length !== findings.length;
+  const useGroupedView = canGroup ? state.reviewDisplayMode !== "all" : true;
+  const entries = useGroupedView ? groupedEntries : findings.map(singleFindingDisplayEntry);
+  return {
+    entries: sortReviewEntries(entries, findings),
+    groupedEntries,
+    canGroup,
+    useGroupedView,
+  };
+}
+
+function findingEntryBadges(entry, usageStats) {
+  const badges = [];
+  if (isReviewFinding(entry.finding)) {
+    badges.push({ label: "Advisory", tone: "advisory" });
+  }
+  if (isFutureCleanupFinding(entry.finding)) {
+    badges.push({ label: "Future cleanup", tone: "neutral" });
+  }
+  if (usageStats.trackedComponents > 0) {
+    if (usageStats.activeComponents > 0) {
+      badges.push({ label: `${usageStats.activeComponents} active`, tone: "success" });
+    }
+    if (usageStats.unreferencedComponents > 0) {
+      badges.push({ label: `${usageStats.unreferencedComponents} unreferenced`, tone: "muted" });
+    }
+  }
+  return badges;
+}
+
+function appendFindingBadges(container, badges) {
+  if (!Array.isArray(badges) || badges.length === 0) {
+    return;
+  }
+  const row = document.createElement("div");
+  row.className = "finding-badges";
+  badges.forEach((badge) => {
+    const chip = document.createElement("span");
+    chip.className = `finding-badge tone-${badge.tone || "neutral"}`;
+    chip.textContent = badge.label;
+    row.appendChild(chip);
+  });
+  container.appendChild(row);
+}
+
+function reviewUsageSummaryText(entry, usageStats) {
+  if (entry.finding?.component?.scope !== "controller-service") {
+    return null;
+  }
+  if (state.flowUsageStatus === "loading") {
+    return "Loading active-use insight from the source flow.";
+  }
+  if (state.flowUsageSummary && state.flowUsageSummary.supported === false) {
+    return state.flowUsageSummary.message || "Usage insight is not available for this source format.";
+  }
+  if (usageStats.trackedComponents === 0) {
+    return null;
+  }
+  if (usageStats.activeComponents > 0 && usageStats.unreferencedComponents > 0) {
+    return `Active use: ${usageStats.activeComponents} grouped service${usageStats.activeComponents === 1 ? "" : "s"} are referenced ${usageStats.totalReferences} time${usageStats.totalReferences === 1 ? "" : "s"} by ${usageStats.distinctReferrers} component${usageStats.distinctReferrers === 1 ? "" : "s"}. ${usageStats.unreferencedComponents} grouped service${usageStats.unreferencedComponents === 1 ? "" : "s"} are currently unreferenced.`;
+  }
+  if (usageStats.activeComponents > 0) {
+    return `Active use: referenced ${usageStats.totalReferences} time${usageStats.totalReferences === 1 ? "" : "s"} by ${usageStats.distinctReferrers} component${usageStats.distinctReferrers === 1 ? "" : "s"} in this export.`;
+  }
+  return "Unreferenced in this export. This looks like cleanup debt rather than a current upgrade risk.";
+}
+
+function reviewComponentUsage(component) {
+  if (!component?.id) {
+    return null;
+  }
+  return controllerServiceUsageMap().get(component.id) || null;
+}
+
+function appendInlineComponentDetails(item, entry) {
+  const components = Array.isArray(entry.components) ? entry.components : [];
+  const hasUsage = components.some((component) => reviewComponentUsage(component));
+  const hasPaths = components.some((component) => component.path || component.id);
+  if (components.length === 0 || (!hasUsage && !hasPaths && components.length < 2)) {
+    return;
+  }
+
+  const details = document.createElement("details");
+  details.className = "finding-inline-details";
+
+  const summary = document.createElement("summary");
+  if (components.length > 1) {
+    summary.textContent = `Show ${components.length} grouped component${components.length === 1 ? "" : "s"}`;
+  } else if (hasUsage) {
+    summary.textContent = "Show component usage";
+  } else {
+    summary.textContent = "Show component details";
+  }
+  details.appendChild(summary);
+
+  const list = document.createElement("div");
+  list.className = "inline-detail-list";
+
+  components.forEach((component) => {
+    const usage = reviewComponentUsage(component);
+    const row = document.createElement("div");
+    row.className = "inline-detail-item";
+
+    const head = document.createElement("div");
+    head.className = "inline-detail-head";
+
+    const title = document.createElement("div");
+    title.className = "inline-detail-title";
+    title.textContent = component.name || componentFamilyName(component.type || "component");
+    head.appendChild(title);
+
+    const badges = [];
+    if (component.occurrences > 1) {
+      badges.push({ label: `Repeated ${component.occurrences} times`, tone: "neutral" });
+    }
+    if (usage) {
+      badges.push({
+        label: Number(usage.activeReferenceCount || 0) > 0 ? "Active use" : "Unreferenced",
+        tone: Number(usage.activeReferenceCount || 0) > 0 ? "success" : "muted",
+      });
+    }
+    appendFindingBadges(head, badges);
+    row.appendChild(head);
+
+    const detailLines = [];
+    if (component.path) {
+      detailLines.push(component.path);
+    }
+    if (component.id) {
+      detailLines.push(`ID ${component.id}`);
+    }
+    if (detailLines.length > 0) {
+      const meta = document.createElement("div");
+      meta.className = "inline-detail-meta";
+      meta.textContent = detailLines.join(" • ");
+      row.appendChild(meta);
+    }
+
+    if (usage && Number(usage.activeReferenceCount || 0) > 0) {
+      const summaryLine = document.createElement("div");
+      summaryLine.className = "inline-detail-meta";
+      summaryLine.textContent = `Referenced ${usage.activeReferenceCount} time${Number(usage.activeReferenceCount || 0) === 1 ? "" : "s"} by ${usage.distinctReferrerCount} component${Number(usage.distinctReferrerCount || 0) === 1 ? "" : "s"}.`;
+      row.appendChild(summaryLine);
+
+      const examples = [];
+      const seen = new Set();
+      (usage.referencedBy || []).forEach((reference) => {
+        const key = `${reference.componentId || ""}|${reference.propertyName || ""}`;
+        if (seen.has(key) || examples.length >= 3) {
+          return;
+        }
+        seen.add(key);
+        const componentLabel = reference.componentName || componentFamilyName(reference.componentType || "component");
+        examples.push(`${componentLabel}${reference.propertyName ? ` via ${reference.propertyName}` : ""}`);
+      });
+      if (examples.length > 0) {
+        const refs = document.createElement("div");
+        refs.className = "inline-detail-meta";
+        refs.textContent = `Examples: ${examples.join(" • ")}`;
+        row.appendChild(refs);
+      }
+    }
+
+    list.appendChild(row);
+  });
+
+  details.appendChild(list);
+  item.appendChild(details);
+}
+
+function appendReviewSectionToolbar(body, findings, displayContext) {
+  if (!displayContext || findings.length === 0) {
+    return;
+  }
+  const toolbar = document.createElement("div");
+  toolbar.className = "finding-toolbar";
+
+  if (displayContext.canGroup) {
+    const viewGroup = document.createElement("div");
+    viewGroup.className = "finding-toolbar-group";
+    const viewLabel = document.createElement("span");
+    viewLabel.className = "finding-toolbar-label";
+    viewLabel.textContent = "View";
+    viewGroup.appendChild(viewLabel);
+
+    const viewButtons = document.createElement("div");
+    viewButtons.className = "finding-toolbar-buttons";
+    [
+      { value: "grouped", label: "Grouped" },
+      { value: "all", label: "All occurrences" },
+    ].forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `finding-toolbar-button ${state.reviewDisplayMode === option.value ? "active" : ""}`;
+      button.textContent = option.label;
+      button.addEventListener("click", () => {
+        state.reviewDisplayMode = option.value;
+        renderFindingSections(state.latestReport);
+      });
+      viewButtons.appendChild(button);
+    });
+    viewGroup.appendChild(viewButtons);
+    toolbar.appendChild(viewGroup);
+  }
+
+  const sortGroup = document.createElement("div");
+  sortGroup.className = "finding-toolbar-group";
+  const sortLabel = document.createElement("span");
+  sortLabel.className = "finding-toolbar-label";
+  sortLabel.textContent = "Sort";
+  sortGroup.appendChild(sortLabel);
+
+  const sortButtons = document.createElement("div");
+  sortButtons.className = "finding-toolbar-buttons";
+  [
+    { value: "impact", label: "Largest first" },
+    { value: "az", label: "A-Z" },
+  ].forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `finding-toolbar-button ${state.reviewSortMode === option.value ? "active" : ""}`;
+    button.textContent = option.label;
+    button.addEventListener("click", () => {
+      state.reviewSortMode = option.value;
+      renderFindingSections(state.latestReport);
+    });
+    sortButtons.appendChild(button);
+  });
+  sortGroup.appendChild(sortButtons);
+  toolbar.appendChild(sortGroup);
+
+  body.appendChild(toolbar);
 }
 
 function renderFindingSections(report) {
@@ -1535,10 +2043,17 @@ function renderFindingSections(report) {
   };
 
   Object.entries(grouped).forEach(([kind, findings]) => {
+    if (findings.length === 0) {
+      return;
+    }
+    const reviewContext = kind === "review" ? reviewSectionDisplayContext(findings) : null;
+    const condensed = kind === "review"
+      ? reviewContext.entries
+      : findings.map(singleFindingDisplayEntry);
     const section = document.createElement("details");
     section.className = `result-card finding-section section-${kind}`;
     section.dataset.kind = kind;
-    section.open = findings.length > 0 && kind !== "info";
+    section.open = kind !== "info";
 
     const summary = document.createElement("summary");
     const titleWrap = document.createElement("span");
@@ -1550,9 +2065,22 @@ function renderFindingSections(report) {
     title.textContent = findingSectionTitle(kind);
     titleWrap.appendChild(icon);
     titleWrap.appendChild(title);
+    const shownCount = Number(report.preview?.shownByClass?.[kind] || findings.length);
+    const summaryCount =
+      kind === "review"
+        ? Number(report.summary?.byClass?.["manual-change"] || 0) + Number(report.summary?.byClass?.["manual-inspection"] || 0)
+        : Number(
+            report.summary?.byClass?.[
+              kind === "assisted-rewrite" ? "assisted-rewrite" : kind
+            ] || 0
+          );
+
     const meta = document.createElement("span");
     meta.className = "section-summary";
-    meta.textContent = summarizeSection(kind, findings.length);
+    meta.textContent =
+      kind === "review"
+        ? reviewSectionSummaryText(report, reviewContext)
+        : summarizeSection(kind, findings.length);
     summary.appendChild(titleWrap);
     summary.appendChild(meta);
     section.appendChild(summary);
@@ -1560,50 +2088,427 @@ function renderFindingSections(report) {
     const body = document.createElement("div");
     body.className = "finding-section-body";
 
-    if (findings.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "finding-item-meta";
-      empty.textContent = summarizeSection(kind, 0);
-      body.appendChild(empty);
-    } else {
-      findings.forEach((finding) => {
-        const item = document.createElement("div");
-        item.className = "finding-item";
-
-        const itemTitle = document.createElement("div");
-        itemTitle.className = "finding-item-title";
-        itemTitle.textContent = finding.message;
-        item.appendChild(itemTitle);
-
-        const detail = findingDetailText(finding);
-        if (detail) {
-          const metaLine = document.createElement("div");
-          metaLine.className = "finding-item-meta";
-          metaLine.textContent = detail;
-          item.appendChild(metaLine);
-        }
-
-        if (finding.notes) {
-          const notes = document.createElement("div");
-          notes.className = "finding-item-meta";
-          notes.textContent = finding.notes;
-          item.appendChild(notes);
-        }
-
-        if (Array.isArray(finding.suggestedActions) && finding.suggestedActions.length > 0) {
-          const suggestions = document.createElement("div");
-          suggestions.className = "finding-item-meta";
-          suggestions.textContent = `Suggested next steps: ${finding.suggestedActions.map(formatActionPreview).join(" ")}`;
-          item.appendChild(suggestions);
-        }
-
-        body.appendChild(item);
-      });
+    if (kind === "review") {
+      appendReviewSectionToolbar(body, findings, reviewContext);
     }
+
+    if (kind === "review" && reviewContext?.useGroupedView && reviewContext?.canGroup) {
+      const dedupeNote = document.createElement("div");
+      dedupeNote.className = "finding-item-meta";
+      dedupeNote.textContent = `The desktop summary groups review findings that share the same migration note and component label, then shows how many distinct components and occurrences contributed to each row. The exported report keeps all ${summaryCount} occurrences.`;
+      body.appendChild(dedupeNote);
+    }
+
+    if (report.preview?.truncated && summaryCount > shownCount) {
+      const previewLimit = document.createElement("div");
+      previewLimit.className = "finding-item-meta";
+      previewLimit.textContent =
+        kind === "review" && reviewContext?.useGroupedView && reviewContext?.canGroup
+          ? `The desktop preview loaded ${shownCount} of ${summaryCount} review occurrences before grouping. The desktop summary shows ${condensed.length} grouped row${condensed.length === 1 ? "" : "s"} here.`
+          : kind === "review"
+          ? `Showing ${condensed.length} of ${summaryCount} review occurrence${summaryCount === 1 ? "" : "s"} loaded into the desktop preview. Use the exported reports for the full list.`
+          : `Showing ${shownCount} of ${summaryCount} ${findingSectionTitle(kind).toLowerCase()} items in the desktop preview. Use the exported reports for the full list.`;
+      body.appendChild(previewLimit);
+    }
+
+    condensed.forEach((entry) => {
+      const { finding, occurrences, distinctComponents, paths } = entry;
+      const usageStats = kind === "review" ? reviewEntryUsageStats(entry) : { trackedComponents: 0, activeComponents: 0, unreferencedComponents: 0, totalReferences: 0, distinctReferrers: 0 };
+      const item = document.createElement("div");
+      item.className = "finding-item";
+
+      const itemHead = document.createElement("div");
+      itemHead.className = "finding-item-head";
+
+      const itemTitle = document.createElement("div");
+      itemTitle.className = "finding-item-title";
+      itemTitle.textContent = finding.message;
+      itemHead.appendChild(itemTitle);
+      appendFindingBadges(itemHead, findingEntryBadges(entry, usageStats));
+      item.appendChild(itemHead);
+
+      const detail = findingDetailText(finding);
+      if (detail) {
+        const metaLine = document.createElement("div");
+        metaLine.className = "finding-item-meta";
+        metaLine.textContent = detail;
+        item.appendChild(metaLine);
+      }
+
+      if (occurrences > 1 || distinctComponents > 1) {
+        const repeat = document.createElement("div");
+        repeat.className = "finding-item-meta";
+        if (distinctComponents > 1 && occurrences > distinctComponents) {
+          repeat.textContent = `Grouped from ${distinctComponents} distinct component${distinctComponents === 1 ? "" : "s"} and ${occurrences} total occurrences in this export.`;
+        } else if (distinctComponents > 1) {
+          repeat.textContent = `Grouped from ${distinctComponents} distinct component${distinctComponents === 1 ? "" : "s"} in this export.`;
+        } else {
+          repeat.textContent = `Repeated ${occurrences} times in this export.`;
+        }
+        item.appendChild(repeat);
+      }
+
+      if (kind === "review") {
+        const usageSummary = reviewUsageSummaryText(entry, usageStats);
+        if (usageSummary) {
+          const usageMeta = document.createElement("div");
+          usageMeta.className = "finding-item-meta";
+          usageMeta.textContent = usageSummary;
+          item.appendChild(usageMeta);
+        }
+      }
+
+      if (finding.notes) {
+        const notes = document.createElement("div");
+        notes.className = "finding-item-meta";
+        notes.textContent = finding.notes;
+        item.appendChild(notes);
+      }
+
+      if ((occurrences > 1 || distinctComponents > 1) && paths.length > 1) {
+        const pathNote = document.createElement("div");
+        pathNote.className = "finding-item-meta";
+        pathNote.textContent = `Shown here once for the grouped review summary. Check the exported report if you need every component path.`;
+        item.appendChild(pathNote);
+      }
+
+      if (kind === "review") {
+        appendInlineComponentDetails(item, entry);
+      }
+
+      if (Array.isArray(finding.suggestedActions) && finding.suggestedActions.length > 0) {
+        const suggestions = document.createElement("div");
+        suggestions.className = "finding-item-meta";
+        suggestions.textContent = `Suggested next steps: ${finding.suggestedActions.map(formatActionPreview).join(" ")}`;
+        item.appendChild(suggestions);
+      }
+
+      body.appendChild(item);
+    });
 
     section.appendChild(body);
     root.appendChild(section);
   });
+}
+
+function appendInsightItem(list, titleText, bodyText) {
+  const item = document.createElement("div");
+  item.className = "selection-list-item insight-item";
+
+  const title = document.createElement("div");
+  title.className = "insight-item-title";
+  title.textContent = titleText;
+  item.appendChild(title);
+
+  if (bodyText) {
+    const meta = document.createElement("div");
+    meta.className = "insight-item-meta";
+    meta.textContent = bodyText;
+    item.appendChild(meta);
+  }
+
+  list.appendChild(item);
+}
+
+function controllerServiceReviewEntries(report) {
+  return groupReviewFindingsForDisplay(reviewFindings(report)).filter(
+    (entry) => entry.finding?.component?.scope === "controller-service"
+  );
+}
+
+function reviewedControllerServiceUsage(report) {
+  const entries = controllerServiceReviewEntries(report);
+  const services = [];
+  entries.forEach((entry) => {
+    (entry.components || []).forEach((component) => {
+      const usage = reviewComponentUsage(component);
+      if (usage) {
+        services.push({ entry, component, usage });
+      }
+    });
+  });
+  return services;
+}
+
+function referenceFamilyCounts(services) {
+  const families = new Map();
+  services.forEach(({ usage }) => {
+    (usage.referencedBy || []).forEach((reference) => {
+      const family = componentFamilyName(reference.componentType || "");
+      if (!family) {
+        return;
+      }
+      const existing = families.get(family) || { ids: new Set(), names: new Set() };
+      existing.ids.add(reference.componentId || `${reference.componentName || family}|${reference.propertyName || ""}`);
+      if (reference.componentName) {
+        existing.names.add(reference.componentName);
+      }
+      families.set(family, existing);
+    });
+  });
+  return families;
+}
+
+function renderReviewInsights(report) {
+  const card = byId("reviewInsightsCard");
+  const meta = byId("reviewInsightsMeta");
+  const list = byId("reviewInsightsList");
+  if (!card || !meta || !list) {
+    return;
+  }
+  card.hidden = true;
+  meta.textContent = "";
+  list.innerHTML = "";
+
+  if (!report || (report.kind !== "MigrationReport" && report.kind !== "ValidationReport")) {
+    return;
+  }
+
+  const entries = controllerServiceReviewEntries(report);
+  if (entries.length === 0) {
+    return;
+  }
+
+  card.hidden = false;
+  const previewNotice = reviewPreviewNotice(report);
+
+  if (state.flowUsageStatus === "loading") {
+    meta.textContent = previewNotice
+      ? `Loading active-use insight from the source flow so the advisory findings can be prioritized. ${previewNotice}`
+      : "Loading active-use insight from the source flow so the advisory findings can be prioritized.";
+    appendInsightItem(
+      list,
+      `${entries.length} controller-service review group${entries.length === 1 ? "" : "s"} detected`,
+      "The desktop app is checking which of these services are still actively referenced versus left behind as cleanup debt."
+    );
+    return;
+  }
+
+  if (state.flowUsageSummary && state.flowUsageSummary.supported === false) {
+    meta.textContent = [
+      state.flowUsageSummary.message || "Usage insight is not available for this source format.",
+      previewNotice,
+    ].filter(Boolean).join(" ");
+    appendInsightItem(
+      list,
+      `${entries.length} controller-service review group${entries.length === 1 ? "" : "s"} detected`,
+      "These review findings are still advisory, but active-versus-unreferenced breakdown is not available for this flow export."
+    );
+    return;
+  }
+
+  const services = reviewedControllerServiceUsage(report);
+  const activeServices = services.filter(({ usage }) => Number(usage.activeReferenceCount || 0) > 0);
+  const unreferencedServices = services.filter(({ usage }) => Number(usage.activeReferenceCount || 0) === 0);
+  const referrerIds = new Set();
+  activeServices.forEach(({ usage }) => {
+    (usage.referencedBy || []).forEach((reference) => {
+      if (reference.componentId) {
+        referrerIds.add(reference.componentId);
+      }
+    });
+  });
+
+  meta.textContent = [
+    "These controller-service findings are advisory. Actively referenced services are the best smoke-test candidates for the upgrade.",
+    previewNotice,
+  ].filter(Boolean).join(" ");
+  appendInsightItem(
+    list,
+    `${activeServices.length} actively used reviewed service${activeServices.length === 1 ? "" : "s"}`,
+    activeServices.length > 0
+      ? `Referenced by ${referrerIds.size} distinct component${referrerIds.size === 1 ? "" : "s"} in this export.`
+      : "No actively referenced reviewed controller services were found."
+  );
+  if (unreferencedServices.length > 0) {
+    appendInsightItem(
+      list,
+      `${unreferencedServices.length} unreferenced reviewed service${unreferencedServices.length === 1 ? "" : "s"}`,
+      "These look like cleanup debt you can schedule after the upgrade rather than immediate smoke-test priorities."
+    );
+  }
+
+  sortReviewEntries(entries, reviewFindings(report))
+    .slice(0, 5)
+    .forEach((entry) => {
+      const usageStats = reviewEntryUsageStats(entry);
+      appendInsightItem(
+        list,
+        findingDetailText(entry.finding) || entry.finding.message,
+        reviewUsageSummaryText(entry, usageStats)
+      );
+    });
+}
+
+function renderUpgradeTestChecklist(report) {
+  const card = byId("upgradeTestCard");
+  const meta = byId("upgradeTestMeta");
+  const list = byId("upgradeTestList");
+  if (!card || !meta || !list) {
+    return;
+  }
+  card.hidden = true;
+  meta.textContent = "";
+  list.innerHTML = "";
+
+  if (!isReviewOnlyReport(report)) {
+    return;
+  }
+
+  card.hidden = false;
+  const previewNotice = reviewPreviewNotice(report);
+  meta.textContent = [
+    "These are smoke tests to run before promotion. Review findings here are advisory checks, not blockers.",
+    previewNotice,
+  ].filter(Boolean).join(" ");
+
+  const groupedReview = groupReviewFindingsForDisplay(reviewFindings(report));
+  const futureCleanupCount = groupedReview.filter((entry) => isFutureCleanupFinding(entry.finding)).length;
+  const reviewedServices = reviewedControllerServiceUsage(report);
+  const activeReviewedServices = reviewedServices.filter(({ usage }) => Number(usage.activeReferenceCount || 0) > 0);
+  const unreferencedReviewedServices = reviewedServices.filter(({ usage }) => Number(usage.activeReferenceCount || 0) === 0);
+
+  if (activeReviewedServices.length > 0) {
+    appendInsightItem(
+      list,
+      "Start with the actively used reviewed services",
+      `${activeReviewedServices.length} reviewed controller service${activeReviewedServices.length === 1 ? "" : "s"} are still referenced in this export, so they are the best first-pass upgrade smoke tests.`
+    );
+  }
+
+  const families = referenceFamilyCounts(activeReviewedServices);
+  const familyEntries = Array.from(families.entries()).sort((left, right) => right[1].ids.size - left[1].ids.size);
+  familyEntries.forEach(([family, details], index) => {
+    if (index >= 3) {
+      return;
+    }
+    if (family === "HandleHttpRequest") {
+      appendInsightItem(
+        list,
+        "Send inbound HTTPS requests through reviewed listeners",
+        `Exercise ${details.ids.size} HandleHttpRequest component${details.ids.size === 1 ? "" : "s"} that depend on reviewed SSL services.`
+      );
+      return;
+    }
+    if (family === "InvokeHTTP") {
+      appendInsightItem(
+        list,
+        "Run outbound HTTPS call paths",
+        `Exercise ${details.ids.size} InvokeHTTP component${details.ids.size === 1 ? "" : "s"} that depend on reviewed SSL services.`
+      );
+      return;
+    }
+    if (family === "ElasticSearchClientServiceImpl" || family === "ElasticSearchClientService") {
+      appendInsightItem(
+        list,
+        "Validate reviewed Elasticsearch connectivity",
+        `Confirm ${details.ids.size} Elasticsearch client service${details.ids.size === 1 ? "" : "s"} still connect cleanly after the upgrade.`
+      );
+      return;
+    }
+    appendInsightItem(
+      list,
+      `Exercise reviewed ${family} components`,
+      `${details.ids.size} ${family} component${details.ids.size === 1 ? "" : "s"} reference reviewed services in this export.`
+    );
+  });
+
+  if (unreferencedReviewedServices.length > 0) {
+    appendInsightItem(
+      list,
+      "Leave unreferenced deprecated services for scheduled cleanup",
+      `${unreferencedReviewedServices.length} reviewed controller service${unreferencedReviewedServices.length === 1 ? "" : "s"} are not referenced anywhere in this export, so they can be cleaned up after the 2.8 rollout.`
+    );
+  }
+
+  if (futureCleanupCount > 0) {
+    appendInsightItem(
+      list,
+      "Treat future-cleanup notes as follow-up work, not current blockers",
+      `${futureCleanupCount} grouped review finding${futureCleanupCount === 1 ? "" : "s"} describe later-major-upgrade cleanup rather than expected 2.8 breakage.`
+    );
+  }
+
+  if (list.children.length === 0) {
+    appendInsightItem(
+      list,
+      "Run one smoke test per grouped advisory finding",
+      `Start with the ${groupedReview.length} review group${groupedReview.length === 1 ? "" : "s"} shown in the desktop summary and confirm each affected flow still behaves as expected.`
+    );
+  }
+}
+
+async function refreshFlowUsageInsights(report) {
+  const key = reportKey(report);
+  if (!report || (report.kind !== "MigrationReport" && report.kind !== "ValidationReport")) {
+    resetFlowUsageState();
+    renderFindingSections(report);
+    renderReviewInsights(null);
+    renderUpgradeTestChecklist(null);
+    return;
+  }
+
+  const controllerReviewGroups = controllerServiceReviewEntries(report);
+  if (controllerReviewGroups.length === 0) {
+    resetFlowUsageState();
+    renderFindingSections(report);
+    renderReviewInsights(report);
+    renderUpgradeTestChecklist(report);
+    return;
+  }
+
+  state.flowUsageSummary = null;
+  state.flowUsageStatus = "loading";
+  state.flowUsageRequestKey = key;
+  renderFindingSections(report);
+  renderReviewInsights(report);
+  renderUpgradeTestChecklist(report);
+
+  const sourcePath = report.source?.path || "";
+  const sourceFormat = report.source?.format || "";
+  if (!sourcePath) {
+    state.flowUsageSummary = {
+      supported: false,
+      sourcePath: "",
+      sourceFormat,
+      message: "The selected report did not include a source flow path for usage insight.",
+      controllerServices: [],
+    };
+    state.flowUsageStatus = "unsupported";
+    if (state.flowUsageRequestKey === key) {
+      renderFindingSections(report);
+      renderReviewInsights(report);
+      renderUpgradeTestChecklist(report);
+    }
+    return;
+  }
+
+  try {
+    const summary = await invoke("inspect_flow_usage", { path: sourcePath, sourceFormat });
+    if (state.flowUsageRequestKey !== key) {
+      return;
+    }
+    state.flowUsageSummary = summary;
+    state.flowUsageStatus = summary?.supported ? "ready" : "unsupported";
+  } catch (error) {
+    if (state.flowUsageRequestKey !== key) {
+      return;
+    }
+    state.flowUsageSummary = {
+      supported: false,
+      sourcePath,
+      sourceFormat,
+      message: String(error),
+      controllerServices: [],
+    };
+    state.flowUsageStatus = "unsupported";
+  }
+
+  if (reportKey(state.latestReport) === key) {
+    renderFindingSections(state.latestReport);
+    renderReviewInsights(state.latestReport);
+    renderUpgradeTestChecklist(state.latestReport);
+  }
 }
 
 function formatActionPreview(action) {
@@ -1614,7 +2519,7 @@ function formatActionPreview(action) {
     case "remove-property":
       return `Remove property ${params.name || "unknown"}.`;
     case "replace-component-type":
-      return `Replace component type ${baseName(params.from || "old")} with ${baseName(params.to || "new")}.`;
+      return `Replace component type ${componentFamilyName(params.from || "old")} with ${componentFamilyName(params.to || "new")}.`;
     case "set-property":
       return `Set property ${params.property || "unknown"} to ${params.value || "value"}.`;
     case "set-property-if-absent":
@@ -1645,8 +2550,8 @@ function previewDiffFromAction(action) {
       };
     case "replace-component-type":
       return {
-        before: `Type: ${baseName(params.from || "old")}`,
-        after: `Type: ${baseName(params.to || "new")}`,
+        before: `Type: ${componentFamilyName(params.from || "old")}`,
+        after: `Type: ${componentFamilyName(params.to || "new")}`,
       };
     case "set-property":
       return {
@@ -1731,6 +2636,13 @@ function renderRewritePreview(report) {
     list.appendChild(item);
   });
 
+  if (report.preview?.truncated) {
+    const meta = document.createElement("div");
+    meta.className = "preview-meta";
+    meta.textContent = "Showing a desktop preview only. Use the exported reports for the full rewriteable set.";
+    list.appendChild(meta);
+  }
+
   card.hidden = false;
 }
 
@@ -1753,36 +2665,36 @@ async function renderReports(result) {
     return;
   }
 
-  const structuredByPath = {};
-  const structuredByKind = {};
-  for (const path of state.reports.filter((candidate) => candidate.endsWith(".json"))) {
-    try {
-      const parsed = JSON.parse(await invoke("read_text_file", { path }));
-      structuredByPath[path] = parsed;
-      if (parsed?.kind && !structuredByKind[parsed.kind]) {
-        structuredByKind[parsed.kind] = parsed;
-      }
-    } catch (error) {
-      // Ignore non-parseable exports and keep the readable report flow working.
-    }
-  }
-
-  const jsonPath = preferredJsonReportPath(state.reports);
-  const jsonReport = jsonPath ? structuredByPath[jsonPath] || null : null;
+  const bundle = await invoke("load_report_bundle", { reportPaths: state.reports });
+  const structuredByKind = bundle.reportIndex || {};
+  const jsonReport = bundle.primaryReport || null;
+  state.reportGroups = bundle.groups || [];
+  state.inlineViewLimitBytes = Number(bundle.inlineViewLimitBytes || 0);
   state.latestReport = jsonReport;
   state.reportIndex = structuredByKind;
   renderResultBanner(jsonReport, result, structuredByKind);
   renderResultOverview(jsonReport, result);
   renderPriorityCallout(jsonReport, structuredByKind);
   renderRunSteps(jsonReport);
-  renderFindingSections(jsonReport);
-  renderRewriteSummary(structuredByKind.RewriteReport || null);
-  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.MigrationReport || null);
+  renderRewriteSummary(structuredByKind.rewriteReport || null);
+  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.migrationReport || null);
   renderResultUtilities(result);
   renderActionSelection();
+  refreshFlowUsageInsights(jsonReport).catch((error) => {
+    state.flowUsageSummary = {
+      supported: false,
+      sourcePath: jsonReport?.source?.path || "",
+      sourceFormat: jsonReport?.source?.format || "",
+      message: String(error),
+      controllerServices: [],
+    };
+    state.flowUsageStatus = "unsupported";
+    renderFindingSections(state.latestReport);
+    renderReviewInsights(state.latestReport);
+    renderUpgradeTestChecklist(state.latestReport);
+  });
 
-  const groups = groupReportPaths(state.reports);
-  for (const group of groups) {
+  for (const group of state.reportGroups) {
     const card = document.createElement("div");
     card.className = "report-card";
 
@@ -1796,18 +2708,28 @@ async function renderReports(result) {
 
     const meta = document.createElement("div");
     meta.className = "report-card-meta";
-    meta.textContent = group.md ? "Readable report available" : "Structured export only";
+    meta.textContent = group.md
+      ? `Readable report available${group.mdSizeBytes ? ` • ${reportFileSizeLabel(group.mdSizeBytes)}` : ""}`
+      : `Structured export only${group.jsonSizeBytes ? ` • ${reportFileSizeLabel(group.jsonSizeBytes)}` : ""}`;
     head.appendChild(meta);
     card.appendChild(head);
 
     const actions = document.createElement("div");
     actions.className = "report-card-actions";
-    const primaryPath = group.md || group.json;
+    const primaryPath = group.mdPath || group.jsonPath;
+    const primaryInlineSafe = group.mdPath ? group.mdInlineSafe : group.jsonInlineSafe;
     if (primaryPath) {
       const button = document.createElement("button");
       button.className = "button secondary";
-      button.textContent = group.md ? `View ${group.label} report` : `View ${group.label} export`;
+      button.textContent = group.mdPath ? `View ${group.label} report` : `View ${group.label} export`;
       button.addEventListener("click", async () => {
+        if (!primaryInlineSafe) {
+          setReportViewMessage(
+            `${group.label} report is large`,
+            `This export is larger than the in-app preview limit. Use Open output folder if you want the full file on disk.`
+          );
+          return;
+        }
         const content = await invoke("read_text_file", { path: primaryPath });
         setReportViewContent(primaryPath, content);
       });
@@ -1815,7 +2737,7 @@ async function renderReports(result) {
     }
     card.appendChild(actions);
 
-    if (group.json) {
+    if (group.jsonPath) {
       const advanced = document.createElement("details");
       advanced.className = "report-advanced";
       const summary = document.createElement("summary");
@@ -1828,8 +2750,15 @@ async function renderReports(result) {
       jsonButton.className = "button secondary";
       jsonButton.textContent = `View ${group.label} JSON`;
       jsonButton.addEventListener("click", async () => {
-        const content = await invoke("read_text_file", { path: group.json });
-        setReportViewContent(group.json, content);
+        if (!group.jsonInlineSafe) {
+          setReportViewMessage(
+            `${group.label} JSON is large`,
+            `This export is larger than the in-app preview limit. Use Open output folder if you want the full JSON on disk.`
+          );
+          return;
+        }
+        const content = await invoke("read_text_file", { path: group.jsonPath });
+        setReportViewContent(group.jsonPath, content);
       });
       advancedActions.appendChild(jsonButton);
       advanced.appendChild(advancedActions);
@@ -1839,30 +2768,10 @@ async function renderReports(result) {
     list.appendChild(card);
   }
 
-  let defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
-  if (jsonReport?.kind === "RunReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("run-report.md")) ||
-      state.reports.find((path) => path.endsWith("run-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "RewriteReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("rewrite-report.md")) ||
-      state.reports.find((path) => path.endsWith("rewrite-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "ValidationReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("validation-report.md")) ||
-      state.reports.find((path) => path.endsWith("validation-report.json")) ||
-      defaultReport;
-  } else if (jsonReport?.kind === "MigrationReport") {
-    defaultReport =
-      state.reports.find((path) => path.endsWith("migration-report.md")) ||
-      state.reports.find((path) => path.endsWith("migration-report.json")) ||
-      defaultReport;
-  }
-  const content = await invoke("read_text_file", { path: defaultReport });
-  setReportViewContent(defaultReport, content);
+  setReportViewMessage(
+    "Choose a report to view",
+    "Large runs stay in summary mode by default so the desktop app remains responsive."
+  );
 }
 
 async function runAction(action) {
@@ -1872,6 +2781,7 @@ async function runAction(action) {
   state.reportIndex = {};
   state.latestReport = null;
   state.latestResult = null;
+  resetFlowUsageState();
   renderActionSelection();
 
   const flow = selectedFlowCandidate();
@@ -1895,6 +2805,29 @@ async function runAction(action) {
     outputDir: byId("outputDir").value.trim(),
   };
 
+  const validationError = validateActionRequest(action, request);
+  if (validationError) {
+    byId("stdoutView").textContent = validationError;
+    setText("lastAction", `${titleAction(action)} not started.`);
+    setResultBanner({
+      variant: "warning",
+      title: `${titleAction(action)} needs one more input`,
+      body: validationError,
+    });
+    byId("resultHeadline").textContent = `${titleAction(action)} is ready when you are.`;
+    byId("resultSubhead").textContent = validationError;
+    byId("resultMetrics").innerHTML = "";
+    byId("resultMeta").textContent = "No command was started.";
+    byId("summaryBadges").innerHTML = "";
+    byId("findingSections").innerHTML = "";
+    byId("rewritePreview").hidden = true;
+    renderReviewInsights(null);
+    renderUpgradeTestChecklist(null);
+    state.runningAction = null;
+    renderActionSelection();
+    return;
+  }
+
   setText("lastAction", `Running ${action}...`);
   byId("stdoutView").textContent = "Running command...";
   byId("reportView").textContent = "Waiting for report output...";
@@ -1902,6 +2835,8 @@ async function runAction(action) {
   byId("summaryBadges").innerHTML = "";
   byId("findingSections").innerHTML = "";
   byId("rewritePreview").hidden = true;
+  renderReviewInsights(null);
+  renderUpgradeTestChecklist(null);
   setUtilityActions([]);
   setResultBanner({
     variant: "warning",
@@ -1946,6 +2881,7 @@ function prepareFreshOutputDir() {
   state.latestReport = null;
   state.latestResult = null;
   state.rewrittenArtifactPath = null;
+  resetFlowUsageState();
   byId("reportLinks").textContent = "Start a fresh run to generate new reports here.";
   byId("reportView").classList.add("empty");
   byId("reportView").textContent = "Start a fresh run to load a report here.";
@@ -1953,6 +2889,8 @@ function prepareFreshOutputDir() {
   byId("summaryBadges").innerHTML = "";
   byId("findingSections").innerHTML = "";
   byId("rewritePreview").hidden = true;
+  renderReviewInsights(null);
+  renderUpgradeTestChecklist(null);
   setText("lastAction", "Fresh output folder ready.");
   resetResultOverview();
 }

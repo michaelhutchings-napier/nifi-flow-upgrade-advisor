@@ -24,7 +24,9 @@ spec:
         scope: processor
         componentType: org.apache.nifi.processors.standard.ListenHTTP
       match:
-        propertyExists: Max Data to Receive per Second
+        propertyValueRegex:
+          property: Max Data to Receive per Second
+          regex: '(?s).*\S.*'
       actions:
         - type: remove-property
           name: Max Data to Receive per Second

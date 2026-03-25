@@ -3,9 +3,10 @@ kind: RulePack
 metadata:
   name: nifi-2.5-to-2.6-official
   title: NiFi 2.5 to 2.6 migration guidance
-  description: Official compatibility coverage pack for the NiFi 2.5.x to 2.6.x upgrade step. Apache Migration Guidance does not list a dedicated caveat for this minor hop.
+  description: Official rule pack derived from Apache NiFi 2.6.0 release notes and migration guidance for 2.5.x to 2.6.x upgrades.
   references:
     - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+    - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
 spec:
   sourceVersionRange: ">=2.5.0 <2.6.0"
   targetVersionRange: ">=2.6.0 <2.7.0"
@@ -14,4 +15,75 @@ spec:
     - versioned-flow-snapshot
     - git-registry-dir
     - nifi-registry-export
-  rules: []
+  rules:
+    - id: core.compress-content.deprecated-26
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: CompressContent is deprecated in NiFi 2.6.x in favor of ModifyCompression.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.CompressContent
+      notes: Apache NiFi 2.6.0 deprecated CompressContent in favor of ModifyCompression. Upgrading to 2.6.x still works, but plan to migrate this processor before a later major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+
+    - id: core.get-azure-eventhub.deprecated-26
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: GetAzureEventHub is deprecated in NiFi 2.6.x in favor of ConsumeAzureEventHub.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.azure.eventhub.GetAzureEventHub
+      notes: Apache NiFi 2.6.0 deprecated GetAzureEventHub in favor of ConsumeAzureEventHub. Upgrading to 2.6.x still works, but plan to migrate this processor before a later major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+
+    - id: core.convert-avro-to-parquet.deprecated-26
+      category: component-replaced
+      class: manual-change
+      severity: warning
+      message: ConvertAvroToParquet is deprecated in NiFi 2.6.x in favor of Record Readers and Record Writers.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.parquet.ConvertAvroToParquet
+      notes: Apache NiFi 2.6.0 deprecated ConvertAvroToParquet in favor of Record Readers and Record Writers. Upgrading to 2.6.x still works, but plan to migrate this processor before a later major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+
+    - id: core.parse-netflowv5.deprecated-26
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: ParseNetflowv5 is deprecated for removal in NiFi 2.6.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.network.ParseNetflowv5
+      notes: Apache NiFi 2.6.0 deprecated ParseNetflowv5 for removal in a later release. Upgrading to 2.6.x still works, but track a replacement plan before a future major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+
+    - id: core.geohash-record.deprecated-26
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: GeohashRecord is deprecated for removal in NiFi 2.6.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.geohash.GeohashRecord
+      notes: Apache NiFi 2.6.0 deprecated GeohashRecord for removal in a later release. Upgrading to 2.6.x still works, but track a replacement plan before a future major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+
+    - id: core.create-hadoop-sequence-file.deprecated-26
+      category: manual-inspection
+      class: manual-change
+      severity: warning
+      message: CreateHadoopSequenceFile is deprecated for removal in NiFi 2.6.x.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.hadoop.CreateHadoopSequenceFile
+      notes: Apache NiFi 2.6.0 deprecated CreateHadoopSequenceFile for removal in a later release. Upgrading to 2.6.x still works, but track a replacement plan before a future major-version step.
+      references:
+        - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes

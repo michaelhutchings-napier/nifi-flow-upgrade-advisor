@@ -1,9 +1,20 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
+
+const MAX_PREVIEW_FINDINGS_PER_CLASS: usize = 25;
+const MAX_PREVIEW_OPERATIONS: usize = 50;
+const MAX_INLINE_VIEW_BYTES: u64 = 512 * 1024;
+const MAX_SCAN_DEPTH: usize = 5;
+const MAX_FILE_BYTES_FOR_CONTENT_SNIFF: u64 = 256 * 1024;
+const MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION: u64 = 2 * 1024 * 1024;
+const MAX_ENTRIES_PER_DIRECTORY: usize = 2000;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +64,71 @@ pub struct CliActionResult {
     rewritten_artifact_path: Option<String>,
 }
 
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportIndexPreview {
+    migration_report: Option<serde_json::Value>,
+    rewrite_report: Option<serde_json::Value>,
+    validation_report: Option<serde_json::Value>,
+    run_report: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportGroupPreview {
+    label: String,
+    md_path: Option<String>,
+    json_path: Option<String>,
+    md_size_bytes: Option<u64>,
+    json_size_bytes: Option<u64>,
+    md_inline_safe: bool,
+    json_inline_safe: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportBundlePreview {
+    primary_report: Option<serde_json::Value>,
+    report_index: ReportIndexPreview,
+    groups: Vec<ReportGroupPreview>,
+    default_view_path: Option<String>,
+    inline_view_limit_bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowUsageSummary {
+    supported: bool,
+    source_path: String,
+    source_format: String,
+    message: Option<String>,
+    controller_services: Vec<ControllerServiceUsage>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControllerServiceUsage {
+    id: String,
+    name: String,
+    component_type: String,
+    component_scope: String,
+    path: String,
+    active_reference_count: usize,
+    distinct_referrer_count: usize,
+    referenced_by: Vec<FlowUsageReference>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowUsageReference {
+    component_id: String,
+    component_name: String,
+    component_type: String,
+    component_scope: String,
+    component_path: String,
+    property_name: String,
+}
+
 enum ExecTarget {
     Binary(String),
     GoRun(PathBuf),
@@ -77,6 +153,80 @@ pub fn scan_workspace(path: Option<String>) -> Result<BootstrapState, String> {
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| format!("read {}: {}", path, err))
+}
+
+#[tauri::command]
+pub fn load_report_bundle(report_paths: Vec<String>) -> Result<ReportBundlePreview, String> {
+    let groups = build_report_groups(&report_paths);
+    let mut previews_by_path = BTreeMap::new();
+    let mut report_index = ReportIndexPreview::default();
+
+    for path in report_paths.iter().filter(|path| path.ends_with(".json")) {
+        let preview = load_report_preview(path)?;
+        match preview
+            .get("kind")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+        {
+            "MigrationReport" if report_index.migration_report.is_none() => {
+                report_index.migration_report = Some(preview.clone());
+            }
+            "RewriteReport" if report_index.rewrite_report.is_none() => {
+                report_index.rewrite_report = Some(preview.clone());
+            }
+            "ValidationReport" if report_index.validation_report.is_none() => {
+                report_index.validation_report = Some(preview.clone());
+            }
+            "RunReport" if report_index.run_report.is_none() => {
+                report_index.run_report = Some(preview.clone());
+            }
+            _ => {}
+        }
+        previews_by_path.insert(path.clone(), preview);
+    }
+
+    let preferred_json = preferred_json_report_path(&report_paths);
+    let primary_report = preferred_json
+        .as_ref()
+        .and_then(|path| previews_by_path.get(path).cloned());
+
+    Ok(ReportBundlePreview {
+        primary_report,
+        report_index,
+        groups,
+        default_view_path: None,
+        inline_view_limit_bytes: MAX_INLINE_VIEW_BYTES,
+    })
+}
+
+#[tauri::command]
+pub fn inspect_flow_usage(path: String, source_format: String) -> Result<FlowUsageSummary, String> {
+    let rendered_path = path.trim().to_string();
+    if rendered_path.is_empty() {
+        return Ok(FlowUsageSummary {
+            supported: false,
+            source_path: String::new(),
+            source_format,
+            message: Some("No source flow path was available for usage insights.".into()),
+            controller_services: Vec::new(),
+        });
+    }
+
+    let source_path = PathBuf::from(&rendered_path);
+    if !source_path.exists() {
+        return Ok(FlowUsageSummary {
+            supported: false,
+            source_path: rendered_path,
+            source_format,
+            message: Some(
+                "The analyzed source flow is no longer available on disk for usage insights."
+                    .into(),
+            ),
+            controller_services: Vec::new(),
+        });
+    }
+
+    summarize_flow_usage(&source_path, &source_format)
 }
 
 #[tauri::command]
@@ -455,6 +605,217 @@ fn collect_report_paths(output_dir: &Path) -> Vec<String> {
         .collect()
 }
 
+fn preferred_json_report_path(paths: &[String]) -> Option<String> {
+    for suffix in [
+        "run-report.json",
+        "validation-report.json",
+        "rewrite-report.json",
+        "migration-report.json",
+    ] {
+        if let Some(path) = paths.iter().find(|path| path.ends_with(suffix)) {
+            return Some(path.clone());
+        }
+    }
+    paths.iter().find(|path| path.ends_with(".json")).cloned()
+}
+
+fn build_report_groups(paths: &[String]) -> Vec<ReportGroupPreview> {
+    let mut groups = BTreeMap::<String, ReportGroupPreview>::new();
+
+    for path in paths {
+        let label = report_group_name(path);
+        let entry = groups
+            .entry(label.clone())
+            .or_insert_with(|| ReportGroupPreview {
+                label,
+                md_path: None,
+                json_path: None,
+                md_size_bytes: None,
+                json_size_bytes: None,
+                md_inline_safe: false,
+                json_inline_safe: false,
+            });
+
+        let size_bytes = fs::metadata(path).map(|meta| meta.len()).ok();
+        let inline_safe = size_bytes
+            .map(|size| size <= MAX_INLINE_VIEW_BYTES)
+            .unwrap_or(false);
+        if path.ends_with(".md") {
+            entry.md_path = Some(path.clone());
+            entry.md_size_bytes = size_bytes;
+            entry.md_inline_safe = inline_safe;
+        } else if path.ends_with(".json") {
+            entry.json_path = Some(path.clone());
+            entry.json_size_bytes = size_bytes;
+            entry.json_inline_safe = inline_safe;
+        }
+    }
+
+    ["Analyze", "Rewrite", "Validate", "Run"]
+        .iter()
+        .filter_map(|label| groups.remove(*label))
+        .collect()
+}
+
+fn report_group_name(path: &str) -> String {
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .trim_end_matches(".json")
+        .trim_end_matches(".md")
+        .to_string();
+
+    match name.as_str() {
+        "migration-report" => "Analyze".into(),
+        "rewrite-report" => "Rewrite".into(),
+        "validation-report" => "Validate".into(),
+        "run-report" => "Run".into(),
+        _ => name,
+    }
+}
+
+fn load_report_preview(path: &str) -> Result<serde_json::Value, String> {
+    let body = fs::read_to_string(path).map_err(|err| format!("read {}: {}", path, err))?;
+    let mut value: serde_json::Value =
+        serde_json::from_str(&body).map_err(|err| format!("parse {}: {}", path, err))?;
+    let inline_safe = fs::metadata(path)
+        .map(|meta| meta.len() <= MAX_INLINE_VIEW_BYTES)
+        .unwrap_or(false);
+    let kind = value
+        .get("kind")
+        .and_then(|candidate| candidate.as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    match kind.as_str() {
+        "MigrationReport" | "ValidationReport" => {
+            let preview = if inline_safe {
+                full_findings_preview(&value)
+            } else {
+                limit_findings_preview(&mut value)
+            };
+            value["preview"] = preview;
+        }
+        "RewriteReport" => {
+            let preview = if inline_safe {
+                full_operations_preview(&value)
+            } else {
+                limit_operations_preview(&mut value)
+            };
+            value["preview"] = preview;
+        }
+        "RunReport" => {
+            value["preview"] = json!({
+                "truncated": false,
+                "totalItems": value.get("steps").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+                "shownItems": value.get("steps").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+                "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+            });
+        }
+        _ => {}
+    }
+
+    Ok(value)
+}
+
+fn full_findings_preview(value: &serde_json::Value) -> serde_json::Value {
+    let findings = value
+        .get("findings")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut shown_by_class = BTreeMap::<String, usize>::new();
+    for finding in &findings {
+        let class = finding
+            .get("class")
+            .and_then(|candidate| candidate.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        *shown_by_class.entry(class).or_insert(0) += 1;
+    }
+
+    json!({
+        "truncated": false,
+        "totalItems": findings.len(),
+        "shownItems": findings.len(),
+        "shownByClass": shown_by_class,
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
+fn limit_findings_preview(value: &mut serde_json::Value) -> serde_json::Value {
+    let findings = value
+        .get("findings")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut shown_by_class = BTreeMap::<String, usize>::new();
+    let mut limited = Vec::new();
+    for finding in findings.iter() {
+        let class = finding
+            .get("class")
+            .and_then(|candidate| candidate.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let count = shown_by_class.entry(class).or_insert(0);
+        if *count >= MAX_PREVIEW_FINDINGS_PER_CLASS {
+            continue;
+        }
+        *count += 1;
+        limited.push(finding.clone());
+    }
+
+    let truncated = limited.len() < findings.len();
+    value["findings"] = serde_json::Value::Array(limited);
+    json!({
+        "truncated": truncated,
+        "totalItems": findings.len(),
+        "shownItems": value.get("findings").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+        "shownByClass": shown_by_class,
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
+fn limit_operations_preview(value: &mut serde_json::Value) -> serde_json::Value {
+    let operations = value
+        .get("operations")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let limited: Vec<serde_json::Value> = operations
+        .iter()
+        .take(MAX_PREVIEW_OPERATIONS)
+        .cloned()
+        .collect();
+    let truncated = limited.len() < operations.len();
+    value["operations"] = serde_json::Value::Array(limited);
+    json!({
+        "truncated": truncated,
+        "totalItems": operations.len(),
+        "shownItems": value.get("operations").and_then(|candidate| candidate.as_array()).map(|items| items.len()).unwrap_or(0),
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
+fn full_operations_preview(value: &serde_json::Value) -> serde_json::Value {
+    let operations = value
+        .get("operations")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    json!({
+        "truncated": false,
+        "totalItems": operations.len(),
+        "shownItems": operations.len(),
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
 fn detect_rewritten_artifact_path(
     action: &str,
     output_dir: &Path,
@@ -465,6 +826,405 @@ fn detect_rewritten_artifact_path(
         "run" => rewritten_artifact_path_from_run_report(output_dir)
             .or_else(|| preferred_rewritten_artifact_path(output_dir, source_format)),
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone)]
+struct UsageComponentRecord {
+    id: String,
+    name: String,
+    component_type: String,
+    component_scope: String,
+    path: String,
+    properties: BTreeMap<String, serde_json::Value>,
+    property_descriptors: BTreeMap<String, serde_json::Value>,
+    controller_service_refs: Vec<(String, String)>,
+}
+
+fn summarize_flow_usage(path: &Path, source_format: &str) -> Result<FlowUsageSummary, String> {
+    let source_path = path.to_string_lossy().to_string();
+    let body = match read_flow_usage_source(path, source_format) {
+        Ok(body) => body,
+        Err(message) => {
+            return Ok(FlowUsageSummary {
+                supported: false,
+                source_path,
+                source_format: source_format.to_string(),
+                message: Some(message),
+                controller_services: Vec::new(),
+            });
+        }
+    };
+
+    let document: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(value) => value,
+        Err(err) => {
+            return Ok(FlowUsageSummary {
+                supported: false,
+                source_path,
+                source_format: source_format.to_string(),
+                message: Some(format!(
+                    "Could not parse the source flow for usage insights: {}",
+                    err
+                )),
+                controller_services: Vec::new(),
+            });
+        }
+    };
+
+    let mut components = Vec::new();
+    collect_usage_components(&document, &[], &mut components);
+
+    let controller_service_ids = components
+        .iter()
+        .filter(|component| component.component_scope == "controller-service")
+        .map(|component| component.id.clone())
+        .collect::<BTreeSet<_>>();
+
+    for component in &mut components {
+        component.controller_service_refs = collect_controller_service_refs(
+            &component.properties,
+            &component.property_descriptors,
+            &controller_service_ids,
+        );
+    }
+
+    let mut services = BTreeMap::<String, ControllerServiceUsage>::new();
+    for component in &components {
+        if component.component_scope != "controller-service" {
+            continue;
+        }
+        services.insert(
+            component.id.clone(),
+            ControllerServiceUsage {
+                id: component.id.clone(),
+                name: component.name.clone(),
+                component_type: component.component_type.clone(),
+                component_scope: component.component_scope.clone(),
+                path: component.path.clone(),
+                active_reference_count: 0,
+                distinct_referrer_count: 0,
+                referenced_by: Vec::new(),
+            },
+        );
+    }
+
+    for component in &components {
+        for (property_name, referenced_service_id) in &component.controller_service_refs {
+            let Some(service) = services.get_mut(referenced_service_id) else {
+                continue;
+            };
+            service.active_reference_count += 1;
+            service.referenced_by.push(FlowUsageReference {
+                component_id: component.id.clone(),
+                component_name: component.name.clone(),
+                component_type: component.component_type.clone(),
+                component_scope: component.component_scope.clone(),
+                component_path: component.path.clone(),
+                property_name: property_name.clone(),
+            });
+        }
+    }
+
+    let mut controller_services: Vec<ControllerServiceUsage> = services.into_values().collect();
+    for service in &mut controller_services {
+        service.distinct_referrer_count = service
+            .referenced_by
+            .iter()
+            .map(|reference| reference.component_id.clone())
+            .collect::<BTreeSet<_>>()
+            .len();
+    }
+    controller_services.sort_by(|left, right| {
+        right
+            .active_reference_count
+            .cmp(&left.active_reference_count)
+            .then_with(|| {
+                right
+                    .distinct_referrer_count
+                    .cmp(&left.distinct_referrer_count)
+            })
+            .then_with(|| left.name.cmp(&right.name))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    for service in &mut controller_services {
+        service.referenced_by.sort_by(|left, right| {
+            left.component_name
+                .cmp(&right.component_name)
+                .then_with(|| left.property_name.cmp(&right.property_name))
+                .then_with(|| left.component_id.cmp(&right.component_id))
+        });
+    }
+
+    Ok(FlowUsageSummary {
+        supported: true,
+        source_path,
+        source_format: source_format.to_string(),
+        message: None,
+        controller_services,
+    })
+}
+
+fn read_flow_usage_source(path: &Path, source_format: &str) -> Result<String, String> {
+    match source_format {
+        "flow-json-fixture" | "versioned-flow-snapshot" | "" => {
+            fs::read_to_string(path).map_err(|err| format!("read {}: {}", path.display(), err))
+        }
+        "flow-json-gz" => {
+            let file = fs::File::open(path).map_err(|err| format!("open {}: {}", path.display(), err))?;
+            let mut decoder = flate2::read::GzDecoder::new(file);
+            let mut body = String::new();
+            decoder
+                .read_to_string(&mut body)
+                .map_err(|err| format!("decompress {}: {}", path.display(), err))?;
+            Ok(body)
+        }
+        other => Err(format!(
+            "Usage insights are available for JSON-based flow exports right now. This source uses {}.",
+            other
+        )),
+    }
+    .or_else(|err| {
+        let rendered = path.to_string_lossy().to_ascii_lowercase();
+        if rendered.ends_with(".json") {
+            fs::read_to_string(path).map_err(|read_err| format!("read {}: {}", path.display(), read_err))
+        } else if rendered.ends_with(".json.gz") {
+            let file = fs::File::open(path).map_err(|open_err| format!("open {}: {}", path.display(), open_err))?;
+            let mut decoder = flate2::read::GzDecoder::new(file);
+            let mut body = String::new();
+            decoder
+                .read_to_string(&mut body)
+                .map_err(|decompress_err| format!("decompress {}: {}", path.display(), decompress_err))?;
+            Ok(body)
+        } else {
+            Err(err)
+        }
+    })
+}
+
+fn collect_usage_components(
+    value: &serde_json::Value,
+    path: &[String],
+    components: &mut Vec<UsageComponentRecord>,
+) {
+    match value {
+        serde_json::Value::Object(map) => {
+            let component = extract_usage_component(map, path);
+            let mut child_context = path.to_vec();
+            if let Some(component) = component {
+                child_context.push(component.name.clone());
+                components.push(component);
+            }
+
+            for (key, nested) in map {
+                let mut next_path = child_context.clone();
+                if usage_path_key(key) {
+                    next_path.push(key.clone());
+                }
+                collect_usage_components(nested, &next_path, components);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                collect_usage_components(item, path, components);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn extract_usage_component(
+    map: &serde_json::Map<String, serde_json::Value>,
+    path: &[String],
+) -> Option<UsageComponentRecord> {
+    let component_kind = infer_usage_component_kind(map, path)?;
+    let identifier = map
+        .get("identifier")
+        .and_then(|value| value.as_str())
+        .or_else(|| map.get("id").and_then(|value| value.as_str()))?
+        .trim();
+    if identifier.is_empty() {
+        return None;
+    }
+
+    let name = map
+        .get("name")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(identifier)
+        .to_string();
+
+    let component_type = map
+        .get("type")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(component_kind.as_str())
+        .to_string();
+
+    Some(UsageComponentRecord {
+        id: identifier.to_string(),
+        name: name.clone(),
+        component_type,
+        component_scope: normalize_component_scope(&component_kind),
+        path: usage_component_path(path, &name),
+        properties: json_object_field(map, "properties"),
+        property_descriptors: json_object_field(map, "propertyDescriptors"),
+        controller_service_refs: Vec::new(),
+    })
+}
+
+fn usage_path_key(key: &str) -> bool {
+    matches!(
+        key,
+        "rootGroup"
+            | "flowContents"
+            | "externalControllerServices"
+            | "processGroups"
+            | "controllerServices"
+            | "processors"
+            | "reportingTasks"
+            | "funnels"
+            | "labels"
+            | "inputPorts"
+            | "outputPorts"
+            | "remoteProcessGroups"
+    )
+}
+
+fn infer_usage_component_kind(
+    map: &serde_json::Map<String, serde_json::Value>,
+    path: &[String],
+) -> Option<String> {
+    if let Some(kind) = map
+        .get("componentType")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return Some(kind.to_string());
+    }
+
+    let path_hint = path
+        .iter()
+        .rev()
+        .find(|segment| !segment.trim().is_empty())
+        .map(|segment| segment.as_str());
+
+    match path_hint {
+        Some("rootGroup") | Some("flowContents") | Some("processGroups") => {
+            Some("PROCESS_GROUP".into())
+        }
+        Some("externalControllerServices") | Some("controllerServices") => {
+            Some("CONTROLLER_SERVICE".into())
+        }
+        Some("processors") => Some("PROCESSOR".into()),
+        Some("reportingTasks") => Some("REPORTING_TASK".into()),
+        Some("funnels") => Some("FUNNEL".into()),
+        Some("labels") => Some("LABEL".into()),
+        Some("inputPorts") => Some("INPUT_PORT".into()),
+        Some("outputPorts") => Some("OUTPUT_PORT".into()),
+        Some("remoteProcessGroups") => Some("REMOTE_PROCESS_GROUP".into()),
+        _ if map.contains_key("processors")
+            || map.contains_key("controllerServices")
+            || map.contains_key("processGroups")
+            || map.contains_key("reportingTasks") =>
+        {
+            Some("PROCESS_GROUP".into())
+        }
+        _ => None,
+    }
+}
+
+fn usage_component_path(path: &[String], name: &str) -> String {
+    path.iter()
+        .cloned()
+        .chain([name.to_string()])
+        .filter(|segment| !segment.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn normalize_component_scope(component_kind: &str) -> String {
+    component_kind.trim().to_ascii_lowercase().replace('_', "-")
+}
+
+fn json_object_field(
+    map: &serde_json::Map<String, serde_json::Value>,
+    field: &str,
+) -> BTreeMap<String, serde_json::Value> {
+    map.get(field)
+        .and_then(|value| value.as_object())
+        .map(|entries| {
+            entries
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn collect_controller_service_refs(
+    properties: &BTreeMap<String, serde_json::Value>,
+    descriptors: &BTreeMap<String, serde_json::Value>,
+    controller_service_ids: &BTreeSet<String>,
+) -> Vec<(String, String)> {
+    let mut refs = BTreeSet::<(String, String)>::new();
+    let mut saw_controller_service_descriptor = false;
+
+    for (property_name, descriptor) in descriptors {
+        let Some(descriptor_object) = descriptor.as_object() else {
+            continue;
+        };
+        if descriptor_object
+            .get("identifiesControllerService")
+            .and_then(|value| value.as_bool())
+            != Some(true)
+        {
+            continue;
+        }
+        saw_controller_service_descriptor = true;
+        let Some(value) = properties.get(property_name) else {
+            continue;
+        };
+        for reference in extract_controller_service_ref_values(value, controller_service_ids) {
+            refs.insert((property_name.clone(), reference));
+        }
+    }
+
+    if saw_controller_service_descriptor || controller_service_ids.is_empty() {
+        return refs.into_iter().collect();
+    }
+
+    for (property_name, value) in properties {
+        for reference in extract_controller_service_ref_values(value, controller_service_ids) {
+            refs.insert((property_name.clone(), reference));
+        }
+    }
+
+    refs.into_iter().collect()
+}
+
+fn extract_controller_service_ref_values(
+    value: &serde_json::Value,
+    controller_service_ids: &BTreeSet<String>,
+) -> Vec<String> {
+    match value {
+        serde_json::Value::String(raw) => {
+            let candidate = raw.trim();
+            if controller_service_ids.contains(candidate) {
+                vec![candidate.to_string()]
+            } else {
+                Vec::new()
+            }
+        }
+        serde_json::Value::Array(items) => items
+            .iter()
+            .flat_map(|item| extract_controller_service_ref_values(item, controller_service_ids))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -606,6 +1366,9 @@ fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String>
 
     dedupe_entries(&mut rule_packs);
     dedupe_entries(&mut manifests);
+    flow_candidates.sort_by(|a, b| a.display_path.cmp(&b.display_path));
+    rule_packs.sort_by(|a, b| a.display_path.cmp(&b.display_path));
+    manifests.sort_by(|a, b| a.display_path.cmp(&b.display_path));
 
     Ok(BootstrapState {
         workspace_root: workspace_root.to_string_lossy().to_string(),
@@ -638,28 +1401,25 @@ fn scan_dir(
     manifests: &mut Vec<WorkspaceEntry>,
     depth: usize,
 ) -> Result<(), String> {
-    if depth > 5 {
+    if depth > MAX_SCAN_DEPTH {
         return Ok(());
     }
 
     let entries =
         fs::read_dir(current).map_err(|err| format!("scan {}: {}", current.display(), err))?;
-    for entry in entries {
+    for (index, entry) in entries.enumerate() {
+        if index >= MAX_ENTRIES_PER_DIRECTORY {
+            break;
+        }
         let entry = entry.map_err(|err| format!("scan entry: {}", err))?;
         let path = entry.path();
         let name = entry.file_name();
         let name = name.to_string_lossy();
 
-        if name == ".git"
-            || name == "target"
-            || name == "node_modules"
-            || name == ".nifi-flow-upgrade-desktop"
-            || (name == "out" && current.ends_with("demo"))
-        {
-            continue;
-        }
-
         if path.is_dir() {
+            if should_skip_dir(&name, current) {
+                continue;
+            }
             if looks_like_git_registry_dir(&path) {
                 flows.push(new_entry(
                     root,
@@ -697,15 +1457,12 @@ fn scan_dir(
         }
     }
 
-    flows.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-    rule_packs.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-    manifests.sort_by(|a, b| a.display_path.cmp(&b.display_path));
-
     Ok(())
 }
 
 fn detect_flow_format(path: &Path) -> Option<(&'static str, &'static str)> {
     let name = path.file_name()?.to_string_lossy();
+    let lowered = name.to_ascii_lowercase();
     if name.ends_with(".json.gz") {
         return Some(("Flow artifact", "flow-json-gz"));
     }
@@ -713,7 +1470,12 @@ fn detect_flow_format(path: &Path) -> Option<(&'static str, &'static str)> {
         return Some(("Legacy flow.xml.gz", "flow-xml-gz"));
     }
     if name.ends_with(".json") {
-        let body = fs::read_to_string(path).ok()?;
+        if !looks_like_flow_json_name(&lowered)
+            && file_size(path).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF)
+        {
+            return None;
+        }
+        let body = read_text_prefix(path, MAX_FILE_BYTES_FOR_CONTENT_SNIFF).ok()?;
         if body.contains("\"rootGroup\"") || body.contains("\"parameterContexts\"") {
             return Some(("Flow fixture JSON", "flow-json-fixture"));
         }
@@ -740,7 +1502,10 @@ fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
         return false;
     };
 
-    for entry in entries.flatten() {
+    for (index, entry) in entries.flatten().enumerate() {
+        if index >= MAX_ENTRIES_PER_DIRECTORY {
+            break;
+        }
         let candidate = entry.path();
         if candidate.is_dir() {
             if looks_like_git_registry_dir_inner(&candidate, depth + 1) {
@@ -765,7 +1530,10 @@ fn looks_like_git_registry_dir_inner(path: &Path, depth: usize) -> bool {
             continue;
         }
 
-        let Ok(body) = fs::read_to_string(&candidate) else {
+        if file_size(&candidate).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF) {
+            continue;
+        }
+        let Ok(body) = read_text_prefix(&candidate, MAX_FILE_BYTES_FOR_CONTENT_SNIFF) else {
             continue;
         };
         if body.contains("\"flowContents\"")
@@ -806,6 +1574,9 @@ fn new_entry(
 fn detect_source_version(path: &Path) -> Option<VersionDetection> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     if name.ends_with(".json.gz") {
+        if file_size(path).is_some_and(|size| size > MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION) {
+            return None;
+        }
         let content = fs::read(path).ok()?;
         let mut reader = flate2::read::GzDecoder::new(&content[..]);
         let mut decoded = String::new();
@@ -813,6 +1584,9 @@ fn detect_source_version(path: &Path) -> Option<VersionDetection> {
         return detect_version_from_text(&decoded);
     }
     if name.ends_with(".xml.gz") {
+        if file_size(path).is_some_and(|size| size > MAX_COMPRESSED_BYTES_FOR_VERSION_DETECTION) {
+            return None;
+        }
         let content = fs::read(path).ok()?;
         let mut reader = flate2::read::GzDecoder::new(&content[..]);
         let mut decoded = String::new();
@@ -820,30 +1594,59 @@ fn detect_source_version(path: &Path) -> Option<VersionDetection> {
         return detect_version_from_text(&decoded);
     }
     if name.ends_with(".json") || name.ends_with(".yaml") || name.ends_with(".yml") {
-        let body = fs::read_to_string(path).ok()?;
+        if file_size(path).is_some_and(|size| size > MAX_FILE_BYTES_FOR_CONTENT_SNIFF) {
+            return None;
+        }
+        let body = read_text_prefix(path, MAX_FILE_BYTES_FOR_CONTENT_SNIFF).ok()?;
         return detect_version_from_text(&body);
     }
     None
+}
+
+fn should_skip_dir(name: &str, current: &Path) -> bool {
+    name == ".git"
+        || name == "target"
+        || name == "node_modules"
+        || name == ".nifi-flow-upgrade-desktop"
+        || name == ".idea"
+        || name == ".vscode"
+        || name == ".gradle"
+        || name == ".terraform"
+        || name == ".venv"
+        || name == "__pycache__"
+        || name == "vendor"
+        || name == "dist"
+        || name == "build"
+        || name == "coverage"
+        || name == ".next"
+        || name == ".yarn"
+        || (name.starts_with('.') && name != ".github")
+        || (name == "out" && current.ends_with("demo"))
+}
+
+fn file_size(path: &Path) -> Option<u64> {
+    fs::metadata(path).ok().map(|meta| meta.len())
+}
+
+fn read_text_prefix(path: &Path, max_bytes: u64) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|err| format!("read {}: {}", path.display(), err))?;
+    let limit = usize::try_from(max_bytes).unwrap_or(usize::MAX);
+    let prefix = &bytes[..bytes.len().min(limit)];
+    Ok(String::from_utf8_lossy(prefix).to_string())
+}
+
+fn looks_like_flow_json_name(name: &str) -> bool {
+    name.contains("flow") || name.contains("snapshot") || name.contains("registry")
 }
 
 fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     let patterns = [
         "\"nifiVersion\"",
         "\"niFiVersion\"",
-        "\"flowEncodingVersion\"",
-        "\"registryVersion\"",
-        "\"version\"",
         "nifiVersion:",
         "niFiVersion:",
-        "flowEncodingVersion:",
-        "registryVersion:",
-        "\"versionedFlowSnapshot\"",
         "<nifiVersion>",
         "<niFiVersion>",
-        "<version>",
-        "<registryVersion>",
-        "<flowEncodingVersion>",
-        "<maxTimerDrivenThreadCount>",
     ];
 
     let trimmed = body.trim();
@@ -869,13 +1672,7 @@ fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
     }
 
     if body.contains('<') && body.contains('>') {
-        for tag in [
-            "nifiVersion",
-            "niFiVersion",
-            "version",
-            "registryVersion",
-            "flowEncodingVersion",
-        ] {
+        for tag in ["nifiVersion", "niFiVersion"] {
             if let Some(version) = extract_xml_tag_value(body, tag) {
                 if looks_like_version(&version) {
                     return Some(VersionDetection {
@@ -887,22 +1684,24 @@ fn detect_version_from_text(body: &str) -> Option<VersionDetection> {
         }
     }
 
-    extract_semver_like(body).map(|version| VersionDetection {
-        version,
-        confidence: "inferred",
-    })
+    for key in ["nifiVersion", "niFiVersion"] {
+        if let Some(version) = extract_yaml_key_value(body, key) {
+            if looks_like_version(&version) {
+                return Some(VersionDetection {
+                    version,
+                    confidence: "detected",
+                });
+            }
+        }
+    }
+
+    None
 }
 
 fn find_version_in_json(value: &serde_json::Value) -> Option<String> {
     match value {
         serde_json::Value::Object(map) => {
-            for key in [
-                "nifiVersion",
-                "niFiVersion",
-                "registryVersion",
-                "flowEncodingVersion",
-                "version",
-            ] {
+            for key in ["nifiVersion", "niFiVersion"] {
                 if let Some(version) = map.get(key).and_then(|v| v.as_str()) {
                     if looks_like_version(version) {
                         return Some(version.to_string());
@@ -935,6 +1734,24 @@ fn extract_xml_tag_value(body: &str, tag: &str) -> Option<String> {
     let rest = &body[start + open.len()..];
     let end = rest.find(&close)?;
     Some(rest[..end].trim().to_string())
+}
+
+fn extract_yaml_key_value(body: &str, key: &str) -> Option<String> {
+    for line in body.lines() {
+        let trimmed = line.trim();
+        let prefix = format!("{key}:");
+        if !trimmed.starts_with(&prefix) {
+            continue;
+        }
+        let value = trimmed[prefix.len()..]
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'');
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
 }
 
 fn find_consistent_bundle_version_in_json(value: &serde_json::Value) -> Option<String> {
@@ -974,15 +1791,6 @@ fn collect_bundle_versions(value: &serde_json::Value, versions: &mut Vec<String>
         }
         _ => {}
     }
-}
-
-fn extract_semver_like(body: &str) -> Option<String> {
-    for token in body.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '-')) {
-        if looks_like_version(token) {
-            return Some(token.to_string());
-        }
-    }
-    None
 }
 
 fn looks_like_version(value: &str) -> bool {
@@ -1142,5 +1950,251 @@ mod tests {
         match target {
             ExecTarget::Binary(_) | ExecTarget::GoRun(_) => {}
         }
+    }
+
+    #[test]
+    fn generic_schema_version_is_not_treated_as_nifi_version() {
+        let detected = detect_version_from_text(
+            r#"{
+              "version": "1.0",
+              "flowEncodingVersion": "1.0",
+              "registryVersion": "1.0",
+              "rootGroup": {"identifier": "root"}
+            }"#,
+        );
+
+        assert!(
+            detected.is_none(),
+            "schema version fields should not be treated as NiFi runtime versions"
+        );
+    }
+
+    #[test]
+    fn explicit_nifi_version_is_detected() {
+        let detected = detect_version_from_text(
+            r#"{
+              "nifiVersion": "1.27.0",
+              "rootGroup": {"identifier": "root"}
+            }"#,
+        )
+        .expect("detect explicit nifi version");
+
+        assert_eq!(detected.version, "1.27.0");
+        assert_eq!(detected.confidence, "detected");
+    }
+
+    #[test]
+    fn consistent_bundle_version_is_inferred() {
+        let detected = detect_version_from_text(
+            r#"{
+              "rootGroup": {"identifier": "root"},
+              "processors": [
+                {"bundle": {"version": "2.7.1"}},
+                {"bundle": {"version": "2.7.1"}}
+              ]
+            }"#,
+        )
+        .expect("infer bundle version");
+
+        assert_eq!(detected.version, "2.7.1");
+        assert_eq!(detected.confidence, "inferred");
+    }
+
+    #[test]
+    fn flow_usage_summary_reports_active_and_unreferenced_controller_services() {
+        let temp_root = temp_path("flow-usage");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let flow_path = temp_root.join("flow.json");
+        fs::write(
+            &flow_path,
+            r#"{
+              "flowContents": {
+                "componentType": "PROCESS_GROUP",
+                "identifier": "00000000-0000-0000-0000-000000000000",
+                "name": "Root",
+                "controllerServices": [
+                  {
+                    "identifier": "11111111-1111-1111-1111-111111111111",
+                    "name": "Backend SSL",
+                    "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                    "componentType": "CONTROLLER_SERVICE",
+                    "properties": {},
+                    "propertyDescriptors": {}
+                  },
+                  {
+                    "identifier": "22222222-2222-2222-2222-222222222222",
+                    "name": "Unused SSL",
+                    "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                    "componentType": "CONTROLLER_SERVICE",
+                    "properties": {},
+                    "propertyDescriptors": {}
+                  }
+                ],
+                "processors": [
+                  {
+                    "identifier": "33333333-3333-3333-3333-333333333333",
+                    "name": "Invoke HTTPS",
+                    "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+                    "componentType": "PROCESSOR",
+                    "properties": {
+                      "SSL Context Service": "11111111-1111-1111-1111-111111111111"
+                    },
+                    "propertyDescriptors": {
+                      "SSL Context Service": {
+                        "identifiesControllerService": true
+                      }
+                    }
+                  }
+                ]
+              }
+            }"#,
+        )
+        .expect("write flow");
+
+        let summary = summarize_flow_usage(&flow_path, "versioned-flow-snapshot")
+            .expect("summarize flow usage");
+
+        assert!(summary.supported);
+        assert_eq!(summary.controller_services.len(), 2);
+        assert_eq!(summary.controller_services[0].name, "Backend SSL");
+        assert_eq!(summary.controller_services[0].active_reference_count, 1);
+        assert_eq!(summary.controller_services[0].distinct_referrer_count, 1);
+        assert_eq!(
+            summary.controller_services[0].referenced_by[0].component_name,
+            "Invoke HTTPS"
+        );
+        assert_eq!(summary.controller_services[1].name, "Unused SSL");
+        assert_eq!(summary.controller_services[1].active_reference_count, 0);
+        assert_eq!(summary.controller_services[1].distinct_referrer_count, 0);
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
+    }
+
+    #[test]
+    fn flow_json_fixture_usage_summary_handles_nested_groups_without_descriptors() {
+        let temp_root = temp_path("flow-fixture-usage");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let flow_path = temp_root.join("fixture-flow.json");
+        fs::write(
+            &flow_path,
+            r#"{
+              "rootGroup": {
+                "id": "root-1",
+                "name": "Root",
+                "processGroups": [
+                  {
+                    "id": "pg-1",
+                    "name": "API",
+                    "controllerServices": [
+                      {
+                        "id": "ssl-active",
+                        "name": "Backend SSL",
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "properties": {}
+                      },
+                      {
+                        "id": "ssl-unused",
+                        "name": "Unused SSL",
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "properties": {}
+                      }
+                    ],
+                    "processors": [
+                      {
+                        "id": "invoke-1",
+                        "name": "Call Backend",
+                        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+                        "properties": {
+                          "SSL Context Service": "ssl-active",
+                          "Remote URL": "https://example.test"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }"#,
+        )
+        .expect("write flow");
+
+        let summary =
+            summarize_flow_usage(&flow_path, "flow-json-fixture").expect("summarize flow usage");
+
+        assert!(summary.supported);
+        assert_eq!(summary.controller_services.len(), 2);
+        assert_eq!(summary.controller_services[0].name, "Backend SSL");
+        assert_eq!(summary.controller_services[0].active_reference_count, 1);
+        assert_eq!(summary.controller_services[0].distinct_referrer_count, 1);
+        assert_eq!(
+            summary.controller_services[0].referenced_by[0].component_name,
+            "Call Backend"
+        );
+        assert_eq!(
+            summary.controller_services[0].path,
+            "rootGroup/Root/processGroups/API/controllerServices/Backend SSL"
+        );
+        assert_eq!(summary.controller_services[1].name, "Unused SSL");
+        assert_eq!(summary.controller_services[1].active_reference_count, 0);
+        assert_eq!(summary.controller_services[1].distinct_referrer_count, 0);
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
+    }
+
+    #[test]
+    fn small_migration_reports_keep_full_findings_in_preview() {
+        let temp_root = temp_path("report-preview");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let report_path = temp_root.join("migration-report.json");
+
+        let findings = (0..30)
+            .map(|index| {
+                serde_json::json!({
+                    "ruleId": format!("rule-{index}"),
+                    "class": "manual-change",
+                    "severity": "warning",
+                    "component": {
+                        "id": format!("00000000-0000-0000-0000-{:012}", index),
+                        "name": format!("Component {index}"),
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "scope": "controller-service",
+                        "path": format!("flowContents/controllerServices/Component {index}")
+                    },
+                    "message": "StandardRestrictedSSLContextService is deprecated for removal."
+                })
+            })
+            .collect::<Vec<_>>();
+
+        fs::write(
+            &report_path,
+            serde_json::json!({
+                "apiVersion": "nifi.flowupgrade/v1alpha1",
+                "kind": "MigrationReport",
+                "metadata": {"name": "test", "generatedAt": "2026-03-25T00:00:00Z"},
+                "source": {"path": "/tmp/source.json", "format": "versioned-flow-snapshot", "nifiVersion": "2.7.0"},
+                "target": {"nifiVersion": "2.8.0"},
+                "rulePacks": [],
+                "summary": {"totalFindings": 30, "byClass": {"manual-change": 30}},
+                "findings": findings
+            })
+            .to_string(),
+        )
+        .expect("write report");
+
+        let preview =
+            load_report_preview(report_path.to_string_lossy().as_ref()).expect("load preview");
+        let preview_findings = preview
+            .get("findings")
+            .and_then(|value| value.as_array())
+            .expect("preview findings");
+        assert_eq!(preview_findings.len(), 30);
+        assert_eq!(
+            preview
+                .get("preview")
+                .and_then(|value| value.get("truncated"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
     }
 }

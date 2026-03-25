@@ -132,7 +132,9 @@ spec:
           - org.apache.nifi.processors.cassandra.PutCassandraRecord
           - org.apache.nifi.processors.cassandra.QueryCassandra
       match:
-        propertyExists: Compression Type
+        propertyValueRegex:
+          property: Compression Type
+          regex: '(?s).*\S.*'
       actions:
         - type: remove-property
           name: Compression Type

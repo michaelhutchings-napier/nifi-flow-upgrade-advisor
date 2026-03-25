@@ -47,9 +47,10 @@
       },
       "evidence": [
         {
-          "type": "property-exists",
+          "type": "property-value-regex",
           "field": "Compression Type",
-          "actualValue": "LZ4"
+          "actualValue": "LZ4",
+          "expectedValue": "(?s).*\\S.*"
         }
       ],
       "suggestedActions": [

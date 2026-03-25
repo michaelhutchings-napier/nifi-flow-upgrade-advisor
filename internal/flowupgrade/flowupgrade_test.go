@@ -48,6 +48,97 @@ func TestRunRulePackLintAllExamplePacksSucceed(t *testing.T) {
 	if result.Count != len(paths) {
 		t.Fatalf("expected %d rule packs, got %d", len(paths), result.Count)
 	}
+	if result.WarningCount != 0 {
+		t.Fatalf("expected 0 lint warnings for bundled example rule packs, got %d", result.WarningCount)
+	}
+}
+
+func TestRunRulePackLintWarnsOnPropertyExists(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	rulePackPath := filepath.Join(tmpDir, "lint-warning.yaml")
+	if err := os.WriteFile(rulePackPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: lint-warning
+spec:
+  sourceVersionRange: ">=1.0.0 <1.1.0"
+  targetVersionRange: ">=1.1.0 <1.2.0"
+  rules:
+    - id: test.property-exists.warning
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: Review property existence.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.InvokeHTTP
+      match:
+        propertyExists: HTTP URL
+`), 0o644); err != nil {
+		t.Fatalf("write rule pack: %v", err)
+	}
+
+	result, err := RunRulePackLint(RulePackLintConfig{
+		RulePackPaths: []string{rulePackPath},
+	})
+	if err != nil {
+		t.Fatalf("RunRulePackLint() error = %v", err)
+	}
+	if result.WarningCount != 1 {
+		t.Fatalf("expected 1 lint warning, got %d", result.WarningCount)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("expected 1 lint warning entry, got %d", len(result.Warnings))
+	}
+	if result.Warnings[0].RuleID != "test.property-exists.warning" {
+		t.Fatalf("unexpected warning rule id %q", result.Warnings[0].RuleID)
+	}
+	if result.FailedOnWarn {
+		t.Fatalf("did not expect fail-on-warn without config")
+	}
+}
+
+func TestRunRulePackLintFailOnWarn(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	rulePackPath := filepath.Join(tmpDir, "lint-warning.yaml")
+	if err := os.WriteFile(rulePackPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: lint-warning
+spec:
+  sourceVersionRange: ">=1.0.0 <1.1.0"
+  targetVersionRange: ">=1.1.0 <1.2.0"
+  rules:
+    - id: test.property-exists.warning
+      category: manual-inspection
+      class: manual-inspection
+      severity: warning
+      message: Review property existence.
+      selector:
+        scope: processor
+        componentType: org.apache.nifi.processors.standard.InvokeHTTP
+      match:
+        propertyExists: HTTP URL
+`), 0o644); err != nil {
+		t.Fatalf("write rule pack: %v", err)
+	}
+
+	result, err := RunRulePackLint(RulePackLintConfig{
+		RulePackPaths: []string{rulePackPath},
+		FailOnWarn:    true,
+	})
+	if err != nil {
+		t.Fatalf("RunRulePackLint() error = %v", err)
+	}
+	if !result.FailedOnWarn {
+		t.Fatalf("expected fail-on-warn to mark result as failed")
+	}
 }
 
 func TestRunAnalyzeWritesReportsAndThreshold(t *testing.T) {
@@ -851,8 +942,11 @@ func TestRunAnalyzeOfficial24To25PackFindsExpectedChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAnalyze() error = %v", err)
 	}
-	if len(result.Report.Findings) != 0 {
-		t.Fatalf("expected 0 findings, got %d", len(result.Report.Findings))
+	if len(result.Report.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(result.Report.Findings))
+	}
+	if result.Report.Findings[0].RuleID != "core.custom-content-viewer.review-25" {
+		t.Fatalf("unexpected rule id %q", result.Report.Findings[0].RuleID)
 	}
 }
 
@@ -863,7 +957,45 @@ func TestRunAnalyzeOfficial25To26PackFindsExpectedChanges(t *testing.T) {
 	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
 	writeGzipFile(t, sourcePath, `{
   "rootGroup": {
-    "id": "root-1"
+    "id": "root-1",
+    "processors": [
+      {
+        "id": "compress-1",
+        "name": "Compress Legacy",
+        "type": "org.apache.nifi.processors.standard.CompressContent",
+        "properties": {}
+      },
+      {
+        "id": "eventhub-1",
+        "name": "Get Event Hub",
+        "type": "org.apache.nifi.processors.azure.eventhub.GetAzureEventHub",
+        "properties": {}
+      },
+      {
+        "id": "parquet-1",
+        "name": "Convert Avro To Parquet",
+        "type": "org.apache.nifi.processors.parquet.ConvertAvroToParquet",
+        "properties": {}
+      },
+      {
+        "id": "netflow-1",
+        "name": "Parse Netflow",
+        "type": "org.apache.nifi.processors.network.ParseNetflowv5",
+        "properties": {}
+      },
+      {
+        "id": "geohash-1",
+        "name": "Geohash Record",
+        "type": "org.apache.nifi.processors.geohash.GeohashRecord",
+        "properties": {}
+      },
+      {
+        "id": "sequence-1",
+        "name": "Create Sequence File",
+        "type": "org.apache.nifi.processors.hadoop.CreateHadoopSequenceFile",
+        "properties": {}
+      }
+    ]
   }
 }`)
 
@@ -880,8 +1012,92 @@ func TestRunAnalyzeOfficial25To26PackFindsExpectedChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAnalyze() error = %v", err)
 	}
-	if len(result.Report.Findings) != 0 {
-		t.Fatalf("expected 0 findings, got %d", len(result.Report.Findings))
+
+	ruleIDs := map[string]bool{}
+	for _, finding := range result.Report.Findings {
+		ruleIDs[finding.RuleID] = true
+	}
+	expected := []string{
+		"core.compress-content.deprecated-26",
+		"core.get-azure-eventhub.deprecated-26",
+		"core.convert-avro-to-parquet.deprecated-26",
+		"core.parse-netflowv5.deprecated-26",
+		"core.geohash-record.deprecated-26",
+		"core.create-hadoop-sequence-file.deprecated-26",
+	}
+	if len(result.Report.Findings) != len(expected) {
+		t.Fatalf("expected %d findings, got %d", len(expected), len(result.Report.Findings))
+	}
+	for _, ruleID := range expected {
+		if !ruleIDs[ruleID] {
+			t.Fatalf("expected finding for %s", ruleID)
+		}
+	}
+}
+
+func TestRunAnalyzeOfficial20To23QuietPacksRemainEmpty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		sourceVersion string
+		targetVersion string
+		rulePackPath  string
+		analysisName  string
+	}{
+		{
+			name:          "20-to-21",
+			sourceVersion: "2.0.0",
+			targetVersion: "2.1.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.0-to-2.1.official.yaml"),
+			analysisName:  "official-20-to-21",
+		},
+		{
+			name:          "21-to-22",
+			sourceVersion: "2.1.0",
+			targetVersion: "2.2.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.1-to-2.2.official.yaml"),
+			analysisName:  "official-21-to-22",
+		},
+		{
+			name:          "22-to-23",
+			sourceVersion: "2.2.0",
+			targetVersion: "2.3.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.2-to-2.3.official.yaml"),
+			analysisName:  "official-22-to-23",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+			writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "id": "root-1"
+  }
+}`)
+
+			result, err := RunAnalyze(AnalyzeConfig{
+				SourcePath:    sourcePath,
+				SourceFormat:  SourceFormatFlowJSONGZ,
+				SourceVersion: tt.sourceVersion,
+				TargetVersion: tt.targetVersion,
+				RulePackPaths: []string{tt.rulePackPath},
+				OutputDir:     filepath.Join(tmpDir, "out"),
+				AnalysisName:  tt.analysisName,
+				FailOn:        "never",
+			})
+			if err != nil {
+				t.Fatalf("RunAnalyze() error = %v", err)
+			}
+			if len(result.Report.Findings) != 0 {
+				t.Fatalf("expected 0 findings, got %d", len(result.Report.Findings))
+			}
+		})
 	}
 }
 
@@ -1215,6 +1431,142 @@ spec:
 	}
 }
 
+func TestRunValidateAcceptsNestedProcessorAgainstManifest(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "flow.json.gz")
+	manifestPath := filepath.Join(tmpDir, "extensions-manifest.yaml")
+
+	writeGzipFile(t, inputPath, `{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "Root",
+    "processGroups": [
+      {
+        "id": "pg-1",
+        "name": "Nested",
+        "componentType": "PROCESS_GROUP",
+        "processors": [
+          {
+            "id": "invoke-1",
+            "name": "InvokeHTTP",
+            "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+            "properties": {}
+          }
+        ]
+      }
+    ]
+  }
+}`)
+
+	if err := os.WriteFile(manifestPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: ExtensionsManifest
+metadata:
+  name: validate-target
+spec:
+  nifiVersion: 2.8.0
+  components:
+    - scope: processor
+      type: org.apache.nifi.processors.standard.InvokeHTTP
+`), 0o644); err != nil {
+		t.Fatalf("write extensions manifest: %v", err)
+	}
+
+	result, err := RunValidate(ValidateConfig{
+		InputPath:              inputPath,
+		InputFormat:            SourceFormatFlowJSONGZ,
+		TargetVersion:          "2.8.0",
+		ExtensionsManifestPath: manifestPath,
+		OutputDir:              filepath.Join(tmpDir, "out"),
+		ValidationName:         "validate-nested-processor",
+	})
+	if err != nil {
+		t.Fatalf("RunValidate() error = %v", err)
+	}
+	if result.Blocked {
+		t.Fatalf("did not expect blocked validation")
+	}
+	for _, finding := range result.Report.Findings {
+		if finding.RuleID == "system.target-extension-unavailable" {
+			t.Fatalf("did not expect unavailable target extension finding for nested processor")
+		}
+	}
+}
+
+func TestRunValidateIgnoresBuiltInFlowNodesForManifestChecks(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "flow.json.gz")
+	manifestPath := filepath.Join(tmpDir, "extensions-manifest.yaml")
+
+	writeGzipFile(t, inputPath, `{
+  "rootGroup": {
+    "id": "root-1",
+    "name": "Root",
+    "componentType": "PROCESS_GROUP",
+    "processGroups": [
+      {
+        "id": "pg-1",
+        "name": "Nested",
+        "componentType": "PROCESS_GROUP",
+        "labels": [
+          {
+            "id": "label-1",
+            "name": "Marker",
+            "componentType": "LABEL"
+          }
+        ],
+        "processors": [
+          {
+            "id": "invoke-1",
+            "name": "InvokeHTTP",
+            "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+            "properties": {}
+          }
+        ]
+      }
+    ]
+  }
+}`)
+
+	if err := os.WriteFile(manifestPath, []byte(`
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: ExtensionsManifest
+metadata:
+  name: validate-target
+spec:
+  nifiVersion: 2.8.0
+  components:
+    - scope: processor
+      type: org.apache.nifi.processors.standard.InvokeHTTP
+`), 0o644); err != nil {
+		t.Fatalf("write extensions manifest: %v", err)
+	}
+
+	result, err := RunValidate(ValidateConfig{
+		InputPath:              inputPath,
+		InputFormat:            SourceFormatFlowJSONGZ,
+		TargetVersion:          "2.8.0",
+		ExtensionsManifestPath: manifestPath,
+		OutputDir:              filepath.Join(tmpDir, "out"),
+		ValidationName:         "validate-builtins-ignored",
+	})
+	if err != nil {
+		t.Fatalf("RunValidate() error = %v", err)
+	}
+	if result.Blocked {
+		t.Fatalf("did not expect blocked validation")
+	}
+	for _, finding := range result.Report.Findings {
+		if finding.RuleID == "system.target-extension-unavailable" {
+			t.Fatalf("did not expect unavailable target extension finding for built-in flow nodes")
+		}
+	}
+}
+
 func TestRunValidateUsesTargetNiFiAPIAndDetectsVersionMismatch(t *testing.T) {
 	t.Parallel()
 
@@ -1289,6 +1641,312 @@ func TestRunValidateUsesTargetNiFiAPIAndDetectsVersionMismatch(t *testing.T) {
 	}
 	if versionFinding == nil {
 		t.Fatalf("expected target API version mismatch finding")
+	}
+}
+
+func TestRunAnalyzeJoltNullCustomPropertiesDoNotTriggerManualInspection(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "jolt-1",
+        "name": "Create Customer JSON",
+        "type": "org.apache.nifi.processors.jolt.JoltTransformJSON",
+        "properties": {
+          "Custom Transformation Class Name": null,
+          "Custom Module Directory": null
+        }
+      }
+    ]
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "2.7.0",
+		TargetVersion: "2.8.0",
+		RulePackPaths: []string{filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml")},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		AnalysisName:  "jolt-null-custom-properties",
+		FailOn:        "never",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+
+	for _, finding := range result.Report.Findings {
+		if finding.RuleID == "core.jolt.custom-class.recompile" || finding.RuleID == "core.jolt.custom-modules.recompile" {
+			t.Fatalf("did not expect Jolt manual inspection finding for null custom properties")
+		}
+	}
+}
+
+func TestRunAnalyzeJoltNonEmptyCustomPropertiesTriggerManualInspection(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "jolt-1",
+        "name": "Create Customer JSON",
+        "type": "org.apache.nifi.processors.jolt.JoltTransformJSON",
+        "properties": {
+          "Custom Transformation Class Name": "com.example.CustomTransform",
+          "Custom Module Directory": "/opt/nifi/custom-jolt"
+        }
+      }
+    ]
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "2.7.0",
+		TargetVersion: "2.8.0",
+		RulePackPaths: []string{filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml")},
+		OutputDir:     filepath.Join(tmpDir, "out"),
+		AnalysisName:  "jolt-custom-properties-present",
+		FailOn:        "never",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+
+	ruleIDs := map[string]bool{}
+	for _, finding := range result.Report.Findings {
+		ruleIDs[finding.RuleID] = true
+	}
+	if !ruleIDs["core.jolt.custom-class.recompile"] {
+		t.Fatalf("expected custom class manual inspection finding")
+	}
+	if !ruleIDs["core.jolt.custom-modules.recompile"] {
+		t.Fatalf("expected custom module manual inspection finding")
+	}
+}
+
+func TestRulePacksIgnoreNullPlaceholderProperties(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name          string
+		sourceVersion string
+		targetVersion string
+		rulePackPath  string
+		ruleID        string
+		componentType string
+		properties    string
+	}{
+		{
+			name:          "invoke-http-url-encoding",
+			sourceVersion: "1.23.0",
+			targetVersion: "1.24.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.23-to-1.24.official.yaml"),
+			ruleID:        "core.invoke-http.url-encoding.review",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"HTTP URL": null`,
+		},
+		{
+			name:          "cassandra-compression-type",
+			sourceVersion: "1.21.0",
+			targetVersion: "1.22.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.21-to-1.22.official.yaml"),
+			ruleID:        "core.cassandra.compression-type.removed",
+			componentType: "org.apache.nifi.processors.cassandra.PutCassandraQL",
+			properties:    `"Compression Type": null`,
+		},
+		{
+			name:          "listen-http-rate-limit",
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			ruleID:        "core.listen-http.rate-limit.removed",
+			componentType: "org.apache.nifi.processors.standard.ListenHTTP",
+			properties:    `"Max Data to Receive per Second": null`,
+		},
+		{
+			name:          "invoke-http-proxy-host",
+			sourceVersion: "1.27.0",
+			targetVersion: "2.0.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.official.yaml"),
+			ruleID:        "core.invoke-http.proxy-properties.replace",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"Proxy Host": null`,
+		},
+		{
+			name:          "sample-ssl-context-service",
+			sourceVersion: "1.27.0",
+			targetVersion: "2.0.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.sample.yaml"),
+			ruleID:        "core.ssl-context.manual-review",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"SSL Context Service": null`,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+
+			writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "proc-1",
+        "name": "Processor",
+        "type": "`+tc.componentType+`",
+        "properties": {
+          `+tc.properties+`
+        }
+      }
+    ]
+  }
+}`)
+
+			result, err := RunAnalyze(AnalyzeConfig{
+				SourcePath:    sourcePath,
+				SourceFormat:  SourceFormatFlowJSONGZ,
+				SourceVersion: tc.sourceVersion,
+				TargetVersion: tc.targetVersion,
+				RulePackPaths: []string{tc.rulePackPath},
+				OutputDir:     filepath.Join(tmpDir, "out"),
+				AnalysisName:  tc.name,
+				FailOn:        "never",
+			})
+			if err != nil {
+				t.Fatalf("RunAnalyze() error = %v", err)
+			}
+
+			for _, finding := range result.Report.Findings {
+				if finding.RuleID == tc.ruleID {
+					t.Fatalf("did not expect rule %q to match a null placeholder property", tc.ruleID)
+				}
+			}
+		})
+	}
+}
+
+func TestRulePacksStillMatchNonEmptyProperties(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name          string
+		sourceVersion string
+		targetVersion string
+		rulePackPath  string
+		ruleID        string
+		componentType string
+		properties    string
+	}{
+		{
+			name:          "invoke-http-url-encoding",
+			sourceVersion: "1.23.0",
+			targetVersion: "1.24.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.23-to-1.24.official.yaml"),
+			ruleID:        "core.invoke-http.url-encoding.review",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"HTTP URL": "https://example.test/a b"`,
+		},
+		{
+			name:          "cassandra-compression-type",
+			sourceVersion: "1.21.0",
+			targetVersion: "1.22.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.21-to-1.22.official.yaml"),
+			ruleID:        "core.cassandra.compression-type.removed",
+			componentType: "org.apache.nifi.processors.cassandra.PutCassandraQL",
+			properties:    `"Compression Type": "LZ4"`,
+		},
+		{
+			name:          "listen-http-rate-limit",
+			sourceVersion: "2.3.0",
+			targetVersion: "2.4.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			ruleID:        "core.listen-http.rate-limit.removed",
+			componentType: "org.apache.nifi.processors.standard.ListenHTTP",
+			properties:    `"Max Data to Receive per Second": "1 MB"`,
+		},
+		{
+			name:          "invoke-http-proxy-host",
+			sourceVersion: "1.27.0",
+			targetVersion: "2.0.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.official.yaml"),
+			ruleID:        "core.invoke-http.proxy-properties.replace",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"Proxy Host": "proxy.internal"`,
+		},
+		{
+			name:          "sample-ssl-context-service",
+			sourceVersion: "1.27.0",
+			targetVersion: "2.0.0",
+			rulePackPath:  filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.sample.yaml"),
+			ruleID:        "core.ssl-context.manual-review",
+			componentType: "org.apache.nifi.processors.standard.InvokeHTTP",
+			properties:    `"SSL Context Service": "ssl-service-id"`,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+
+			writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "proc-1",
+        "name": "Processor",
+        "type": "`+tc.componentType+`",
+        "properties": {
+          `+tc.properties+`
+        }
+      }
+    ]
+  }
+}`)
+
+			result, err := RunAnalyze(AnalyzeConfig{
+				SourcePath:    sourcePath,
+				SourceFormat:  SourceFormatFlowJSONGZ,
+				SourceVersion: tc.sourceVersion,
+				TargetVersion: tc.targetVersion,
+				RulePackPaths: []string{tc.rulePackPath},
+				OutputDir:     filepath.Join(tmpDir, "out"),
+				AnalysisName:  tc.name,
+				FailOn:        "never",
+			})
+			if err != nil {
+				t.Fatalf("RunAnalyze() error = %v", err)
+			}
+
+			matched := false
+			for _, finding := range result.Report.Findings {
+				if finding.RuleID == tc.ruleID {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				t.Fatalf("expected rule %q to match a non-empty property value", tc.ruleID)
+			}
+		})
 	}
 }
 

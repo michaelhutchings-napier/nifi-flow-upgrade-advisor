@@ -37,7 +37,9 @@ spec:
       selector:
         propertyName: SSL Context Service
       match:
-        propertyExists: SSL Context Service
+        propertyValueRegex:
+          property: SSL Context Service
+          regex: '(?s).*\S.*'
       notes: Verify referenced controller services and trust material in the target environment.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
