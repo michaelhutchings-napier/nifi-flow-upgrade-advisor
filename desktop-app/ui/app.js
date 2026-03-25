@@ -38,6 +38,17 @@ function compactPath(path) {
 
 function reportLabel(path) {
   const name = String(path || "").split("/").pop() || "";
+  const base = name.replace(/\.(md|json)$/, "");
+  const prefixMap = {
+    "migration-report": "Analyze",
+    "rewrite-report": "Rewrite",
+    "validation-report": "Validate",
+    "run-report": "Run",
+  };
+  const prefix = prefixMap[base];
+  if (prefix) {
+    return name.endsWith(".md") ? `${prefix} report` : `${prefix} JSON`;
+  }
   if (name.endsWith(".md")) {
     return "Human report";
   }
@@ -596,10 +607,12 @@ function renderBadges(result) {
 
   const badges = [exitBadge];
 
-  (result.reportPaths || []).forEach((path) => {
-    const name = path.split("/").pop();
-    badges.push({ label: name, className: "success" });
-  });
+  if ((result.reportPaths || []).length > 0) {
+    badges.push({
+      label: `${result.reportPaths.length} export${result.reportPaths.length === 1 ? "" : "s"}`,
+      className: "success",
+    });
+  }
 
   badges.forEach((badge) => {
     const el = document.createElement("span");
@@ -1212,7 +1225,28 @@ async function renderReports(result) {
     list.appendChild(button);
   }
 
-  const defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
+  let defaultReport = state.reports.find((path) => path.endsWith(".md")) || state.reports[0];
+  if (jsonReport?.kind === "RunReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("run-report.md")) ||
+      state.reports.find((path) => path.endsWith("run-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "RewriteReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("rewrite-report.md")) ||
+      state.reports.find((path) => path.endsWith("rewrite-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "ValidationReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("validation-report.md")) ||
+      state.reports.find((path) => path.endsWith("validation-report.json")) ||
+      defaultReport;
+  } else if (jsonReport?.kind === "MigrationReport") {
+    defaultReport =
+      state.reports.find((path) => path.endsWith("migration-report.md")) ||
+      state.reports.find((path) => path.endsWith("migration-report.json")) ||
+      defaultReport;
+  }
   const content = await invoke("read_text_file", { path: defaultReport });
   view.textContent = content;
 }
