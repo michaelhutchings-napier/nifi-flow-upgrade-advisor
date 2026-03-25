@@ -25,8 +25,9 @@ spec:
         scope: processor
         componentType: org.apache.nifi.processors.standard.InvokeHTTP
       match:
-        propertyExists: HTTP URL
+        propertyValueRegex:
+          property: HTTP URL
+          regex: '(?s).*\S.*'
       notes: Apache NiFi 1.24.0 expects URL properties to be URL-encoded. Review existing InvokeHTTP HTTP URL values before upgrade.
       references:
         - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
-

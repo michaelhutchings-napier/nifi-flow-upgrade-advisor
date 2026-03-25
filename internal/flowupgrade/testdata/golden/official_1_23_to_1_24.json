@@ -30,9 +30,10 @@
       },
       "evidence": [
         {
-          "type": "property-exists",
+          "type": "property-value-regex",
           "field": "HTTP URL",
-          "actualValue": "https://example.com/orders path"
+          "actualValue": "https://example.com/orders path",
+          "expectedValue": "(?s).*\\S.*"
         }
       ]
     }

@@ -242,6 +242,15 @@ func runRulePackLintCommand(args []string, stdout, stderr io.Writer) int {
 		for _, pack := range result.RulePacks {
 			fmt.Fprintf(stdout, "- %s (%s)\n", pack.Name, pack.Path)
 		}
+		if result.WarningCount > 0 {
+			fmt.Fprintf(stdout, "Warnings: %d\n", result.WarningCount)
+			for _, warning := range result.Warnings {
+				fmt.Fprintf(stdout, "- %s in %s: %s\n", warning.RuleID, warning.RulePackPath, warning.Message)
+			}
+		}
+	}
+	if result.FailedOnWarn {
+		return exitCodeThreshold
 	}
 	return exitCodeSuccess
 }
@@ -396,12 +405,17 @@ func RunRulePackLint(cfg RulePackLintConfig) (*RulePackLintResult, error) {
 		return nil, err
 	}
 	refs := make([]RulePackRef, 0, len(packs))
+	warnings := make([]RulePackLintWarning, 0)
 	for _, pack := range packs {
 		refs = append(refs, RulePackRef{Name: pack.Metadata.Name, Path: pack.Path})
+		warnings = append(warnings, lintRulePackWarnings(pack)...)
 	}
 	return &RulePackLintResult{
-		RulePacks: refs,
-		Count:     len(refs),
+		RulePacks:    refs,
+		Count:        len(refs),
+		WarningCount: len(warnings),
+		Warnings:     warnings,
+		FailedOnWarn: cfg.FailOnWarn && len(warnings) > 0,
 	}, nil
 }
 

@@ -509,3 +509,19 @@ func compareMinor(leftMajor, leftMinor, rightMajor, rightMinor int64) int {
 	}
 	return 0
 }
+
+func lintRulePackWarnings(pack RulePack) []RulePackLintWarning {
+	warnings := make([]RulePackLintWarning, 0)
+	for _, rule := range pack.Spec.Rules {
+		if strings.TrimSpace(rule.Match.PropertyExists) == "" {
+			continue
+		}
+		warnings = append(warnings, RulePackLintWarning{
+			RulePackName: pack.Metadata.Name,
+			RulePackPath: pack.Path,
+			RuleID:       rule.ID,
+			Message:      fmt.Sprintf("rule uses match.propertyExists for %q; exported flow JSON can preserve null placeholder properties, which may cause false positives. Prefer propertyValueRegex when the rule requires a real configured value", rule.Match.PropertyExists),
+		})
+	}
+	return warnings
+}

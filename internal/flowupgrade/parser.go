@@ -630,7 +630,8 @@ func mergeVariables(target map[string]string, incoming map[string]string) {
 }
 
 func inferScope(node map[string]any, path []string) string {
-	for _, part := range path {
+	for i := len(path) - 1; i >= 0; i-- {
+		part := path[i]
 		switch part {
 		case "processors":
 			return "processor"

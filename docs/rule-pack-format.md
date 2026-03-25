@@ -223,11 +223,15 @@ Allowed fields in `v1alpha1`:
 - `annotationContains`
 - `componentNameMatches`
 
+`propertyExists` is still supported, but `rule-pack lint` warns on it because exported NiFi JSON can preserve a property key with a `null` value. Prefer a value-based matcher such as `propertyValueRegex`, `propertyValueEquals`, or `propertyValueIn` when you need proof of a real configured value.
+
 Example:
 
 ```yaml
 match:
-  propertyExists: SSL Context Service
+  propertyValueRegex:
+    property: SSL Context Service
+    regex: '.+'
 ```
 
 Example:
@@ -369,6 +373,8 @@ Future rewrite phases may tighten this.
 - malformed version ranges
 - empty `message`
 - impossible selectors such as both empty `componentTypes` and empty `scope` when no `match` is present
+
+`rule-pack lint` may also warn on valid-but-risky patterns such as `match.propertyExists`. Use `--fail-on-warn` in CI if you want those warnings to fail the build.
 
 ## Forward-Compatibility Rules
 

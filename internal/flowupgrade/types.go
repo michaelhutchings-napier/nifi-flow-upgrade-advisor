@@ -313,8 +313,18 @@ type RunResult struct {
 }
 
 type RulePackLintResult struct {
-	RulePacks []RulePackRef `json:"rulePacks"`
-	Count     int           `json:"count"`
+	RulePacks    []RulePackRef         `json:"rulePacks"`
+	Count        int                   `json:"count"`
+	WarningCount int                   `json:"warningCount,omitempty"`
+	Warnings     []RulePackLintWarning `json:"warnings,omitempty"`
+	FailedOnWarn bool                  `json:"failedOnWarn,omitempty"`
+}
+
+type RulePackLintWarning struct {
+	RulePackName string `json:"rulePackName"`
+	RulePackPath string `json:"rulePackPath"`
+	RuleID       string `json:"ruleId"`
+	Message      string `json:"message"`
 }
 
 type FlowDocument struct {

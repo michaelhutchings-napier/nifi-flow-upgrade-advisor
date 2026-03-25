@@ -30,9 +30,10 @@
       },
       "evidence": [
         {
-          "type": "property-exists",
+          "type": "property-value-regex",
           "field": "Max Data to Receive per Second",
-          "actualValue": "10 MB"
+          "actualValue": "10 MB",
+          "expectedValue": "(?s).*\\S.*"
         }
       ],
       "suggestedActions": [

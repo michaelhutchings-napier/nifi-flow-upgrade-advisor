@@ -46,17 +46,24 @@ On Windows, Tauri also needs Microsoft Edge WebView2. Windows 10 version 1803 an
 3. Pick a flow artifact.
 4. Confirm or enter the source NiFi version.
 5. Choose the target NiFi version.
-6. Click `Analyze`.
-7. If safe fixes are available, click `Rewrite`.
-8. Click `Validate` when you want to check the rewritten result against target readiness.
-9. Use `Run` when you want the guided end-to-end sequence.
+6. Optionally select a target extensions manifest when you want advanced target-inventory checks. Bundled demo manifests are labeled `(sample)` and are not auto-selected.
+7. Click `Analyze`.
+8. If safe fixes are available, click `Rewrite`.
+9. Click `Validate` when you want to check the rewritten result against target readiness.
+10. Use `Run` when you want the guided end-to-end sequence.
 
 ## What each action means
 
-- `Analyze`: shows blockers, review items, safe fixes, and info notes
+- `Analyze`: shows blockers, advisory review items, safe fixes, and info notes
 - `Rewrite`: applies only deterministic safe changes and writes a separate upgraded artifact
 - `Validate`: checks whether the current artifact is ready for the target runtime
 - `Run`: executes analyze, rewrite, and validate in sequence
+
+## How to read the results
+
+- `Upgrade can proceed with review` means no blockers were found. Review items are advisory checks, not current migration failures.
+- The desktop app groups repeated review findings into a calmer summary and shows how many total occurrences remain in the exported report.
+- When review findings are controller-service related, the desktop app can highlight active use versus unreferenced cleanup debt and suggest a short smoke-test checklist.
 
 ## Safety
 

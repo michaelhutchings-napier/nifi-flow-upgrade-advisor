@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -94,6 +95,40 @@ pub struct ReportBundlePreview {
     inline_view_limit_bytes: u64,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowUsageSummary {
+    supported: bool,
+    source_path: String,
+    source_format: String,
+    message: Option<String>,
+    controller_services: Vec<ControllerServiceUsage>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControllerServiceUsage {
+    id: String,
+    name: String,
+    component_type: String,
+    component_scope: String,
+    path: String,
+    active_reference_count: usize,
+    distinct_referrer_count: usize,
+    referenced_by: Vec<FlowUsageReference>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowUsageReference {
+    component_id: String,
+    component_name: String,
+    component_type: String,
+    component_scope: String,
+    component_path: String,
+    property_name: String,
+}
+
 enum ExecTarget {
     Binary(String),
     GoRun(PathBuf),
@@ -162,6 +197,36 @@ pub fn load_report_bundle(report_paths: Vec<String>) -> Result<ReportBundlePrevi
         default_view_path: None,
         inline_view_limit_bytes: MAX_INLINE_VIEW_BYTES,
     })
+}
+
+#[tauri::command]
+pub fn inspect_flow_usage(path: String, source_format: String) -> Result<FlowUsageSummary, String> {
+    let rendered_path = path.trim().to_string();
+    if rendered_path.is_empty() {
+        return Ok(FlowUsageSummary {
+            supported: false,
+            source_path: String::new(),
+            source_format,
+            message: Some("No source flow path was available for usage insights.".into()),
+            controller_services: Vec::new(),
+        });
+    }
+
+    let source_path = PathBuf::from(&rendered_path);
+    if !source_path.exists() {
+        return Ok(FlowUsageSummary {
+            supported: false,
+            source_path: rendered_path,
+            source_format,
+            message: Some(
+                "The analyzed source flow is no longer available on disk for usage insights."
+                    .into(),
+            ),
+            controller_services: Vec::new(),
+        });
+    }
+
+    summarize_flow_usage(&source_path, &source_format)
 }
 
 #[tauri::command]
@@ -614,6 +679,9 @@ fn load_report_preview(path: &str) -> Result<serde_json::Value, String> {
     let body = fs::read_to_string(path).map_err(|err| format!("read {}: {}", path, err))?;
     let mut value: serde_json::Value =
         serde_json::from_str(&body).map_err(|err| format!("parse {}: {}", path, err))?;
+    let inline_safe = fs::metadata(path)
+        .map(|meta| meta.len() <= MAX_INLINE_VIEW_BYTES)
+        .unwrap_or(false);
     let kind = value
         .get("kind")
         .and_then(|candidate| candidate.as_str())
@@ -622,11 +690,19 @@ fn load_report_preview(path: &str) -> Result<serde_json::Value, String> {
 
     match kind.as_str() {
         "MigrationReport" | "ValidationReport" => {
-            let preview = limit_findings_preview(&mut value);
+            let preview = if inline_safe {
+                full_findings_preview(&value)
+            } else {
+                limit_findings_preview(&mut value)
+            };
             value["preview"] = preview;
         }
         "RewriteReport" => {
-            let preview = limit_operations_preview(&mut value);
+            let preview = if inline_safe {
+                full_operations_preview(&value)
+            } else {
+                limit_operations_preview(&mut value)
+            };
             value["preview"] = preview;
         }
         "RunReport" => {
@@ -641,6 +717,32 @@ fn load_report_preview(path: &str) -> Result<serde_json::Value, String> {
     }
 
     Ok(value)
+}
+
+fn full_findings_preview(value: &serde_json::Value) -> serde_json::Value {
+    let findings = value
+        .get("findings")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut shown_by_class = BTreeMap::<String, usize>::new();
+    for finding in &findings {
+        let class = finding
+            .get("class")
+            .and_then(|candidate| candidate.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        *shown_by_class.entry(class).or_insert(0) += 1;
+    }
+
+    json!({
+        "truncated": false,
+        "totalItems": findings.len(),
+        "shownItems": findings.len(),
+        "shownByClass": shown_by_class,
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
 }
 
 fn limit_findings_preview(value: &mut serde_json::Value) -> serde_json::Value {
@@ -699,6 +801,21 @@ fn limit_operations_preview(value: &mut serde_json::Value) -> serde_json::Value 
     })
 }
 
+fn full_operations_preview(value: &serde_json::Value) -> serde_json::Value {
+    let operations = value
+        .get("operations")
+        .and_then(|candidate| candidate.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    json!({
+        "truncated": false,
+        "totalItems": operations.len(),
+        "shownItems": operations.len(),
+        "inlineViewLimitBytes": MAX_INLINE_VIEW_BYTES
+    })
+}
+
 fn detect_rewritten_artifact_path(
     action: &str,
     output_dir: &Path,
@@ -709,6 +826,405 @@ fn detect_rewritten_artifact_path(
         "run" => rewritten_artifact_path_from_run_report(output_dir)
             .or_else(|| preferred_rewritten_artifact_path(output_dir, source_format)),
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone)]
+struct UsageComponentRecord {
+    id: String,
+    name: String,
+    component_type: String,
+    component_scope: String,
+    path: String,
+    properties: BTreeMap<String, serde_json::Value>,
+    property_descriptors: BTreeMap<String, serde_json::Value>,
+    controller_service_refs: Vec<(String, String)>,
+}
+
+fn summarize_flow_usage(path: &Path, source_format: &str) -> Result<FlowUsageSummary, String> {
+    let source_path = path.to_string_lossy().to_string();
+    let body = match read_flow_usage_source(path, source_format) {
+        Ok(body) => body,
+        Err(message) => {
+            return Ok(FlowUsageSummary {
+                supported: false,
+                source_path,
+                source_format: source_format.to_string(),
+                message: Some(message),
+                controller_services: Vec::new(),
+            });
+        }
+    };
+
+    let document: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(value) => value,
+        Err(err) => {
+            return Ok(FlowUsageSummary {
+                supported: false,
+                source_path,
+                source_format: source_format.to_string(),
+                message: Some(format!(
+                    "Could not parse the source flow for usage insights: {}",
+                    err
+                )),
+                controller_services: Vec::new(),
+            });
+        }
+    };
+
+    let mut components = Vec::new();
+    collect_usage_components(&document, &[], &mut components);
+
+    let controller_service_ids = components
+        .iter()
+        .filter(|component| component.component_scope == "controller-service")
+        .map(|component| component.id.clone())
+        .collect::<BTreeSet<_>>();
+
+    for component in &mut components {
+        component.controller_service_refs = collect_controller_service_refs(
+            &component.properties,
+            &component.property_descriptors,
+            &controller_service_ids,
+        );
+    }
+
+    let mut services = BTreeMap::<String, ControllerServiceUsage>::new();
+    for component in &components {
+        if component.component_scope != "controller-service" {
+            continue;
+        }
+        services.insert(
+            component.id.clone(),
+            ControllerServiceUsage {
+                id: component.id.clone(),
+                name: component.name.clone(),
+                component_type: component.component_type.clone(),
+                component_scope: component.component_scope.clone(),
+                path: component.path.clone(),
+                active_reference_count: 0,
+                distinct_referrer_count: 0,
+                referenced_by: Vec::new(),
+            },
+        );
+    }
+
+    for component in &components {
+        for (property_name, referenced_service_id) in &component.controller_service_refs {
+            let Some(service) = services.get_mut(referenced_service_id) else {
+                continue;
+            };
+            service.active_reference_count += 1;
+            service.referenced_by.push(FlowUsageReference {
+                component_id: component.id.clone(),
+                component_name: component.name.clone(),
+                component_type: component.component_type.clone(),
+                component_scope: component.component_scope.clone(),
+                component_path: component.path.clone(),
+                property_name: property_name.clone(),
+            });
+        }
+    }
+
+    let mut controller_services: Vec<ControllerServiceUsage> = services.into_values().collect();
+    for service in &mut controller_services {
+        service.distinct_referrer_count = service
+            .referenced_by
+            .iter()
+            .map(|reference| reference.component_id.clone())
+            .collect::<BTreeSet<_>>()
+            .len();
+    }
+    controller_services.sort_by(|left, right| {
+        right
+            .active_reference_count
+            .cmp(&left.active_reference_count)
+            .then_with(|| {
+                right
+                    .distinct_referrer_count
+                    .cmp(&left.distinct_referrer_count)
+            })
+            .then_with(|| left.name.cmp(&right.name))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    for service in &mut controller_services {
+        service.referenced_by.sort_by(|left, right| {
+            left.component_name
+                .cmp(&right.component_name)
+                .then_with(|| left.property_name.cmp(&right.property_name))
+                .then_with(|| left.component_id.cmp(&right.component_id))
+        });
+    }
+
+    Ok(FlowUsageSummary {
+        supported: true,
+        source_path,
+        source_format: source_format.to_string(),
+        message: None,
+        controller_services,
+    })
+}
+
+fn read_flow_usage_source(path: &Path, source_format: &str) -> Result<String, String> {
+    match source_format {
+        "flow-json-fixture" | "versioned-flow-snapshot" | "" => {
+            fs::read_to_string(path).map_err(|err| format!("read {}: {}", path.display(), err))
+        }
+        "flow-json-gz" => {
+            let file = fs::File::open(path).map_err(|err| format!("open {}: {}", path.display(), err))?;
+            let mut decoder = flate2::read::GzDecoder::new(file);
+            let mut body = String::new();
+            decoder
+                .read_to_string(&mut body)
+                .map_err(|err| format!("decompress {}: {}", path.display(), err))?;
+            Ok(body)
+        }
+        other => Err(format!(
+            "Usage insights are available for JSON-based flow exports right now. This source uses {}.",
+            other
+        )),
+    }
+    .or_else(|err| {
+        let rendered = path.to_string_lossy().to_ascii_lowercase();
+        if rendered.ends_with(".json") {
+            fs::read_to_string(path).map_err(|read_err| format!("read {}: {}", path.display(), read_err))
+        } else if rendered.ends_with(".json.gz") {
+            let file = fs::File::open(path).map_err(|open_err| format!("open {}: {}", path.display(), open_err))?;
+            let mut decoder = flate2::read::GzDecoder::new(file);
+            let mut body = String::new();
+            decoder
+                .read_to_string(&mut body)
+                .map_err(|decompress_err| format!("decompress {}: {}", path.display(), decompress_err))?;
+            Ok(body)
+        } else {
+            Err(err)
+        }
+    })
+}
+
+fn collect_usage_components(
+    value: &serde_json::Value,
+    path: &[String],
+    components: &mut Vec<UsageComponentRecord>,
+) {
+    match value {
+        serde_json::Value::Object(map) => {
+            let component = extract_usage_component(map, path);
+            let mut child_context = path.to_vec();
+            if let Some(component) = component {
+                child_context.push(component.name.clone());
+                components.push(component);
+            }
+
+            for (key, nested) in map {
+                let mut next_path = child_context.clone();
+                if usage_path_key(key) {
+                    next_path.push(key.clone());
+                }
+                collect_usage_components(nested, &next_path, components);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                collect_usage_components(item, path, components);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn extract_usage_component(
+    map: &serde_json::Map<String, serde_json::Value>,
+    path: &[String],
+) -> Option<UsageComponentRecord> {
+    let component_kind = infer_usage_component_kind(map, path)?;
+    let identifier = map
+        .get("identifier")
+        .and_then(|value| value.as_str())
+        .or_else(|| map.get("id").and_then(|value| value.as_str()))?
+        .trim();
+    if identifier.is_empty() {
+        return None;
+    }
+
+    let name = map
+        .get("name")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(identifier)
+        .to_string();
+
+    let component_type = map
+        .get("type")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(component_kind.as_str())
+        .to_string();
+
+    Some(UsageComponentRecord {
+        id: identifier.to_string(),
+        name: name.clone(),
+        component_type,
+        component_scope: normalize_component_scope(&component_kind),
+        path: usage_component_path(path, &name),
+        properties: json_object_field(map, "properties"),
+        property_descriptors: json_object_field(map, "propertyDescriptors"),
+        controller_service_refs: Vec::new(),
+    })
+}
+
+fn usage_path_key(key: &str) -> bool {
+    matches!(
+        key,
+        "rootGroup"
+            | "flowContents"
+            | "externalControllerServices"
+            | "processGroups"
+            | "controllerServices"
+            | "processors"
+            | "reportingTasks"
+            | "funnels"
+            | "labels"
+            | "inputPorts"
+            | "outputPorts"
+            | "remoteProcessGroups"
+    )
+}
+
+fn infer_usage_component_kind(
+    map: &serde_json::Map<String, serde_json::Value>,
+    path: &[String],
+) -> Option<String> {
+    if let Some(kind) = map
+        .get("componentType")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return Some(kind.to_string());
+    }
+
+    let path_hint = path
+        .iter()
+        .rev()
+        .find(|segment| !segment.trim().is_empty())
+        .map(|segment| segment.as_str());
+
+    match path_hint {
+        Some("rootGroup") | Some("flowContents") | Some("processGroups") => {
+            Some("PROCESS_GROUP".into())
+        }
+        Some("externalControllerServices") | Some("controllerServices") => {
+            Some("CONTROLLER_SERVICE".into())
+        }
+        Some("processors") => Some("PROCESSOR".into()),
+        Some("reportingTasks") => Some("REPORTING_TASK".into()),
+        Some("funnels") => Some("FUNNEL".into()),
+        Some("labels") => Some("LABEL".into()),
+        Some("inputPorts") => Some("INPUT_PORT".into()),
+        Some("outputPorts") => Some("OUTPUT_PORT".into()),
+        Some("remoteProcessGroups") => Some("REMOTE_PROCESS_GROUP".into()),
+        _ if map.contains_key("processors")
+            || map.contains_key("controllerServices")
+            || map.contains_key("processGroups")
+            || map.contains_key("reportingTasks") =>
+        {
+            Some("PROCESS_GROUP".into())
+        }
+        _ => None,
+    }
+}
+
+fn usage_component_path(path: &[String], name: &str) -> String {
+    path.iter()
+        .cloned()
+        .chain([name.to_string()])
+        .filter(|segment| !segment.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn normalize_component_scope(component_kind: &str) -> String {
+    component_kind.trim().to_ascii_lowercase().replace('_', "-")
+}
+
+fn json_object_field(
+    map: &serde_json::Map<String, serde_json::Value>,
+    field: &str,
+) -> BTreeMap<String, serde_json::Value> {
+    map.get(field)
+        .and_then(|value| value.as_object())
+        .map(|entries| {
+            entries
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn collect_controller_service_refs(
+    properties: &BTreeMap<String, serde_json::Value>,
+    descriptors: &BTreeMap<String, serde_json::Value>,
+    controller_service_ids: &BTreeSet<String>,
+) -> Vec<(String, String)> {
+    let mut refs = BTreeSet::<(String, String)>::new();
+    let mut saw_controller_service_descriptor = false;
+
+    for (property_name, descriptor) in descriptors {
+        let Some(descriptor_object) = descriptor.as_object() else {
+            continue;
+        };
+        if descriptor_object
+            .get("identifiesControllerService")
+            .and_then(|value| value.as_bool())
+            != Some(true)
+        {
+            continue;
+        }
+        saw_controller_service_descriptor = true;
+        let Some(value) = properties.get(property_name) else {
+            continue;
+        };
+        for reference in extract_controller_service_ref_values(value, controller_service_ids) {
+            refs.insert((property_name.clone(), reference));
+        }
+    }
+
+    if saw_controller_service_descriptor || controller_service_ids.is_empty() {
+        return refs.into_iter().collect();
+    }
+
+    for (property_name, value) in properties {
+        for reference in extract_controller_service_ref_values(value, controller_service_ids) {
+            refs.insert((property_name.clone(), reference));
+        }
+    }
+
+    refs.into_iter().collect()
+}
+
+fn extract_controller_service_ref_values(
+    value: &serde_json::Value,
+    controller_service_ids: &BTreeSet<String>,
+) -> Vec<String> {
+    match value {
+        serde_json::Value::String(raw) => {
+            let candidate = raw.trim();
+            if controller_service_ids.contains(candidate) {
+                vec![candidate.to_string()]
+            } else {
+                Vec::new()
+            }
+        }
+        serde_json::Value::Array(items) => items
+            .iter()
+            .flat_map(|item| extract_controller_service_ref_values(item, controller_service_ids))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -1482,5 +1998,203 @@ mod tests {
 
         assert_eq!(detected.version, "2.7.1");
         assert_eq!(detected.confidence, "inferred");
+    }
+
+    #[test]
+    fn flow_usage_summary_reports_active_and_unreferenced_controller_services() {
+        let temp_root = temp_path("flow-usage");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let flow_path = temp_root.join("flow.json");
+        fs::write(
+            &flow_path,
+            r#"{
+              "flowContents": {
+                "componentType": "PROCESS_GROUP",
+                "identifier": "00000000-0000-0000-0000-000000000000",
+                "name": "Root",
+                "controllerServices": [
+                  {
+                    "identifier": "11111111-1111-1111-1111-111111111111",
+                    "name": "Backend SSL",
+                    "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                    "componentType": "CONTROLLER_SERVICE",
+                    "properties": {},
+                    "propertyDescriptors": {}
+                  },
+                  {
+                    "identifier": "22222222-2222-2222-2222-222222222222",
+                    "name": "Unused SSL",
+                    "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                    "componentType": "CONTROLLER_SERVICE",
+                    "properties": {},
+                    "propertyDescriptors": {}
+                  }
+                ],
+                "processors": [
+                  {
+                    "identifier": "33333333-3333-3333-3333-333333333333",
+                    "name": "Invoke HTTPS",
+                    "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+                    "componentType": "PROCESSOR",
+                    "properties": {
+                      "SSL Context Service": "11111111-1111-1111-1111-111111111111"
+                    },
+                    "propertyDescriptors": {
+                      "SSL Context Service": {
+                        "identifiesControllerService": true
+                      }
+                    }
+                  }
+                ]
+              }
+            }"#,
+        )
+        .expect("write flow");
+
+        let summary = summarize_flow_usage(&flow_path, "versioned-flow-snapshot")
+            .expect("summarize flow usage");
+
+        assert!(summary.supported);
+        assert_eq!(summary.controller_services.len(), 2);
+        assert_eq!(summary.controller_services[0].name, "Backend SSL");
+        assert_eq!(summary.controller_services[0].active_reference_count, 1);
+        assert_eq!(summary.controller_services[0].distinct_referrer_count, 1);
+        assert_eq!(
+            summary.controller_services[0].referenced_by[0].component_name,
+            "Invoke HTTPS"
+        );
+        assert_eq!(summary.controller_services[1].name, "Unused SSL");
+        assert_eq!(summary.controller_services[1].active_reference_count, 0);
+        assert_eq!(summary.controller_services[1].distinct_referrer_count, 0);
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
+    }
+
+    #[test]
+    fn flow_json_fixture_usage_summary_handles_nested_groups_without_descriptors() {
+        let temp_root = temp_path("flow-fixture-usage");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let flow_path = temp_root.join("fixture-flow.json");
+        fs::write(
+            &flow_path,
+            r#"{
+              "rootGroup": {
+                "id": "root-1",
+                "name": "Root",
+                "processGroups": [
+                  {
+                    "id": "pg-1",
+                    "name": "API",
+                    "controllerServices": [
+                      {
+                        "id": "ssl-active",
+                        "name": "Backend SSL",
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "properties": {}
+                      },
+                      {
+                        "id": "ssl-unused",
+                        "name": "Unused SSL",
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "properties": {}
+                      }
+                    ],
+                    "processors": [
+                      {
+                        "id": "invoke-1",
+                        "name": "Call Backend",
+                        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+                        "properties": {
+                          "SSL Context Service": "ssl-active",
+                          "Remote URL": "https://example.test"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }"#,
+        )
+        .expect("write flow");
+
+        let summary =
+            summarize_flow_usage(&flow_path, "flow-json-fixture").expect("summarize flow usage");
+
+        assert!(summary.supported);
+        assert_eq!(summary.controller_services.len(), 2);
+        assert_eq!(summary.controller_services[0].name, "Backend SSL");
+        assert_eq!(summary.controller_services[0].active_reference_count, 1);
+        assert_eq!(summary.controller_services[0].distinct_referrer_count, 1);
+        assert_eq!(
+            summary.controller_services[0].referenced_by[0].component_name,
+            "Call Backend"
+        );
+        assert_eq!(
+            summary.controller_services[0].path,
+            "rootGroup/Root/processGroups/API/controllerServices/Backend SSL"
+        );
+        assert_eq!(summary.controller_services[1].name, "Unused SSL");
+        assert_eq!(summary.controller_services[1].active_reference_count, 0);
+        assert_eq!(summary.controller_services[1].distinct_referrer_count, 0);
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
+    }
+
+    #[test]
+    fn small_migration_reports_keep_full_findings_in_preview() {
+        let temp_root = temp_path("report-preview");
+        fs::create_dir_all(&temp_root).expect("create temp root");
+        let report_path = temp_root.join("migration-report.json");
+
+        let findings = (0..30)
+            .map(|index| {
+                serde_json::json!({
+                    "ruleId": format!("rule-{index}"),
+                    "class": "manual-change",
+                    "severity": "warning",
+                    "component": {
+                        "id": format!("00000000-0000-0000-0000-{:012}", index),
+                        "name": format!("Component {index}"),
+                        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+                        "scope": "controller-service",
+                        "path": format!("flowContents/controllerServices/Component {index}")
+                    },
+                    "message": "StandardRestrictedSSLContextService is deprecated for removal."
+                })
+            })
+            .collect::<Vec<_>>();
+
+        fs::write(
+            &report_path,
+            serde_json::json!({
+                "apiVersion": "nifi.flowupgrade/v1alpha1",
+                "kind": "MigrationReport",
+                "metadata": {"name": "test", "generatedAt": "2026-03-25T00:00:00Z"},
+                "source": {"path": "/tmp/source.json", "format": "versioned-flow-snapshot", "nifiVersion": "2.7.0"},
+                "target": {"nifiVersion": "2.8.0"},
+                "rulePacks": [],
+                "summary": {"totalFindings": 30, "byClass": {"manual-change": 30}},
+                "findings": findings
+            })
+            .to_string(),
+        )
+        .expect("write report");
+
+        let preview =
+            load_report_preview(report_path.to_string_lossy().as_ref()).expect("load preview");
+        let preview_findings = preview
+            .get("findings")
+            .and_then(|value| value.as_array())
+            .expect("preview findings");
+        assert_eq!(preview_findings.len(), 30);
+        assert_eq!(
+            preview
+                .get("preview")
+                .and_then(|value| value.get("truncated"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
     }
 }

@@ -3,30 +3,56 @@
   <rect x="32" y="32" width="1216" height="756" rx="28" fill="#fffaf4" stroke="#d9c9b5"/>
   <rect x="56" y="56" width="1168" height="72" rx="20" fill="#21303c"/>
   <text x="86" y="101" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">NiFi Flow Upgrade Advisor</text>
+  <text x="954" y="101" fill="#c8d5db" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22">Results detail</text>
+
   <rect x="56" y="152" width="1168" height="612" rx="22" fill="#fff5ea" stroke="#e0d0bf"/>
-  <text x="88" y="198" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">Results</text>
-  <text x="88" y="244" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="38" font-weight="700">Ready to rewrite: 1 safe fix available</text>
-  <text x="88" y="278" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">This flow can move forward. Rewrite can apply 1 safe fix.</text>
-  <rect x="88" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="278" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="468" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <rect x="658" y="314" width="170" height="88" rx="18" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="112" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Blocked</text>
-  <text x="112" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
-  <text x="302" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Safe fixes</text>
-  <text x="302" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">1</text>
-  <text x="492" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Review</text>
-  <text x="492" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
-  <text x="682" y="346" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Info</text>
-  <text x="682" y="382" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">0</text>
-  <rect x="88" y="430" width="248" height="52" rx="26" fill="#0f6b78"/>
-  <text x="153" y="463" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20" font-weight="700">Run Rewrite</text>
-  <rect x="88" y="516" width="1060" height="188" rx="20" fill="#fffaf4" stroke="#d6c7b5"/>
-  <text x="120" y="560" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="24" font-weight="700">Rewrite preview</text>
-  <text x="120" y="596" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">Base64EncodeContent should be replaced with EncodeContent for NiFi 2.0.x.</text>
-  <text x="120" y="626" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">EncodePayload • processor</text>
-  <rect x="120" y="652" width="274" height="44" rx="22" fill="#f8e7e2" stroke="#d7a194"/>
-  <rect x="416" y="652" width="246" height="44" rx="22" fill="#e4f3ec" stroke="#8ec0ab"/>
-  <text x="146" y="680" fill="#9c4031" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Type: Base64EncodeContent</text>
-  <text x="444" y="680" fill="#1f7f5e" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Type: EncodeContent</text>
+  <text x="88" y="196" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="700">Review findings</text>
+  <text x="88" y="240" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="36" font-weight="700">18 review groups to check</text>
+  <text x="88" y="272" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="20">The desktop summary groups repeated review findings. The export keeps all 41 occurrences.</text>
+
+  <rect x="88" y="300" width="132" height="42" rx="21" fill="#0f6b78"/>
+  <rect x="228" y="300" width="152" height="42" rx="21" fill="#ffffff" stroke="#d6c7b5"/>
+  <rect x="448" y="300" width="140" height="42" rx="21" fill="#0f6b78"/>
+  <rect x="596" y="300" width="90" height="42" rx="21" fill="#ffffff" stroke="#d6c7b5"/>
+  <text x="124" y="327" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">Grouped</text>
+  <text x="262" y="327" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">All occurrences</text>
+  <text x="478" y="327" fill="#fffaf4" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">Largest first</text>
+  <text x="626" y="327" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">A-Z</text>
+
+  <rect x="88" y="368" width="714" height="336" rx="20" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="116" y="404" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Grouped by migration note and component label</text>
+
+  <rect x="116" y="430" width="658" height="118" rx="18" fill="#fffdf9" stroke="#ddd0bf"/>
+  <text x="140" y="464" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="21" font-weight="700">StandardRestrictedSSLContextService is deprecated for removal.</text>
+  <text x="140" y="492" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17">Backend Services Certificate Store • controller-service</text>
+  <rect x="558" y="446" width="74" height="24" rx="12" fill="#e4edf3"/>
+  <rect x="638" y="446" width="114" height="24" rx="12" fill="#efe7d6"/>
+  <text x="577" y="463" fill="#2c5367" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="700">Advisory</text>
+  <text x="659" y="463" fill="#7a5d1f" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="700">Future cleanup</text>
+  <text x="140" y="518" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Grouped from 6 distinct components and 17 total occurrences in this export.</text>
+  <text x="140" y="540" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">Active use: referenced 17 times by 9 components in this export.</text>
+
+  <rect x="140" y="566" width="610" height="120" rx="16" fill="#f9f2e8" stroke="#decdb9"/>
+  <text x="164" y="598" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">Show 6 grouped components</text>
+
+  <rect x="164" y="616" width="274" height="50" rx="14" fill="#ffffff" stroke="#d9cab8"/>
+  <text x="182" y="638" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">Backend Services Certificate Store</text>
+  <text x="182" y="657" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13">ID ssl-backend-1 • Active use • Repeated 3 times</text>
+
+  <rect x="452" y="616" width="274" height="50" rx="14" fill="#ffffff" stroke="#d9cab8"/>
+  <text x="470" y="638" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" font-weight="700">Backend Services Certificate Store</text>
+  <text x="470" y="657" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13">InvokeHTTP via SSL Context Service • 4 referrers</text>
+
+  <rect x="830" y="368" width="338" height="156" rx="20" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="858" y="404" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700">Review insights</text>
+  <text x="858" y="434" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16">These controller-service findings are advisory.</text>
+  <text x="858" y="465" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18" font-weight="700">9 actively used reviewed services</text>
+  <text x="858" y="488" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="15">Referenced by outbound HTTPS and inbound listener flows.</text>
+
+  <rect x="830" y="540" width="338" height="164" rx="20" fill="#fffaf4" stroke="#d6c7b5"/>
+  <text x="858" y="576" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700">What should I test?</text>
+  <text x="858" y="608" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Run outbound HTTPS call paths</text>
+  <text x="858" y="630" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="15">Exercise reviewed InvokeHTTP processors.</text>
+  <text x="858" y="660" fill="#1f2b33" font-family="IBM Plex Sans, Arial, sans-serif" font-size="17" font-weight="700">Send inbound HTTPS requests</text>
+  <text x="858" y="682" fill="#60727d" font-family="IBM Plex Sans, Arial, sans-serif" font-size="15">Exercise reviewed HandleHttpRequest listeners.</text>
 </svg>

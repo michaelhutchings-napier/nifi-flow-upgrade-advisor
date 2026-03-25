@@ -79,14 +79,14 @@ rustup default stable-msvc</code></pre>
               <div class="workflow-number">02</div>
               <div>
                 <h3>Pick a flow and confirm versions</h3>
-                <p>If the flow carries embedded version metadata, the app fills it in. If not, it tells you to enter the source version manually.</p>
+                <p>If the flow carries embedded version metadata, the app fills it in. If not, it tells you to enter the source version manually. Optional target manifests stay manual, and bundled demos are labeled <code>(sample)</code>.</p>
               </div>
             </article>
             <article class="workflow-step-card">
               <div class="workflow-number">03</div>
               <div>
                 <h3>Analyze first</h3>
-                <p>See blockers, review items, safe fixes, and info notes before anything changes.</p>
+                <p>See blockers, advisory review items, safe fixes, and info notes before anything changes.</p>
               </div>
             </article>
             <article class="workflow-step-card">
@@ -113,7 +113,7 @@ rustup default stable-msvc</code></pre>
             <img src="../assets/desktop-results.svg" alt="Desktop analysis and rewrite preview screenshot">
             <div class="media-copy">
               <h3>Results that explain themselves</h3>
-              <p>Blocked, review, safe fixes, and info are broken out clearly, with next actions and rewrite previews.</p>
+              <p>Blocked, review, safe fixes, and info are broken out clearly, with grouped review summaries, next actions, and rewrite previews.</p>
             </div>
           </article>
         </div>
@@ -126,6 +126,15 @@ rustup default stable-msvc</code></pre>
             <p>
               Use validate when you want to confirm the target version, installed component types,
               or live target readiness after rewrite.
+            </p>
+            <p>
+              Target manifests are optional. The desktop app no longer auto-selects bundled sample manifests, so advanced inventory checks only run when you explicitly opt in.
+            </p>
+          </div>
+          <div class="card">
+            <h2>How to read review results</h2>
+            <p>
+              <code>Upgrade can proceed with review</code> means no blockers were found. The desktop summary can group repeated review findings into calmer review groups while the exported report keeps every occurrence.
             </p>
           </div>
           <div class="card">

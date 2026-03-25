@@ -62,9 +62,10 @@
       },
       "evidence": [
         {
-          "type": "property-exists",
+          "type": "property-value-regex",
           "field": "Custom Transformation Class Name",
-          "actualValue": "com.example.CustomTransform"
+          "actualValue": "com.example.CustomTransform",
+          "expectedValue": "(?s).*\\S.*"
         }
       ]
     }

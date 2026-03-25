@@ -193,9 +193,10 @@
       },
       "evidence": [
         {
-          "type": "property-exists",
+          "type": "property-value-regex",
           "field": "Proxy Host",
-          "actualValue": "proxy.example.com"
+          "actualValue": "proxy.example.com",
+          "expectedValue": "(?s).*\\S.*"
         }
       ]
     },

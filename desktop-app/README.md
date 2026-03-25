@@ -12,6 +12,13 @@ The desktop app is intentionally not a second migration engine. Its job is to:
 
 The CLI remains the source of truth for migration logic.
 
+The current desktop workflow also adds a few presentation-only behaviors on top of the CLI reports:
+
+- bundled demo manifests are labeled `(sample)` and are not auto-selected
+- review-only results are framed as advisory guidance instead of blocked upgrades
+- repeated review findings can be grouped in the desktop summary while exports keep all occurrences
+- controller-service review items can show active-versus-unreferenced usage insight for JSON-based flows
+
 ## Layout
 
 - `ui/` static frontend assets
