@@ -6,7 +6,10 @@ const state = {
   rulePacks: [],
   manifests: [],
   reports: [],
+  reportIndex: {},
   latestReport: null,
+  latestResult: null,
+  rewrittenArtifactPath: null,
   selectedAction: "run",
   runningAction: null,
   nextAction: null,
@@ -28,12 +31,33 @@ function baseName(path) {
   return String(path || "").split("/").pop() || path;
 }
 
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function compactPath(path) {
   const parts = String(path || "").split("/");
   if (parts.length <= 3) {
     return parts.join("/");
   }
   return `.../${parts.slice(-2).join("/")}`;
+}
+
+function sourceFormatLabel(format) {
+  switch (format) {
+    case "flow-json-gz":
+      return "flow.json.gz";
+    case "flow-xml-gz":
+      return "flow.xml.gz";
+    case "flow-json-fixture":
+      return "Flow fixture JSON";
+    case "versioned-flow-snapshot":
+      return "Versioned flow snapshot";
+    case "git-registry-dir":
+      return "Git registry directory";
+    default:
+      return format || "Unknown format";
+  }
 }
 
 function escapeHtml(value) {
@@ -306,7 +330,6 @@ function renderActionSelection() {
   const selected = state.selectedAction || "run";
   const running = state.runningAction;
   const guide = actionGuide(selected);
-  const rewriteButton = document.querySelector('[data-action="rewrite"]');
   const latestReport = state.latestReport;
   const rewriteSafeFixes =
     latestReport && latestReport.kind === "MigrationReport"
@@ -331,7 +354,7 @@ function renderActionSelection() {
   if (rewriteSafeFixes === null || rewriteAssisted === null) {
     setText("rewriteAvailabilityNote", "");
   } else if (hasNoRewrites) {
-    setText("rewriteAvailabilityNote", "No rewrites are available for this flow.");
+    setText("rewriteAvailabilityNote", "No safe rewrites are available for this flow.");
   } else if (rewriteSafeFixes > 0 && rewriteAssisted > 0) {
     setText(
       "rewriteAvailabilityNote",
@@ -358,6 +381,7 @@ function renderActionSelection() {
   setText("actionGuideEyebrow", titleAction(selected));
   setText("actionGuideTitle", guide.title);
   setText("actionGuideBody", guide.body);
+  renderValidateAffordance();
   const checklist = byId("actionGuideChecklist");
   checklist.innerHTML = "";
   guide.checklist.forEach((item) => {
@@ -619,6 +643,37 @@ function selectedManifestLabel() {
   return picked ? `Checking against installed components: ${picked.displayPath}` : "Checking against installed components.";
 }
 
+function renderFlowDetails() {
+  const flow = selectedFlowCandidate();
+  const target = byId("targetVersion").value.trim();
+  if (!flow) {
+    setText("flowDetails", "Choose a flow to see format, source version, and target details.");
+    return;
+  }
+
+  const detectedSource = flow.detectedVersion || byId("sourceVersion").value.trim() || "enter manually";
+  const targetLabel = target || "choose a target";
+  setText(
+    "flowDetails",
+    `Format: ${sourceFormatLabel(flow.sourceFormat)} • Source: ${detectedSource} • Target: ${targetLabel}`
+  );
+}
+
+function renderValidateAffordance() {
+  const details = byId("validateDetails");
+  const summary = byId("validateSummary");
+  const note = byId("validateNote");
+  const manifestSelected = Boolean(byId("manifestSelect").value);
+  const validateSelected = state.selectedAction === "validate";
+
+  details.classList.toggle("is-ready", manifestSelected);
+  details.open = manifestSelected || validateSelected;
+  summary.textContent = manifestSelected ? "Advanced check ready" : "Advanced check";
+  note.textContent = manifestSelected
+    ? "Validate can compare the flow against the installed components list you selected."
+    : "Use Validate for an extra target-readiness pass after rewrite. Add an installed-components list if you want stricter target inventory checks.";
+}
+
 function renderSourceVersionNote() {
   const flow = selectedFlowCandidate();
   if (!flow) {
@@ -660,6 +715,7 @@ function applyFlowDefaults() {
   const sourceInput = sourceVersionInput();
   if (!flow) {
     renderSourceVersionNote();
+    renderFlowDetails();
     return;
   }
   if (flow.detectedVersion) {
@@ -674,6 +730,7 @@ function applyFlowDefaults() {
     sourceInput.dataset.mode = "";
   }
   renderSourceVersionNote();
+  renderFlowDetails();
   autoSelectRulePacks();
 }
 
@@ -732,6 +789,8 @@ function renderWorkspace(data) {
   autoSelectManifest();
   setText("manifestNote", selectedManifestLabel());
   renderSourceVersionNote();
+  renderFlowDetails();
+  renderValidateAffordance();
 }
 
 function selectedRulePacks() {
@@ -832,6 +891,249 @@ function metricCard(label, value) {
   card.appendChild(labelNode);
   card.appendChild(valueNode);
   return card;
+}
+
+function setResultBanner(config) {
+  const card = byId("resultBanner");
+  const title = byId("resultBannerTitle");
+  const body = byId("resultBannerBody");
+  card.className = "result-banner";
+  if (!config) {
+    card.hidden = true;
+    title.textContent = "Ready";
+    body.textContent = "Run a command to see a compact upgrade summary.";
+    return;
+  }
+  card.hidden = false;
+  card.classList.add(`variant-${config.variant || "warning"}`);
+  title.textContent = config.title;
+  body.textContent = config.body;
+}
+
+function topBlockedFinding(report) {
+  if (!report || !Array.isArray(report.findings)) {
+    return null;
+  }
+  return report.findings.find((finding) => finding.class === "blocked") || null;
+}
+
+function renderPriorityCallout(report, reportIndex) {
+  const card = byId("priorityCallout");
+  const title = byId("priorityCalloutTitle");
+  const body = byId("priorityCalloutBody");
+  const meta = byId("priorityCalloutMeta");
+
+  let blockedReport = null;
+  if (report?.kind === "MigrationReport" || report?.kind === "ValidationReport") {
+    blockedReport = report;
+  } else if (report?.kind === "RunReport") {
+    blockedReport = report.summary?.analyzeThresholdExceeded
+      ? reportIndex.MigrationReport
+      : report.summary?.validationBlocked
+        ? reportIndex.ValidationReport
+        : null;
+  }
+
+  const finding = topBlockedFinding(blockedReport);
+  if (!finding) {
+    card.hidden = true;
+    title.textContent = "Top blocker";
+    body.textContent = "";
+    meta.textContent = "";
+    return;
+  }
+
+  card.hidden = false;
+  title.textContent = "Top blocker";
+  body.textContent = finding.message;
+  meta.textContent = [findingDetailText(finding), finding.notes].filter(Boolean).join(" • ");
+}
+
+function summarizeRewriteChanges(rewriteReport) {
+  if (!rewriteReport || rewriteReport.kind !== "RewriteReport" || !Array.isArray(rewriteReport.operations)) {
+    return [];
+  }
+
+  const counts = new Map();
+  const add = (label, amount = 1) => counts.set(label, (counts.get(label) || 0) + amount);
+
+  rewriteReport.operations
+    .filter((operation) => operation.status === "applied")
+    .forEach((operation) => {
+      switch (operation.actionType) {
+        case "replace-component-type":
+          if (operation.component?.scope === "processor") {
+            add("processor replaced", 1);
+          } else if (operation.component?.scope === "controller-service") {
+            add("controller service replaced", 1);
+          } else {
+            add("component replaced", 1);
+          }
+          break;
+        case "rename-property":
+          add("property renamed", 1);
+          break;
+        case "remove-property":
+          add("property removed", 1);
+          break;
+        case "set-property":
+        case "set-property-if-absent":
+          add("property set", 1);
+          break;
+        case "copy-property":
+          add("property copied", 1);
+          break;
+        case "update-bundle-coordinate":
+          add("bundle update", 1);
+          break;
+        case "emit-parameter-scaffold":
+          add("parameter scaffold added", 1);
+          break;
+        default:
+          add("rewrite applied", 1);
+          break;
+      }
+    });
+
+  return Array.from(counts.entries()).map(([label, count]) => pluralize(count, label));
+}
+
+function renderRewriteSummary(rewriteReport) {
+  const card = byId("rewriteSummaryCard");
+  const list = byId("rewriteSummaryList");
+  card.hidden = true;
+  list.innerHTML = "";
+
+  const lines = summarizeRewriteChanges(rewriteReport);
+  if (lines.length === 0) {
+    return;
+  }
+
+  lines.forEach((line) => {
+    const row = document.createElement("div");
+    row.className = "selection-list-item";
+    row.textContent = line;
+    list.appendChild(row);
+  });
+
+  card.hidden = false;
+}
+
+function setUtilityActions(actions) {
+  const root = byId("resultUtilityActions");
+  root.innerHTML = "";
+  (actions || []).forEach((action) => {
+    const button = document.createElement("button");
+    button.className = action.primary ? "button primary" : "button secondary";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    root.appendChild(button);
+  });
+}
+
+async function openPath(path, createDirIfMissing = false) {
+  if (!path) {
+    return;
+  }
+  await invoke("open_path", { path, createDirIfMissing });
+}
+
+function renderResultUtilities(result) {
+  const actions = [];
+  if (state.rewrittenArtifactPath) {
+    actions.push({
+      label: "Open rewritten artifact",
+      onClick: () => openPath(state.rewrittenArtifactPath, false),
+    });
+  }
+  if (result?.outputDir) {
+    actions.push({
+      label: "Open output folder",
+      onClick: () => openPath(result.outputDir, true),
+    });
+  }
+  setUtilityActions(actions);
+}
+
+function renderResultBanner(report, result, reportIndex) {
+  if (!report || typeof report !== "object") {
+    setResultBanner(
+      result?.exitCode === 0
+        ? { variant: "success", title: "Command completed", body: "Structured results are ready below." }
+        : { variant: "warning", title: "Command finished", body: "Review the command output and reports below." }
+    );
+    return;
+  }
+
+  if (report.kind === "MigrationReport") {
+    const byClass = report.summary?.byClass || {};
+    const blocked = Number(byClass["blocked"] || 0);
+    const autoFix = Number(byClass["auto-fix"] || 0);
+    const assisted = Number(byClass["assisted-rewrite"] || 0);
+    const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+    if (blocked > 0) {
+      setResultBanner({ variant: "danger", title: "Blocked upgrade", body: topBlockedFinding(report)?.message || "Resolve the blocker before rewrite or run." });
+    } else if (autoFix > 0 || assisted > 0) {
+      setResultBanner({
+        variant: "success",
+        title: "Ready for rewrite",
+        body:
+          autoFix > 0
+            ? `Rewrite can apply ${pluralize(autoFix, "safe fix", "safe fixes")}${assisted > 0 ? ` and scaffold ${pluralize(assisted, "assisted rewrite", "assisted rewrites")}.` : "."}`
+            : `Rewrite can scaffold ${pluralize(assisted, "assisted rewrite", "assisted rewrites")}.`,
+      });
+    } else if (review > 0) {
+      setResultBanner({ variant: "warning", title: "Review needed", body: `This flow can move forward after ${pluralize(review, "review item", "review items")} are checked.` });
+    } else {
+      setResultBanner({ variant: "success", title: "Upgrade check complete", body: "No flow-specific issues were found in the built-in coverage for this path." });
+    }
+    return;
+  }
+
+  if (report.kind === "RewriteReport") {
+    const applied = Number(report.summary?.appliedOperations || 0);
+    if (state.rewrittenArtifactPath) {
+      setResultBanner({
+        variant: "success",
+        title: "Rewrite created a reviewed copy",
+        body:
+          applied > 0
+            ? `A separate rewritten artifact was exported with ${pluralize(applied, "applied change", "applied changes")}.`
+            : "A separate rewritten artifact was exported with no applied rewrite changes.",
+      });
+    } else {
+      setResultBanner({ variant: "warning", title: "Rewrite finished", body: "Review the rewrite report for details." });
+    }
+    return;
+  }
+
+  if (report.kind === "ValidationReport") {
+    const byClass = report.summary?.byClass || {};
+    const blocked = Number(byClass["blocked"] || 0);
+    const review = Number(byClass["manual-change"] || 0) + Number(byClass["manual-inspection"] || 0);
+    if (blocked > 0) {
+      setResultBanner({ variant: "danger", title: "Validation blocked", body: topBlockedFinding(report)?.message || "Target checks failed for this artifact." });
+    } else if (review > 0) {
+      setResultBanner({ variant: "warning", title: "Validation needs review", body: `Target checks surfaced ${pluralize(review, "review item", "review items")}.` });
+    } else {
+      setResultBanner({ variant: "success", title: "Validation passed", body: "The selected artifact passed the current target readiness checks." });
+    }
+    return;
+  }
+
+  if (report.kind === "RunReport") {
+    if (report.summary?.analyzeThresholdExceeded || report.summary?.validationBlocked) {
+      renderPriorityCallout(report, reportIndex);
+      setResultBanner({ variant: "danger", title: "Blocked upgrade", body: "Run stopped safely before this flow could be pushed further." });
+    } else if (state.rewrittenArtifactPath) {
+      setResultBanner({ variant: "success", title: "Run created a reviewed copy", body: "Analyze, rewrite, and validate completed with a separate reviewed artifact exported for you." });
+    } else {
+      setResultBanner({ variant: "success", title: "Run completed", body: "The guided workflow completed for this flow." });
+    }
+    return;
+  }
+
+  setResultBanner({ variant: "success", title: "Report loaded", body: "Structured results are ready below." });
 }
 
 function renderResultOverview(report, result) {
@@ -979,7 +1281,14 @@ function resetResultOverview() {
   byId("resultMetrics").innerHTML = "";
   byId("resultMeta").textContent = "No report summary yet.";
   setResultNextAction(null);
+  setUtilityActions([]);
+  setResultBanner(null);
+  renderPriorityCallout(null, {});
+  renderRewriteSummary(null);
   state.latestReport = null;
+  state.latestResult = null;
+  state.rewrittenArtifactPath = null;
+  state.reportIndex = {};
   renderRunSteps(null);
   renderActionSelection();
 }
@@ -1337,6 +1646,8 @@ async function renderReports(result) {
   list.innerHTML = "";
   view.classList.remove("empty");
   state.reports = result.reportPaths || [];
+  state.latestResult = result;
+  state.rewrittenArtifactPath = result.rewrittenArtifactPath || null;
 
   if (state.reports.length === 0) {
     list.textContent = "No reports generated.";
@@ -1348,20 +1659,32 @@ async function renderReports(result) {
     return;
   }
 
-  let jsonReport = null;
-  const jsonPath = preferredJsonReportPath(state.reports);
-  if (jsonPath) {
+  const structuredByPath = {};
+  const structuredByKind = {};
+  for (const path of state.reports.filter((candidate) => candidate.endsWith(".json"))) {
     try {
-      jsonReport = JSON.parse(await invoke("read_text_file", { path: jsonPath }));
+      const parsed = JSON.parse(await invoke("read_text_file", { path }));
+      structuredByPath[path] = parsed;
+      if (parsed?.kind && !structuredByKind[parsed.kind]) {
+        structuredByKind[parsed.kind] = parsed;
+      }
     } catch (error) {
-      jsonReport = null;
+      // Ignore non-parseable exports and keep the readable report flow working.
     }
   }
+
+  const jsonPath = preferredJsonReportPath(state.reports);
+  const jsonReport = jsonPath ? structuredByPath[jsonPath] || null : null;
   state.latestReport = jsonReport;
+  state.reportIndex = structuredByKind;
+  renderResultBanner(jsonReport, result, structuredByKind);
   renderResultOverview(jsonReport, result);
+  renderPriorityCallout(jsonReport, structuredByKind);
   renderRunSteps(jsonReport);
   renderFindingSections(jsonReport);
-  renderRewritePreview(jsonReport);
+  renderRewriteSummary(structuredByKind.RewriteReport || null);
+  renderRewritePreview(jsonReport?.kind === "MigrationReport" ? jsonReport : structuredByKind.MigrationReport || null);
+  renderResultUtilities(result);
   renderActionSelection();
 
   const groups = groupReportPaths(state.reports);
@@ -1451,6 +1774,10 @@ async function renderReports(result) {
 async function runAction(action) {
   state.selectedAction = action;
   state.runningAction = action;
+  state.rewrittenArtifactPath = null;
+  state.reportIndex = {};
+  state.latestReport = null;
+  state.latestResult = null;
   renderActionSelection();
 
   const flow = selectedFlowCandidate();
@@ -1479,6 +1806,16 @@ async function runAction(action) {
   byId("reportView").textContent = "Waiting for report output...";
   byId("reportLinks").textContent = "Generating reports...";
   byId("summaryBadges").innerHTML = "";
+  byId("findingSections").innerHTML = "";
+  byId("rewritePreview").hidden = true;
+  setUtilityActions([]);
+  setResultBanner({
+    variant: "warning",
+    title: `Running ${titleAction(action)}`,
+    body: "Preparing a structured summary from the generated report.",
+  });
+  renderPriorityCallout(null, {});
+  renderRewriteSummary(null);
   byId("resultHeadline").textContent = `Running ${titleAction(action)}...`;
   byId("resultSubhead").textContent = "Preparing a structured summary from the generated report.";
   byId("resultMetrics").innerHTML = "";
@@ -1493,10 +1830,45 @@ async function runAction(action) {
   } catch (error) {
     byId("stdoutView").textContent = String(error);
     setText("lastAction", `${titleAction(action)} failed.`);
+    setResultBanner({
+      variant: "danger",
+      title: `${titleAction(action)} failed`,
+      body: "Review the command output below for the exact error.",
+    });
   } finally {
     state.runningAction = null;
     renderActionSelection();
   }
+}
+
+function prepareFreshOutputDir() {
+  const workspacePath = byId("workspacePath").value.trim();
+  if (!workspacePath) {
+    return;
+  }
+  byId("outputDir").value = defaultOutputDir(workspacePath);
+  state.reports = [];
+  state.reportIndex = {};
+  state.latestReport = null;
+  state.latestResult = null;
+  state.rewrittenArtifactPath = null;
+  byId("reportLinks").textContent = "Start a fresh run to generate new reports here.";
+  byId("reportView").classList.add("empty");
+  byId("reportView").textContent = "Start a fresh run to load a report here.";
+  byId("stdoutView").textContent = "Waiting for a command...";
+  byId("summaryBadges").innerHTML = "";
+  byId("findingSections").innerHTML = "";
+  byId("rewritePreview").hidden = true;
+  setText("lastAction", "Fresh output folder ready.");
+  resetResultOverview();
+}
+
+async function openOutputFolder() {
+  const path = byId("outputDir").value.trim();
+  if (!path) {
+    return;
+  }
+  await openPath(path, true);
 }
 
 async function scanWorkspace() {
@@ -1511,6 +1883,13 @@ async function bootstrap() {
 }
 
 document.getElementById("scanButton").addEventListener("click", scanWorkspace);
+byId("openOutputButton").addEventListener("click", () => {
+  openOutputFolder().catch((error) => {
+    byId("stdoutView").textContent = String(error);
+    setText("lastAction", "Could not open output folder.");
+  });
+});
+byId("freshOutputButton").addEventListener("click", prepareFreshOutputDir);
 document.querySelectorAll("[data-action]").forEach((button) => {
   button.addEventListener("click", () => {
     state.selectedAction = button.dataset.action;
@@ -1523,6 +1902,7 @@ byId("flowSelect").addEventListener("change", () => {
 });
 byId("manifestSelect").addEventListener("change", () => {
   setText("manifestNote", selectedManifestLabel());
+  renderValidateAffordance();
 });
 byId("rulePackSelect").addEventListener("change", () => {
   const count = selectedRulePacks().length;
@@ -1536,11 +1916,14 @@ byId("rulePackSelect").addEventListener("change", () => {
 byId("sourceVersion").addEventListener("input", () => {
   sourceVersionInput().dataset.mode = "manual";
   autoSelectRulePacks();
+  renderFlowDetails();
 });
 byId("targetVersion").addEventListener("input", () => {
   autoSelectRulePacks();
   autoSelectManifest();
   setText("manifestNote", selectedManifestLabel());
+  renderFlowDetails();
+  renderValidateAffordance();
 });
 
 bootstrap().catch((error) => {

@@ -9,7 +9,8 @@ pub fn run() {
             commands::bootstrap_state,
             commands::scan_workspace,
             commands::run_cli_action,
-            commands::read_text_file
+            commands::read_text_file,
+            commands::open_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

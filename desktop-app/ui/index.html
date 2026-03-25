@@ -38,6 +38,7 @@
             <select id="flowSelect"></select>
           </label>
           <p id="binaryNote" class="note inline-note">Using the built-in upgrade engine.</p>
+          <p id="flowDetails" class="note inline-note">Choose a flow to see format and version details.</p>
 
           <div class="grid two-up">
             <label class="field">
@@ -83,19 +84,40 @@
             </label>
           </details>
 
-          <label class="field">
-            <span>Output directory</span>
-            <input id="outputDir" type="text" spellcheck="false">
-          </label>
+          <article class="output-summary">
+            <div>
+              <h3>Output</h3>
+              <p class="note inline-note">Original flow is never overwritten.</p>
+            </div>
+            <div class="output-actions">
+              <button id="openOutputButton" class="button secondary">Open output folder</button>
+              <button id="freshOutputButton" class="button subtle">Start fresh run</button>
+            </div>
+          </article>
+
+          <details class="advanced-block">
+            <summary>Output location</summary>
+            <label class="field compact-field">
+              <span>Output directory</span>
+              <input id="outputDir" type="text" spellcheck="false">
+            </label>
+          </details>
 
           <div class="action-row">
             <button data-action="analyze" class="button secondary">Analyze</button>
             <button data-action="rewrite" class="button secondary">Rewrite</button>
-            <button data-action="validate" class="button secondary">Validate</button>
-            <button data-action="run" class="button secondary">Run</button>
+            <button data-action="run" class="button primary">Run</button>
           </div>
           <p id="rewriteAvailabilityNote" class="note inline-note"></p>
           <p id="activeActionNote" class="note inline-note">Selected action: Run full workflow.</p>
+
+          <details id="validateDetails" class="advanced-block validate-block">
+            <summary id="validateSummary">Advanced check</summary>
+            <p id="validateNote" class="note inline-note">
+              Use Validate for an extra target-readiness pass after rewrite. Add an installed-components list if you want stricter target inventory checks.
+            </p>
+            <button id="validateButton" data-action="validate" class="button secondary">Validate</button>
+          </details>
 
           <article class="action-guide">
             <div class="action-guide-head">
@@ -115,17 +137,36 @@
             <span id="lastAction" class="note">No action run yet.</span>
           </div>
 
+          <article id="resultBanner" class="result-banner" hidden>
+            <div>
+              <h3 id="resultBannerTitle">Ready</h3>
+              <p id="resultBannerBody" class="note">Run a command to see a compact upgrade summary.</p>
+            </div>
+          </article>
+
           <article class="result-overview">
             <h3 id="resultHeadline">No results yet.</h3>
             <p id="resultSubhead" class="note">Run a command to see a compact upgrade summary here first.</p>
             <div id="resultMetrics" class="metric-grid"></div>
             <p id="resultMeta" class="note">No report summary yet.</p>
             <button id="resultNextAction" class="button primary result-action" hidden>Next step</button>
+            <div id="resultUtilityActions" class="result-utility-actions"></div>
+          </article>
+
+          <article id="priorityCallout" class="result-card priority-callout" hidden>
+            <h3 id="priorityCalloutTitle">Top blocker</h3>
+            <p id="priorityCalloutBody"></p>
+            <p id="priorityCalloutMeta" class="note"></p>
           </article>
 
           <article id="runStepsCard" class="result-card run-steps-card" hidden>
             <h3>Workflow steps</h3>
             <div id="runStepsList" class="selection-list compact-list"></div>
+          </article>
+
+          <article id="rewriteSummaryCard" class="result-card rewrite-summary" hidden>
+            <h3>What changed</h3>
+            <div id="rewriteSummaryList" class="selection-list compact-list"></div>
           </article>
 
           <div id="findingSections" class="finding-sections"></div>

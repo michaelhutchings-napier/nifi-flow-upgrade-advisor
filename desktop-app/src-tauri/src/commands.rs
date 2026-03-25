@@ -49,6 +49,7 @@ pub struct CliActionResult {
     duration_ms: u128,
     output_dir: String,
     report_paths: Vec<String>,
+    rewritten_artifact_path: Option<String>,
 }
 
 enum ExecTarget {
@@ -69,6 +70,25 @@ pub fn scan_workspace(path: Option<String>) -> Result<BootstrapState, String> {
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| format!("read {}: {}", path, err))
+}
+
+#[tauri::command]
+pub fn open_path(path: String, create_dir_if_missing: bool) -> Result<(), String> {
+    let path = PathBuf::from(path.trim());
+    if create_dir_if_missing && !path.exists() {
+        fs::create_dir_all(&path).map_err(|err| format!("create {}: {}", path.display(), err))?;
+    }
+    if !path.exists() {
+        return Err(format!("path does not exist: {}", path.display()));
+    }
+
+    let mut command = open_command_for(&path)?;
+    command
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|err| format!("open {}: {}", path.display(), err))?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -180,6 +200,11 @@ pub fn run_cli_action(request: CliActionRequest) -> Result<CliActionResult, Stri
         duration_ms,
         output_dir: report_base.clone(),
         report_paths: collect_report_paths(&output_dir),
+        rewritten_artifact_path: detect_rewritten_artifact_path(
+            validated.action.as_str(),
+            &output_dir,
+            prepared.cli_format.as_str(),
+        ),
     })
 }
 
@@ -421,6 +446,83 @@ fn collect_report_paths(output_dir: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| path.to_string_lossy().to_string())
         .collect()
+}
+
+fn detect_rewritten_artifact_path(
+    action: &str,
+    output_dir: &Path,
+    source_format: &str,
+) -> Option<String> {
+    match action {
+        "rewrite" => preferred_rewritten_artifact_path(output_dir, source_format),
+        "run" => rewritten_artifact_path_from_run_report(output_dir)
+            .or_else(|| preferred_rewritten_artifact_path(output_dir, source_format)),
+        _ => None,
+    }
+}
+
+fn preferred_rewritten_artifact_path(output_dir: &Path, source_format: &str) -> Option<String> {
+    let candidate = match source_format {
+        "git-registry-dir" => output_dir.join("rewritten-flow"),
+        "flow-json-gz" => output_dir.join("rewritten-flow.json.gz"),
+        _ => output_dir.join("rewritten-flow.json"),
+    };
+    candidate
+        .exists()
+        .then(|| candidate.to_string_lossy().to_string())
+}
+
+fn rewritten_artifact_path_from_run_report(output_dir: &Path) -> Option<String> {
+    let path = output_dir.join("run-report.json");
+    let body = fs::read_to_string(path).ok()?;
+    let report: DesktopRunReport = serde_json::from_str(&body).ok()?;
+    report
+        .steps
+        .into_iter()
+        .find(|step| {
+            step.name == "rewrite" && step.status == "completed" && !step.output_path.is_empty()
+        })
+        .map(|step| step.output_path)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRunReport {
+    steps: Vec<DesktopRunStep>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRunStep {
+    name: String,
+    status: String,
+    output_path: String,
+}
+
+fn open_command_for(path: &Path) -> Result<Command, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = Command::new("open");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("explorer");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let mut command = Command::new("xdg-open");
+        command.arg(path);
+        return Ok(command);
+    }
+
+    #[allow(unreachable_code)]
+    Err("opening paths is not supported on this platform".into())
 }
 
 fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String> {
