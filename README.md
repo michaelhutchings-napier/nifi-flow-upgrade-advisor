@@ -70,42 +70,15 @@ What `publish` covers now:
 
 ### Desktop app first
 
-Desktop prerequisites:
+Install the desktop prerequisites first:
 
-- Ubuntu or Debian:
+- Rust via `rustup`
+- the normal Tauri desktop dependencies for your OS
+- WebView2 on Windows if it is not already installed
 
-```bash
-sudo apt update
-sudo apt install libwebkit2gtk-4.1-dev \
-  build-essential \
-  curl \
-  wget \
-  file \
-  libxdo-dev \
-  libssl-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev
-curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
-source "$HOME/.cargo/env"
-```
+Full copy-and-paste install commands live in:
 
-- macOS:
-
-```bash
-xcode-select --install
-curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
-source "$HOME/.cargo/env"
-```
-
-- Windows PowerShell:
-
-```powershell
-winget install --id Microsoft.VisualStudio.2022.Community --source winget --force --override "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --addProductLang En-us"
-winget install --id Rustlang.Rustup
-rustup default stable-msvc
-```
-
-On Windows, Tauri also needs Microsoft Edge WebView2. Windows 10 version 1803 and later usually already include it. If not, install the Evergreen Bootstrapper from the official WebView2 download page.
+- [`docs/desktop-guide.md`](docs/desktop-guide.md)
 
 Then build and launch the desktop app:
 
