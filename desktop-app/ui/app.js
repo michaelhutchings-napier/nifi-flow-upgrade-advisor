@@ -1712,7 +1712,7 @@ async function renderReports(result) {
     if (primaryPath) {
       const button = document.createElement("button");
       button.className = "button secondary";
-      button.textContent = group.md ? `Open ${group.label} report` : `Open ${group.label} export`;
+      button.textContent = group.md ? `View ${group.label} report` : `View ${group.label} export`;
       button.addEventListener("click", async () => {
         const content = await invoke("read_text_file", { path: primaryPath });
         setReportViewContent(primaryPath, content);
@@ -1732,7 +1732,7 @@ async function renderReports(result) {
       advancedActions.className = "report-advanced-actions";
       const jsonButton = document.createElement("button");
       jsonButton.className = "button secondary";
-      jsonButton.textContent = `Open ${group.label} JSON`;
+      jsonButton.textContent = `View ${group.label} JSON`;
       jsonButton.addEventListener("click", async () => {
         const content = await invoke("read_text_file", { path: group.json });
         setReportViewContent(group.json, content);

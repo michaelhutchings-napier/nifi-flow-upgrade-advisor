@@ -1,0 +1,18 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: ExtensionsManifest
+metadata:
+  name: nifi-2.8-core-sample
+  description: Sample target extensions manifest for NiFi 2.8.x analyzer validation.
+spec:
+  nifiVersion: 2.8.0
+  components:
+    - scope: processor
+      type: org.apache.nifi.processors.standard.EncodeContent
+    - scope: processor
+      type: org.apache.nifi.processors.standard.ListenSyslog
+    - scope: processor
+      type: org.apache.nifi.jms.processors.ConsumeJMS
+    - scope: processor
+      type: org.apache.nifi.jms.processors.PublishJMS
+    - scope: controller-service
+      type: org.apache.nifi.ssl.StandardRestrictedSSLContextService

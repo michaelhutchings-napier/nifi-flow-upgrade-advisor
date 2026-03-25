@@ -516,6 +516,20 @@ fn open_command_for(path: &Path) -> Result<Command, String> {
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
+        if is_wsl() {
+            if let Some(windows_path) = wsl_windows_path(path) {
+                let mut command = Command::new("powershell.exe");
+                command.args([
+                    "-NoProfile",
+                    "-Command",
+                    "Start-Process",
+                    "-FilePath",
+                    windows_path.as_str(),
+                ]);
+                return Ok(command);
+            }
+        }
+
         let mut command = Command::new("xdg-open");
         command.arg(path);
         return Ok(command);
@@ -523,6 +537,22 @@ fn open_command_for(path: &Path) -> Result<Command, String> {
 
     #[allow(unreachable_code)]
     Err("opening paths is not supported on this platform".into())
+}
+
+fn is_wsl() -> bool {
+    std::env::var_os("WSL_DISTRO_NAME").is_some()
+        || fs::read_to_string("/proc/version")
+            .map(|body| body.to_ascii_lowercase().contains("microsoft"))
+            .unwrap_or(false)
+}
+
+fn wsl_windows_path(path: &Path) -> Option<String> {
+    let output = Command::new("wslpath").arg("-w").arg(path).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let rendered = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (!rendered.is_empty()).then_some(rendered)
 }
 
 fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String> {
