@@ -355,6 +355,19 @@ function actionDescription(action) {
   }
 }
 
+function validateActionRequest(action, request) {
+  if (!request.targetVersion) {
+    return "Please select a target version first.";
+  }
+  if (action !== "validate" && !request.sourceVersion) {
+    return "Please enter or confirm a source version first.";
+  }
+  if (action !== "validate" && request.rulePackPaths.length === 0) {
+    return "No built-in upgrade path is available for this version pair yet.";
+  }
+  return "";
+}
+
 function renderActionSelection() {
   const selected = state.selectedAction || "run";
   const running = state.runningAction;
@@ -1896,6 +1909,27 @@ async function runAction(action) {
     extensionsManifestPath: byId("manifestSelect").value || null,
     outputDir: byId("outputDir").value.trim(),
   };
+
+  const validationError = validateActionRequest(action, request);
+  if (validationError) {
+    byId("stdoutView").textContent = validationError;
+    setText("lastAction", `${titleAction(action)} not started.`);
+    setResultBanner({
+      variant: "warning",
+      title: `${titleAction(action)} needs one more input`,
+      body: validationError,
+    });
+    byId("resultHeadline").textContent = `${titleAction(action)} is ready when you are.`;
+    byId("resultSubhead").textContent = validationError;
+    byId("resultMetrics").innerHTML = "";
+    byId("resultMeta").textContent = "No command was started.";
+    byId("summaryBadges").innerHTML = "";
+    byId("findingSections").innerHTML = "";
+    byId("rewritePreview").hidden = true;
+    state.runningAction = null;
+    renderActionSelection();
+    return;
+  }
 
   setText("lastAction", `Running ${action}...`);
   byId("stdoutView").textContent = "Running command...";
