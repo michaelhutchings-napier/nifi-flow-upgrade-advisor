@@ -257,6 +257,13 @@ select[multiple] {
   color: var(--muted);
 }
 
+.step-path {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  word-break: break-all;
+}
+
 .step-status {
   flex: 0 0 auto;
   display: inline-flex;

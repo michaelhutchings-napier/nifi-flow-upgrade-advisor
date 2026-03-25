@@ -778,6 +778,9 @@ function renderResultOverview(report, result) {
 
   if (report.kind === "RunReport") {
     const summary = report.summary || {};
+    const rewriteStep = Array.isArray(report.steps)
+      ? report.steps.find((step) => step.name === "rewrite")
+      : null;
     if (summary.analyzeThresholdExceeded) {
       headline.textContent = "Run stopped after analyze.";
     } else if (summary.validationBlocked) {
@@ -787,7 +790,13 @@ function renderResultOverview(report, result) {
     } else {
       headline.textContent = `Run status: ${summary.status || "unknown"}`;
     }
-    subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow.`;
+    if (rewriteStep?.outputPath) {
+      subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow and wrote a reviewed artifact to ${compactPath(rewriteStep.outputPath)}.`;
+    } else if (summary.analyzeThresholdExceeded) {
+      subhead.textContent = "Analyze stopped the workflow before a rewritten artifact was created.";
+    } else {
+      subhead.textContent = `Ran the guided ${sourceVersion} -> ${targetVersion} workflow.`;
+    }
     metrics.appendChild(metricCard("Steps done", summary.completedSteps || 0));
     metrics.appendChild(metricCard("Publish", summary.publishEnabled ? "On" : "Off"));
     metrics.appendChild(metricCard("Status", summary.status || "unknown"));
@@ -844,6 +853,13 @@ function renderRunSteps(report) {
       message.className = "step-message";
       message.textContent = step.message;
       copy.appendChild(message);
+    }
+
+    if (step.outputPath) {
+      const output = document.createElement("div");
+      output.className = "step-path";
+      output.textContent = step.outputPath;
+      copy.appendChild(output);
     }
 
     const status = document.createElement("span");
