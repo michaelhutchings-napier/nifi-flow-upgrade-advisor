@@ -36,6 +36,107 @@ function compactPath(path) {
   return `.../${parts.slice(-2).join("/")}`;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderMarkdownToHtml(markdown) {
+  const lines = String(markdown || "").split("\n");
+  const parts = [];
+  let inList = false;
+  let inCode = false;
+  let codeLines = [];
+
+  function closeList() {
+    if (inList) {
+      parts.push("</ul>");
+      inList = false;
+    }
+  }
+
+  function closeCode() {
+    if (inCode) {
+      parts.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+      inCode = false;
+      codeLines = [];
+    }
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      closeList();
+      if (inCode) {
+        closeCode();
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!line.trim()) {
+      closeList();
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+    if (headingMatch) {
+      closeList();
+      const level = headingMatch[1].length;
+      parts.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    const listMatch = line.match(/^- (.*)$/);
+    if (listMatch) {
+      if (!inList) {
+        parts.push("<ul>");
+        inList = true;
+      }
+      parts.push(`<li>${renderInlineMarkdown(listMatch[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+    parts.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  }
+
+  closeCode();
+  closeList();
+  return parts.join("");
+}
+
+function setReportViewContent(path, content) {
+  const view = byId("reportView");
+  if (!view) {
+    return;
+  }
+  if (String(path || "").endsWith(".md")) {
+    view.classList.remove("empty");
+    view.innerHTML = renderMarkdownToHtml(content);
+    return;
+  }
+  const pretty = (() => {
+    try {
+      return JSON.stringify(JSON.parse(content), null, 2);
+    } catch (error) {
+      return content;
+    }
+  })();
+  view.classList.remove("empty");
+  view.innerHTML = `<pre><code>${escapeHtml(pretty)}</code></pre>`;
+}
+
 function reportLabel(path) {
   const name = String(path || "").split("/").pop() || "";
   const base = name.replace(/\.(md|json)$/, "");
@@ -1234,6 +1335,7 @@ async function renderReports(result) {
   const list = byId("reportLinks");
   const view = byId("reportView");
   list.innerHTML = "";
+  view.classList.remove("empty");
   state.reports = result.reportPaths || [];
 
   if (state.reports.length === 0) {
@@ -1241,6 +1343,8 @@ async function renderReports(result) {
     resetResultOverview();
     byId("findingSections").innerHTML = "";
     byId("rewritePreview").hidden = true;
+    view.classList.add("empty");
+    view.textContent = "Run a command to load a report here.";
     return;
   }
 
@@ -1288,7 +1392,7 @@ async function renderReports(result) {
       button.textContent = group.md ? `Open ${group.label} report` : `Open ${group.label} export`;
       button.addEventListener("click", async () => {
         const content = await invoke("read_text_file", { path: primaryPath });
-        view.textContent = content;
+        setReportViewContent(primaryPath, content);
       });
       actions.appendChild(button);
     }
@@ -1308,7 +1412,7 @@ async function renderReports(result) {
       jsonButton.textContent = `Open ${group.label} JSON`;
       jsonButton.addEventListener("click", async () => {
         const content = await invoke("read_text_file", { path: group.json });
-        view.textContent = content;
+        setReportViewContent(group.json, content);
       });
       advancedActions.appendChild(jsonButton);
       advanced.appendChild(advancedActions);
@@ -1341,7 +1445,7 @@ async function renderReports(result) {
       defaultReport;
   }
   const content = await invoke("read_text_file", { path: defaultReport });
-  view.textContent = content;
+  setReportViewContent(defaultReport, content);
 }
 
 async function runAction(action) {
