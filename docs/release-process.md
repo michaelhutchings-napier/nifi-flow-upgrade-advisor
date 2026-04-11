@@ -7,6 +7,7 @@ This project releases from signed Git tags using the GitHub Actions workflow in 
 Every tagged release should publish:
 
 - platform archives for Linux, macOS, and Windows
+- a Windows desktop archive containing `nifi-flow-upgrade-advisor-desktop.exe`
 - a `checksums.txt` file with SHA-256 hashes
 - a signed checksum bundle
 - an SPDX SBOM
