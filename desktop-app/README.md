@@ -78,6 +78,9 @@ Then the app should run from:
 cargo run --manifest-path desktop-app/src-tauri/Cargo.toml
 ```
 
+Tagged releases can also publish a Windows NSIS installer executable for the
+desktop app when the release workflow runs on GitHub Actions.
+
 The frontend is plain static HTML, CSS, and JavaScript under `ui/`, so the app does not need a separate Node or Vite frontend just to get started.
 
 ## Linux Notes
