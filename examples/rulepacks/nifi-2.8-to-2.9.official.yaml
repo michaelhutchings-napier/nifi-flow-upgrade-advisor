@@ -1,0 +1,18 @@
+apiVersion: flow-upgrade.nifi.advisor/v1alpha1
+kind: RulePack
+metadata:
+  name: nifi-2.8-to-2.9-official
+  title: NiFi 2.8 to 2.9 migration guidance
+  description: Official compatibility coverage pack for the NiFi 2.8.x to 2.9.x upgrade step. Audited against Apache NiFi 2.9.0 release notes and Apache migration guidance; no flow-detectable official caveats were identified for this minor hop.
+  references:
+    - https://cwiki.apache.org/confluence/display/NIFI/Release%2BNotes
+    - https://cwiki.apache.org/confluence/display/NIFI/Migration%2BGuidance
+spec:
+  sourceVersionRange: ">=2.8.0 <2.9.0"
+  targetVersionRange: ">=2.9.0 <2.10.0"
+  appliesToFormats:
+    - flow-json-gz
+    - versioned-flow-snapshot
+    - git-registry-dir
+    - nifi-registry-export
+  rules: []

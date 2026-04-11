@@ -9,6 +9,7 @@ All notable changes to this project should be documented in this file.
 - documented release process and install verification guidance
 - install script for release-based binary installation
 - golden regression tests for official migration rule packs
+- official rule-pack coverage and sample manifest for `2.8 -> 2.9`
 - manual-change demo for `GetHTTP -> InvokeHTTP` on `1.27.x -> 2.0.x`
 - troubleshooting guide for upgrade, rewrite, validation, and secret-handling questions
 - secrets and parameter-context guidance for production handoffs

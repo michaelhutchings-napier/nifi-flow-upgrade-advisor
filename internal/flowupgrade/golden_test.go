@@ -481,6 +481,30 @@ func TestOfficialRulePackGoldenSnapshots(t *testing.T) {
 }`,
 			goldenFile: "official_2_7_to_2_8.json",
 		},
+		{
+			name:          "official_2_8_to_2_9",
+			sourceVersion: "2.8.0",
+			targetVersion: "2.9.0",
+			rulePacks: []string{
+				filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.8-to-2.9.official.yaml"),
+			},
+			format: SourceFormatFlowJSONGZ,
+			payload: `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "invoke-http-1",
+        "name": "FetchOrders",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "properties": {
+          "HTTP URL": "https://example.com/orders"
+        }
+      }
+    ]
+  }
+}`,
+			goldenFile: "official_2_8_to_2_9.json",
+		},
 	}
 
 	for _, tc := range cases {

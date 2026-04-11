@@ -789,7 +789,7 @@ func TestBuiltInRulePackCoverageAcrossSupportedUpgradePairs(t *testing.T) {
 		"1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0",
 		"1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0",
 		"1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0",
-		"2.0.0", "2.1.0", "2.2.0", "2.3.0", "2.4.0", "2.5.0", "2.6.0", "2.7.0", "2.7.1", "2.8.0",
+		"2.0.0", "2.1.0", "2.2.0", "2.3.0", "2.4.0", "2.5.0", "2.6.0", "2.7.0", "2.7.1", "2.8.0", "2.9.0",
 	}
 	const minimumSupportedTarget = "1.21.0"
 
@@ -867,6 +867,108 @@ func TestRunAnalyzeSupportsChained127To28Path(t *testing.T) {
 	}
 	if result.Report.Summary.ByClass["auto-fix"] == 0 {
 		t.Fatalf("expected chained path to include at least one auto-fix finding")
+	}
+}
+
+func TestRunAnalyzeSupportsChained127To29Path(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "base64-proc-1",
+        "name": "EncodePayload",
+        "type": "org.apache.nifi.processors.standard.Base64EncodeContent",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.27.0"
+        },
+        "properties": {
+          "Mode": "Encode"
+        }
+      }
+    ]
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "1.27.0",
+		TargetVersion: "2.9.0",
+		RulePackPaths: []string{
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-1.27-to-2.0.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.0-to-2.1.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.1-to-2.2.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.2-to-2.3.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.3-to-2.4.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.4-to-2.5.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.5-to-2.6.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.6-to-2.7.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.7-to-2.8.official.yaml"),
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.8-to-2.9.official.yaml"),
+		},
+		OutputDir:    filepath.Join(tmpDir, "out"),
+		AnalysisName: "chain-127-to-29",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+	if len(result.Report.RulePacks) != 10 {
+		t.Fatalf("expected 10 rule packs in chained path, got %d", len(result.Report.RulePacks))
+	}
+	if result.Report.Summary.ByClass["auto-fix"] == 0 {
+		t.Fatalf("expected chained path to include at least one auto-fix finding")
+	}
+}
+
+func TestRunAnalyzeOfficial28To29PackKeepsCompatibleFlowsQuiet(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "flow.json.gz")
+	writeGzipFile(t, sourcePath, `{
+  "rootGroup": {
+    "processors": [
+      {
+        "id": "invoke-http-1",
+        "name": "FetchOrders",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "properties": {
+          "HTTP URL": "https://example.com/orders"
+        }
+      }
+    ]
+  }
+}`)
+
+	result, err := RunAnalyze(AnalyzeConfig{
+		SourcePath:    sourcePath,
+		SourceFormat:  SourceFormatFlowJSONGZ,
+		SourceVersion: "2.8.0",
+		TargetVersion: "2.9.0",
+		RulePackPaths: []string{
+			filepath.Join("..", "..", "examples", "rulepacks", "nifi-2.8-to-2.9.official.yaml"),
+		},
+		OutputDir:    filepath.Join(tmpDir, "out"),
+		AnalysisName: "official-28-to-29",
+		FailOn:       "never",
+	})
+	if err != nil {
+		t.Fatalf("RunAnalyze() error = %v", err)
+	}
+	if len(result.Report.RulePacks) != 1 {
+		t.Fatalf("expected 1 rule pack in report, got %d", len(result.Report.RulePacks))
+	}
+	if got := result.Report.RulePacks[0].Name; got != "nifi-2.8-to-2.9-official" {
+		t.Fatalf("unexpected rule pack %q", got)
+	}
+	if result.Report.Summary.TotalFindings != 0 {
+		t.Fatalf("expected no findings, got %d", result.Report.Summary.TotalFindings)
 	}
 }
 
