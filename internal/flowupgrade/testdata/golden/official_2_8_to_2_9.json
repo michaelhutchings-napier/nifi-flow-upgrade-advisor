@@ -1,0 +1,19 @@
+{
+  "rulePacks": [
+    "nifi-2.8-to-2.9-official"
+  ],
+  "sourceVersion": "2.8.0",
+  "targetVersion": "2.9.0",
+  "summary": {
+    "totalFindings": 0,
+    "byClass": {
+      "assisted-rewrite": 0,
+      "auto-fix": 0,
+      "blocked": 0,
+      "info": 0,
+      "manual-change": 0,
+      "manual-inspection": 0
+    }
+  },
+  "findings": []
+}
