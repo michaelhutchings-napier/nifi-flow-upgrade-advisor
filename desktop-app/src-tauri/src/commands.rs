@@ -1326,7 +1326,7 @@ fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String>
     let tool_root = repo_root()?;
     let workspace_root = match path {
         Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw),
-        _ => tool_root.clone(),
+        _ => default_workspace_root(&tool_root),
     };
     let workspace_root = workspace_root
         .canonicalize()
@@ -1377,6 +1377,51 @@ fn scan_workspace_internal(path: Option<&str>) -> Result<BootstrapState, String>
         rule_packs,
         manifests,
     })
+}
+
+fn default_workspace_root(tool_root: &Path) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(documents) = preferred_windows_documents_dir() {
+            return documents;
+        }
+        if let Some(home) = preferred_home_dir() {
+            return home;
+        }
+    }
+
+    tool_root.to_path_buf()
+}
+
+#[cfg(target_os = "windows")]
+fn preferred_windows_documents_dir() -> Option<PathBuf> {
+    preferred_home_dir().and_then(|home| windows_documents_dir_for(&home))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_documents_dir_for(home: &Path) -> Option<PathBuf> {
+    let documents = home.join("Documents");
+    documents.is_dir().then_some(documents)
+}
+
+#[cfg(target_os = "windows")]
+fn preferred_home_dir() -> Option<PathBuf> {
+    if let Ok(user_profile) = std::env::var("USERPROFILE") {
+        let path = PathBuf::from(user_profile);
+        if path.is_dir() {
+            return Some(path);
+        }
+    }
+
+    let home_drive = std::env::var("HOMEDRIVE").ok();
+    let home_path = std::env::var("HOMEPATH").ok();
+    match (home_drive, home_path) {
+        (Some(drive), Some(path)) if !drive.trim().is_empty() && !path.trim().is_empty() => {
+            let candidate = PathBuf::from(format!("{}{}", drive, path));
+            candidate.is_dir().then_some(candidate)
+        }
+        _ => None,
+    }
 }
 
 fn dedupe_entries(entries: &mut Vec<WorkspaceEntry>) {
@@ -1926,6 +1971,40 @@ mod tests {
         );
 
         fs::remove_dir_all(&temp_root).expect("cleanup temp workspace");
+    }
+
+    #[test]
+    fn default_workspace_root_uses_tool_root_off_windows() {
+        let tool_root = temp_path("tool-root");
+        fs::create_dir_all(&tool_root).expect("create tool root");
+
+        let chosen = default_workspace_root(&tool_root);
+
+        #[cfg(target_os = "windows")]
+        {
+            assert_ne!(chosen, PathBuf::new());
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(chosen, tool_root);
+        }
+
+        fs::remove_dir_all(&tool_root).expect("cleanup tool root");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn preferred_windows_documents_dir_returns_documents_when_present() {
+        let temp_root = temp_path("windows-home");
+        let documents = temp_root.join("Documents");
+        fs::create_dir_all(&documents).expect("create Documents");
+
+        let selected = windows_documents_dir_for(&temp_root).expect("select Documents");
+
+        assert_eq!(selected, documents);
+
+        fs::remove_dir_all(&temp_root).expect("cleanup temp root");
     }
 
     #[test]
