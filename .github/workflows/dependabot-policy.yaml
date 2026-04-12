@@ -21,7 +21,7 @@ jobs:
         uses: dependabot/fetch-metadata@v2
 
       - name: Classify update
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
           PACKAGE_ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}

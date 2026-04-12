@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create or update PR summary comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.PR_SUMMARY_COMMENT_TOKEN != '' && secrets.PR_SUMMARY_COMMENT_TOKEN || github.token }}
           script: |
